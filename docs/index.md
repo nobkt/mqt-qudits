@@ -25,6 +25,7 @@ self
 
 tutorial
 publications
+spin1_suzuki_trotter_index
 ```
 
 ```{toctree}

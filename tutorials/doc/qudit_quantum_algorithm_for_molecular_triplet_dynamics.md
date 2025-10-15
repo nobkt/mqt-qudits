@@ -19,6 +19,38 @@ $$
 \text{1分子} \longleftrightarrow \text{1 Qutrit（3次元Qudit）}
 $$
 
+### 1.3 基本ゲートによる実装の概要
+
+本文書では、カスタム2-Quditゲート（`cu_two`）を使用せず、**基本的な量子ゲートのみ**で全ての演算を実装する。これにより、任意の量子ハードウェアプラットフォームで実装可能な汎用性を確保する。
+
+#### 使用する基本ゲート一覧
+
+| ゲート名 | 記号 | 作用 | 用途 |
+|---------|------|------|------|
+| 仮想Z回転 | `VirtRz(level, φ)` | 単一準位への位相付与 | 対角ハミルトニアン $\hat{H}_0$ |
+| 2準位回転 | `R(a, b, θ, φ)` | 準位間の一般化回転 | 基底変換、TTAゲート分解 |
+| Z回転 | `Rz(a, b, φ)` | 準位間の位相回転 | （補助的） |
+| Hadamard様 | `RH(a, b)` | 準位間の重ね合わせ | エネルギー移動ゲート分解 |
+| 制御交換 | `CEx(a, b, ctrl, θ)` | 制御された準位間回転 | エネルギー移動、TTAゲート |
+| 制御加算 | `CSum()` | 制御加算演算 | （代替手法） |
+
+#### ハミルトニアン項とゲート分解の対応
+
+| ハミルトニアン項 | 必要な基本ゲート数 | 主要ゲート |
+|-----------------|-------------------|-----------|
+| $\hat{H}_0$ (対角) | 2個/分子 | `VirtRz` × 2 |
+| $\hat{H}_{\text{transfer}}$ (エネルギー移動) | 5個/ペア | `RH` × 2, `CEx` × 1, `VirtRz` × 2 |
+| $\hat{H}_{\text{TTA}}$ (三重項消滅) | 8個/ペア | `R` × 4, `CEx` × 2, `VirtRz` × 2 |
+
+**1時間ステップあたりの総ゲート数** (N分子鎖系):
+- 対角項: $4N$ 個
+- エネルギー移動: $5(N-1)$ 個
+- TTA: $8(N-1)$ 個
+- **合計**: $4N + 13(N-1) = 17N - 13$ 個
+
+例: $N=10$ 分子の場合、1ステップあたり **157個の基本ゲート**
+
+
 ## 2. Quditによる状態表現
 
 ### 2.1 単一分子のQutrit表現
@@ -1213,8 +1245,8 @@ $$
 2. 初期状態を量子レジスタに設定
 3. for step = 1 to N_steps:
    a. H₀ を時間 Δt/2 で時間発展 (各Quditに位相ゲート)
-   b. H_transfer を時間 Δt/2 で時間発展 (各隣接対にカスタムゲート)
-   c. H_TTA を時間 Δt/2 で時間発展 (各隣接対にカスタムゲート)
+   b. H_transfer を時間 Δt/2 で時間発展 (各隣接対に基本ゲート列を適用)
+   c. H_TTA を時間 Δt/2 で時間発展 (各隣接対に基本ゲート列を適用)
    d. H_rad を時間 Δt で時間発展 (減衰操作)
    e. H_TTA を時間 Δt/2 で時間発展 (逆順)
    f. H_transfer を時間 Δt/2 で時間発展 (逆順)
@@ -2523,15 +2555,15 @@ simulator_2D.neighbors = neighbors_2D
 
 エネルギー移動演算子の実装：
 - **量子ビット**: 複数のCNOTゲートと局所回転（典型的に10個以上）
-- **Qutrit（カスタムゲート方式）**: 1つのカスタム2-Quditゲート
-- **Qutrit（基本ゲート方式）**: Hadamard様ゲート2個 + 制御回転1個 + 位相補正2個 = 計5個の基本ゲート
+- **Qutrit（基本ゲート方式・本文書の実装）**: Hadamard様ゲート2個 + 制御回転1個 + 位相補正2個 = 計5個の基本ゲート
+- ※ 参考: カスタム2-Quditゲートを許容する場合は1個で実装可能だが、本文書では基本ゲートのみを使用
 
 TTA演算子の実装：
 - **量子ビット**: さらに複雑な分解が必要（20個以上のゲート）
-- **Qutrit（カスタムゲート方式）**: 1つのカスタム2-Quditゲート
-- **Qutrit（基本ゲート方式）**: 局所回転4個 + 制御回転2個 + 位相補正2個 = 計8個の基本ゲート
+- **Qutrit（基本ゲート方式・本文書の実装）**: 局所回転4個 + 制御回転2個 + 位相補正2個 = 計8個の基本ゲート
+- ※ 参考: カスタム2-Quditゲートを許容する場合は1個で実装可能だが、本文書では基本ゲートのみを使用
 
-**結論**: Quditアプローチは、量子ビット方式と比較してゲート数を大幅に削減できる。また、カスタムゲートを使わず基本ゲートのみで実装する場合でも、量子ビット方式よりも効率的である。基本ゲート分解により、任意のハードウェアプラットフォームで実装可能な汎用性を持つ。
+**結論**: Quditアプローチは、量子ビット方式と比較してゲート数を大幅に削減できる。本文書で提示した基本ゲートのみによる実装は、量子ビット方式よりも効率的であり、かつ任意のハードウェアプラットフォームで実装可能な汎用性を持つ。
 
 ### 10.3 物理的応用
 
@@ -2709,9 +2741,11 @@ Qudit量子計算の実験実装候補：
 #### 主要な成果
 
 1. **理論的完全性**: すべての数式を省略無しに展開し、各演算子とゲートの対応を明示
-2. **実装可能性**: MQT Quditsの実際のAPIに基づいた完全なコード例を提供
-3. **効率性**: Qudit表現により、量子ビット方式と比較してゲート数を大幅に削減
-4. **汎用性**: 任意の分子数、格子構造、不均一系に対応可能
+2. **基本ゲートのみの実装**: カスタム2-Quditゲートを使用せず、基本的な単一・2-Quditゲート（VirtRz, R, RH, CEx）のみで完全な実装を実現
+3. **実装可能性**: MQT Quditsの実際のAPIに基づいた完全なコード例を提供
+4. **効率性**: Qudit表現により、量子ビット方式と比較してゲート数を大幅に削減（5個 vs 10個以上/エネルギー移動ゲート）
+5. **汎用性**: 任意の分子数、格子構造、不均一系に対応可能
+6. **ハードウェア非依存性**: 基本ゲート分解により、任意の量子ハードウェアプラットフォームで実装可能
 
 #### 物理的意義
 
@@ -2744,13 +2778,18 @@ Qudit量子計算の実験実装候補：
 6. Gokhale, P., et al. (2019). "Asymptotic improvements to quantum circuits via qutrits". *Proc. ACM Symp. STOC* **51**, 554-565.
 7. Murali, P., et al. (2020). "Software mitigation of crosstalk on noisy intermediate-scale quantum computers". *ASPLOS 2020*.
 
+### 量子ゲート分解理論
+8. Vatan, F., & Williams, C. (2004). "Optimal quantum circuits for general two-qubit gates". *Phys. Rev. A* **69**, 032315.
+9. Shende, V. V., Bullock, S. S., & Markov, I. L. (2006). "Synthesis of quantum-logic circuits". *IEEE Trans. CAD* **25**, 1000-1010.
+10. Cross, A. W., et al. (2019). "Validating quantum computers using randomized model circuits". *Phys. Rev. A* **100**, 032328.
+
 ### MQT Quditsフレームワーク
-8. MQT Qudits Documentation: https://mqt.readthedocs.io/projects/qudits/
-9. Grurl, T., et al. (2023). "Automatic Implementation and Evaluation of Error-Correcting Codes for Quantum Computing: An Overview". *ACM Computing Surveys*.
+11. MQT Qudits Documentation: https://mqt.readthedocs.io/projects/qudits/
+12. Grurl, T., et al. (2023). "Automatic Implementation and Evaluation of Error-Correcting Codes for Quantum Computing: An Overview". *ACM Computing Surveys*.
 
 ### 実験実装
-10. Nikolaeva, A. S., et al. (2021). "Multi-level quantum systems as qudits: Implementation in superconducting circuits". *Quantum Sci. Technol.* **6**, 035007.
-11. Chi, Y., et al. (2022). "A programmable qudit-based quantum processor". *Nat. Commun.* **13**, 1166.
+13. Nikolaeva, A. S., et al. (2021). "Multi-level quantum systems as qudits: Implementation in superconducting circuits". *Quantum Sci. Technol.* **6**, 035007.
+14. Chi, Y., et al. (2022). "A programmable qudit-based quantum processor". *Nat. Commun.* **13**, 1166.
 
 ---
 

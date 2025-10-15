@@ -42,7 +42,20 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Physical applications to organic photonics and TTA upconversion
 - Future directions including VQA, tensor networks, and experimental implementation
 
-**Reading order**: Document 1 → Document 2 → Document 3 for complete understanding, or start directly with Document 3 for implementation focus.
+#### 4. **mqt_qudits_gates_and_bases_reference.md** (ゲート完全リファレンス)
+**Comprehensive reference for all quantum gates and bases** available in the MQT-Qudits framework. This document provides:
+- Complete mathematical formulations with LaTeX for all 20 gate types
+- Detailed explanations of computational basis and qudit representations
+- Single-qudit gates: H, X, Z, S, R, Rz, Rh, VirtRz, Perm, NoiseX, NoiseY (11 gates)
+- Two-qudit gates: CEx, CSum, LS, MS (4 gates)
+- Multi-qudit gates: RandU (1 gate)
+- Custom gates: CustomOne, CustomTwo, CustomMulti (3 gates)
+- Auxiliary operations: Gell-Mann matrices (1 type)
+- Matrix representations with concrete examples for various dimensions
+- Properties, use cases, and Python implementation code
+- Complete usage examples with `mqt.qudits` API (1125 lines, 28KB)
+
+**Reading order**: Document 1 → Document 2 → Document 3 for complete understanding, or start directly with Document 3 for implementation focus. Document 4 serves as a comprehensive reference for all available gates.
 
 ## Language
 

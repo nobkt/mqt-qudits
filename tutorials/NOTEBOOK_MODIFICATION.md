@@ -69,17 +69,16 @@ This is analogous to the standard decomposition for 2-qubit gates into CNOTs and
 
 ## Verification
 
-Run the test script to verify:
+The modification has been thoroughly tested. You can verify the notebook works correctly by:
 
-```bash
-cd /home/runner/work/mqt-qudits/mqt-qudits
-python /tmp/comprehensive_test.py
-```
+1. **Running the notebook directly** in Jupyter
+2. **Executing the test cells** in the notebook to see decomposition in action
+3. **Checking the circuit after decomposition** to verify only basic gates are used
 
-Expected output:
+Expected behavior:
 ```
 ✓ Original circuit correctly uses CustomTwo gates
-✓ Decomposed circuit has no CustomTwo gates
+✓ Decomposed circuit has no CustomTwo gates  
 ✓ Decomposed circuit uses only basic gates
 ✓ Population conserved
 
@@ -106,6 +105,6 @@ All gates are standard MQT-Qudits gates documented in `tutorials/doc/mqt_qudits_
 
 ## References
 
-- **LogEntQRCEXPass**: `src/mqt/qudits/compiler/twodit/entanglement_qr/log_ent_qr_cex_decomp.py`
-- **EntangledQRCEX**: QR decomposition algorithm for 2-qudit gates
-- **Gate reference**: `tutorials/doc/mqt_qudits_gates_and_bases_reference.md`
+- **LogEntQRCEXPass**: [log_ent_qr_cex_decomp.py](../src/mqt/qudits/compiler/twodit/entanglement_qr/log_ent_qr_cex_decomp.py)
+- **EntangledQRCEX**: QR decomposition algorithm for 2-qudit gates (see same file)
+- **Gate reference**: [mqt_qudits_gates_and_bases_reference.md](doc/mqt_qudits_gates_and_bases_reference.md)

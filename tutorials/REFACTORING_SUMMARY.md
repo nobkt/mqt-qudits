@@ -154,6 +154,18 @@ Emphasizes:
    - No CustomTwo gates remain
    - Only: VirtRz, CEx, R, Rh, Rz, X
 
+### Decomposition Statistics
+
+Each CustomTwo gate (9×9 unitary for 2 qutrits) is decomposed into approximately:
+- **Total**: ~900-1000 basic gates (exact count depends on the unitary structure)
+- **CEx**: ~400-500 gates (Controlled Exchange operations)
+- **R**: ~600-800 gates (Single-qudit rotations)
+- **Rh**: ~600-800 gates (Hadamard-type rotations)
+- **Rz**: ~500-600 gates (Z-rotations)
+- **VirtRz**: ~200-400 gates (Virtual Z-rotations)
+
+*Note: Exact counts vary based on the specific unitary matrix being decomposed. The QR decomposition algorithm generates different gate sequences depending on the structure of the matrix.*
+
 ### Basic Gates Used
 
 After decomposition, the circuit contains only these gates:

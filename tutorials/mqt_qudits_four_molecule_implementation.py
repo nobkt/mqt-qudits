@@ -7,8 +7,14 @@ MQT-Quditsの量子ゲートのみを使用して実装されています。
 
 使用するゲート（tutorials/doc/mqt_qudits_gates_and_bases_reference.mdより）:
 - VirtRz: 仮想Z回転ゲート（位相ゲート）
-- CustomTwo: カスタム2-quditユニタリゲート
+- CEx: 制御Exchangeゲート（2-qudit基本ゲート）
+- R, Rh, Rz: 単一qudit回転ゲート
 - X: 一般化Pauli-Xゲート（状態準備用）
+
+重要な変更点:
+CustomTwoゲートは内部的には使用されますが、LogEntQRCEXPassコンパイラにより
+自動的に基本ゲート（CEx, R, Rh, Rz, VirtRz）の列に分解されます。
+これにより、ユーザがカスタムゲートを意識することなく、基本ゲートのみで計算が完了します。
 """
 
 import numpy as np
@@ -80,6 +86,25 @@ class MQTQuditTimeEvolution:
         self.params = params
         self.N = params.N_molecules
         self.dim = 3 ** self.N
+        self.provider = MQTQuditProvider()
+    
+    def decompose_custom_two_gates(self, circuit: QuantumCircuit) -> QuantumCircuit:
+        """
+        CustomTwoゲートを基本ゲートに分解する
+        
+        LogEntQRCEXPassコンパイラを使用して、任意の2-quditユニタリ行列を
+        基本的なCEx（制御Exchange）ゲート、R, Rh, Rz, VirtRzゲートの列に分解します。
+        
+        これにより、CustomTwoゲートを使わずに、基本ゲートのみで同じ計算が可能になります。
+        ユーザはカスタムゲートを定義する必要がありません。
+        
+        Returns:
+            分解後の量子回路
+        """
+        from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
+        backend = self.provider.get_backend("faketraps3six")
+        compiler = LogEntQRCEXPass(backend)
+        return compiler.transpile(circuit)
     
     def add_H0_evolution_gates(self, circuit: QuantumCircuit, dt: float):
         """
@@ -357,6 +382,10 @@ class SuzukiTrotterMQTQuditSimulator:
             
             for s in range(step + 1):
                 self.add_single_trotter_step(circuit, dt)
+            
+            # CustomTwoゲートを基本ゲートに分解
+            # これによりユーザはカスタムゲートを意識せず、基本ゲートのみで計算できます
+            circuit = self.time_evol.decompose_custom_two_gates(circuit)
             
             # 回路を実行
             job = self.backend.run(circuit)

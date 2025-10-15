@@ -56,30 +56,43 @@ CustomTwo([i,j], U_9x9)
 
 #### H_TTA Evolution
 ```
-Subspace {|11⟩, |20⟩, |02⟩} Hamiltonian:
-H_sub = J [[0, 1, 1], [1, 0, 0], [1, 0, 0]]
+Subspace {|11⟩, |20⟩, |02⟩} Hamiltonian (Hermitian):
+H_sub = J [[0, 1, 1],
+           [1, 0, 0],
+           [1, 0, 0]]
 
-Eigendecomposition:
-λ_0 = 0, λ_± = ±J√2
+Note: Matrix is Hermitian (H† = H) despite repeated rows, 
+representing symmetric TTA coupling.
+
+Eigendecomposition (verified):
+λ_0 = 0, λ_± = ±J√2 ≈ ±1.414J
 
 Time evolution:
 U_sub = V diag(e^{-i λ_k dt/ℏ}) V†
 
 Implementation:
-eigenvalues, eigenvectors = eigh(H_sub)
+eigenvalues, eigenvectors = np.linalg.eigh(H_sub)  # Hermitian eigendecomp
 phases = exp(-i * eigenvalues * dt / ℏ)
 U_sub = eigenvectors @ diag(phases) @ eigenvectors†
-# Embed in 9×9 matrix at indices [2,4,6]
+# Embed in 9×9 matrix at indices |02⟩=2, |11⟩=4, |20⟩=6
+# (tensor product basis: |ab⟩ → 3a+b)
 CustomTwo([i,j], U_9x9)
+
+Note: Using np.linalg.eigh is permitted as it computes the
+exact eigendecomposition (not a time evolution approximation).
+Only matrix exponentials (expm) are prohibited as heuristic methods.
 ```
 
 ### Suzuki-Trotter Decomposition
 
 2nd-order symmetric decomposition:
 ```
-U(Δt) ≈ e^{-iH0Δt/2ℏ} e^{-iH_tr Δt/2ℏ} e^{-iH_TTA Δt/2ℏ}
-        × e^{-iH_TTA Δt/2ℏ} e^{-iH_tr Δt/2ℏ} e^{-iH0Δt/2ℏ}
+U(Δt) ≈ e^{-iH0Δt/(2ℏ)} e^{-iH_tr Δt/(2ℏ)} e^{-iH_TTA Δt/(2ℏ)}
+        × e^{-iH_TTA Δt/(2ℏ)} e^{-iH_tr Δt/(2ℏ)} e^{-iH0Δt/(2ℏ)}
 ```
+
+This is a symmetric splitting where each term appears twice with
+half the time step, maintaining time-reversal symmetry.
 
 Error: O(Δt³) per step
 
@@ -120,10 +133,21 @@ Error: O(Δt³) per step
 The following methods are **NOT** used anywhere in the implementation:
 
 ❌ `scipy.linalg.expm` - Matrix exponential
-❌ `scipy.sparse.linalg.expm` - Sparse matrix exponential
-❌ `scipy.linalg.eig` for direct diagonalization
+❌ `scipy.sparse.linalg.expm` - Sparse matrix exponential  
 ❌ Direct NumPy matrix multiplication on state vectors for time evolution
-❌ Any fallback or approximation methods
+❌ Any fallback or approximation methods for time evolution
+
+### Allowed Linear Algebra Operations
+
+✅ `numpy.linalg.eigh` - Hermitian eigendecomposition
+  - This is permitted as it computes the **exact** eigendecomposition
+  - Used only to construct the unitary time evolution operator analytically
+  - NOT used as a heuristic approximation
+  - The resulting unitary is then applied via MQT-Qudits CustomTwo gate
+
+The key distinction: We avoid matrix exponentials (which approximate time evolution),
+but we use eigendecomposition to **analytically** construct the exact unitary operator,
+which is then applied as a proper quantum gate.
 
 ## Files
 

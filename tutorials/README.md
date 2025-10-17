@@ -55,7 +55,63 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Properties, use cases, and Python implementation code
 - Complete usage examples with `mqt.qudits` API (1125 lines, 28KB)
 
-**Reading order**: Document 1 → Document 2 → Document 3 for complete understanding, or start directly with Document 3 for implementation focus. Document 4 serves as a comprehensive reference for all available gates.
+#### 5. **n_molecule_triplet_dynamics_basic_gates.md** (N分子系への一般化)
+**Complete generalization to N-molecule systems** using only basic quantum gates. This document provides:
+- Generalization to arbitrary number of molecules N
+- Implementation using only basic gates (VirtRz, R, RH, CEx, CSum) without CustomTwo
+- Complete gate decomposition for all Hamiltonian terms
+- 1D chain, 2D lattice, and arbitrary topology support
+- Inhomogeneous systems with different molecular parameters
+- Detailed gate sequences and implementation-ready code (2547 lines)
+
+#### 6. **tutorial_completion_report.md** (実装完了報告)
+**Comprehensive completion report** for the tutorial implementation. This document provides:
+- Summary of all deliverables (notebook, implementation file, documentation)
+- Verification of theoretical rigor (no heuristics, gates-only implementation)
+- New features added (circuit visualization, Qudit count display)
+- Integration of all reference documents
+- Execution requirements and expected performance
+- Future extension possibilities
+
+**Reading order**: Document 1 → Document 2 → Document 3 for complete understanding, or start directly with Document 3 for implementation focus. Document 4 serves as a comprehensive reference for all available gates. Document 5 provides N-molecule generalization. Document 6 contains the completion report.
+
+### Tutorial Notebook
+
+#### **four_molecule_linear_chain_quantum_dynamics.ipynb** ✨ COMPLETE
+**Complete tutorial implementation** of 4-molecule quantum dynamics using MQT-Qudits gates only (no heuristics). The notebook includes:
+
+**Structure** (10 cells):
+1. Title and Introduction with implementation policy
+2. Theoretical Background (molecular states, Qudit representation, Hamiltonians)
+3. Suzuki-Trotter Decomposition theory
+4. Implementation Setup (imports and library loading)
+5. Physical Parameters configuration
+6. Quantum Circuit Construction with gate implementation
+7. **Circuit Visualization** with Qudit count and gate statistics ⭐ NEW
+8. Simulation Execution with progress tracking
+9. Results Visualization and physical interpretation
+10. Summary with references and future directions
+
+**Key Features**:
+- ✅ Uses only MQT-Qudits basic gates (VirtRz, CEx, R, Rh, Rz, X)
+- ✅ CustomTwo gates automatically decomposed to basic gates via LogEntQRCEXPass
+- ✅ No heuristic methods (no scipy.linalg.expm)
+- ✅ Complete circuit visualization showing Qudit configuration and gate composition
+- ✅ Physical interpretation of quantum dynamics results
+- ✅ Integration of all theoretical documentation
+
+**Companion Implementation**: `mqt_qudits_four_molecule_implementation.py` (489 lines)
+
+**Execution Time**: ~15-20 seconds for full notebook (N_steps=20)
+
+**Status**: ✅ **COMPLETE AND VALIDATED**
+
+### Supporting Files
+
+- **NOTEBOOK_SUMMARY.md**: Overview of notebook structure and content
+- **IMPLEMENTATION_VERIFICATION.md**: Detailed verification of implementation correctness
+- **NOTEBOOK_MODIFICATION.md**: History of notebook modifications
+- **REFACTORING_SUMMARY.md**: Summary of code refactoring
 
 ## Language
 

@@ -55,7 +55,7 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Properties, use cases, and Python implementation code
 - Complete usage examples with `mqt.qudits` API (1125 lines, 28KB)
 
-#### 5. **n_molecule_triplet_dynamics_basic_gates.md** (N分子系への一般化)
+#### 5. **n_molecule_triplet_dynamics_basic_gates.md** (N-molecule system generalization)
 **Complete generalization to N-molecule systems** using only basic quantum gates. This document provides:
 - Generalization to arbitrary number of molecules N
 - Implementation using only basic gates (VirtRz, R, RH, CEx, CSum) without CustomTwo
@@ -73,7 +73,12 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Execution requirements and expected performance
 - Future extension possibilities
 
-**Reading order**: Document 1 → Document 2 → Document 3 for complete understanding, or start directly with Document 3 for implementation focus. Document 4 serves as a comprehensive reference for all available gates. Document 5 provides N-molecule generalization. Document 6 contains the completion report.
+**Reading order**:
+- **For complete understanding**: Document 1 → Document 2 → Document 3
+- **For implementation focus**: Start directly with Document 3
+- **Gate reference**: Document 4 (comprehensive reference for all available gates)
+- **N-molecule generalization**: Document 5
+- **Implementation completion**: Document 6
 
 ### Tutorial Notebook
 

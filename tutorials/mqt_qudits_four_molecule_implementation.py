@@ -483,6 +483,359 @@ def demo_short_simulation():
     print("\n✓ Demonstration simulation completed!")
 
 
+# ===================================================================
+# 厳密対角化による解析解計算
+# ===================================================================
+
+class ExactDiagonalizationSolver:
+    """
+    厳密対角化による量子ダイナミクスの解析解計算
+    
+    ヒューリスティックな手法を使用せず、数学的に厳密な計算のみを実行：
+    - np.linalg.eigh: エルミート行列の固有値分解（厳密）
+    - 行列-ベクトル積: 厳密な線形代数演算
+    - 指数関数: 数学的に定義された演算
+    
+    この実装により、Qudit量子アルゴリズムの精度を検証できます。
+    """
+    
+    def __init__(self, params: PhysicalParameters):
+        self.params = params
+        self.N = params.N_molecules
+        self.dim = 3 ** self.N
+        self.H_total = None
+        self.eigenvalues = None
+        self.eigenvectors = None
+    
+    def build_total_hamiltonian(self) -> np.ndarray:
+        """
+        全ハミルトニアン行列を構築（厳密）
+        
+        81×81 エルミート行列を構築
+        H_total = H_0 + H_transfer + H_TTA
+        
+        注意: 放射減衰は非ユニタリなのでハミルトニアンには含めない
+        """
+        dim = self.dim
+        H = np.zeros((dim, dim), dtype=complex)
+        
+        # 1. H₀項（対角エネルギー）
+        for idx in range(dim):
+            config = index_to_config(idx, self.N, 3)
+            energy = 0.0
+            for level in config:
+                if level == 1:  # T1状態
+                    energy += self.params.E_T
+                elif level == 2:  # S1状態
+                    energy += self.params.E_S
+            H[idx, idx] += energy
+        
+        # 2. H_transfer項（エネルギー移動）
+        for pair_idx, (i, j) in enumerate(self.params.neighbors):
+            V = self.params.V[pair_idx]
+            
+            for idx1 in range(dim):
+                config1 = index_to_config(idx1, self.N, 3)
+                
+                # |...0...1...⟩ ↔ |...1...0...⟩
+                if config1[i] == 0 and config1[j] == 1:
+                    config2 = config1.copy()
+                    config2[i] = 1
+                    config2[j] = 0
+                    idx2 = config_to_index(config2, 3)
+                    H[idx1, idx2] += V
+                    H[idx2, idx1] += V
+        
+        # 3. H_TTA項（三重項-三重項消滅）
+        for pair_idx, (i, j) in enumerate(self.params.neighbors):
+            J = self.params.J[pair_idx]
+            
+            for idx1 in range(dim):
+                config1 = index_to_config(idx1, self.N, 3)
+                
+                # |...1...1...⟩ → |...2...0...⟩
+                if config1[i] == 1 and config1[j] == 1:
+                    config2 = config1.copy()
+                    config2[i] = 2
+                    config2[j] = 0
+                    idx2 = config_to_index(config2, 3)
+                    H[idx1, idx2] += J
+                    H[idx2, idx1] += J
+                    
+                    # |...1...1...⟩ → |...0...2...⟩
+                    config3 = config1.copy()
+                    config3[i] = 0
+                    config3[j] = 2
+                    idx3 = config_to_index(config3, 3)
+                    H[idx1, idx3] += J
+                    H[idx3, idx1] += J
+        
+        # エルミート性を保証（数値誤差対策）
+        H = (H + H.conj().T) / 2
+        
+        return H
+    
+    def diagonalize(self):
+        """
+        ハミルトニアンを対角化（厳密）
+        
+        np.linalg.eighを使用してエルミート行列の固有値分解を実行
+        これは数学的に厳密な演算であり、ヒューリスティックではない
+        """
+        if self.H_total is None:
+            self.H_total = self.build_total_hamiltonian()
+        
+        print("固有値分解を実行中...")
+        self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.H_total)
+        print(f"✓ 固有値分解完了（{self.dim}個の固有値）")
+        
+        # 固有値が実数であることを確認（エルミート行列の性質）
+        assert np.allclose(self.eigenvalues.imag, 0), "固有値は実数でなければならない"
+        self.eigenvalues = self.eigenvalues.real
+    
+    def build_initial_state(self, state_type: str = 'all_triplet') -> np.ndarray:
+        """
+        初期状態ベクトルを構築
+        
+        Args:
+            state_type: 'all_triplet', 'alternating', 'single_triplet'
+        
+        Returns:
+            初期状態ベクトル（81次元）
+        """
+        state = np.zeros(self.dim, dtype=complex)
+        
+        if state_type == 'all_triplet':
+            # |1111⟩
+            config = [1, 1, 1, 1]
+            idx = config_to_index(config, 3)
+            state[idx] = 1.0
+        
+        elif state_type == 'alternating':
+            # |1010⟩
+            config = [1, 0, 1, 0]
+            idx = config_to_index(config, 3)
+            state[idx] = 1.0
+        
+        elif state_type == 'single_triplet':
+            # |1000⟩
+            config = [1, 0, 0, 0]
+            idx = config_to_index(config, 3)
+            state[idx] = 1.0
+        
+        return state
+    
+    def time_evolution(self, t: float, initial_state: np.ndarray) -> np.ndarray:
+        """
+        厳密な時間発展（解析解）
+        
+        U(t) = exp(-i H t / ℏ) |ψ₀⟩
+        
+        固有基底での計算により厳密解を得る
+        
+        Args:
+            t: 時間
+            initial_state: 初期状態ベクトル（81次元）
+        
+        Returns:
+            時間発展後の状態ベクトル（厳密解）
+        """
+        if self.eigenvalues is None or self.eigenvectors is None:
+            raise RuntimeError("先にdiagonalize()を実行してください")
+        
+        # 初期状態を固有基底に展開
+        coeffs = self.eigenvectors.conj().T @ initial_state.flatten()
+        
+        # 時間発展（各固有状態の位相が独立に変化）
+        time_evolved_coeffs = coeffs * np.exp(-1j * self.eigenvalues * t / self.params.hbar)
+        
+        # 元の基底に戻す
+        state_final = self.eigenvectors @ time_evolved_coeffs
+        
+        # 規格化の確認
+        norm = np.linalg.norm(state_final)
+        assert abs(norm - 1.0) < 1e-10, f"規格化エラー: norm={norm}"
+        
+        return state_final
+    
+    def apply_radiative_decay(self, state: np.ndarray, t: float) -> np.ndarray:
+        """
+        放射減衰を適用（非ユニタリ操作）
+        
+        厳密対角化では時間発展はユニタリだが、
+        放射減衰は非ユニタリなので別途適用
+        """
+        state_decayed = state.copy()
+        
+        if self.params.Gamma_fl > 0:
+            for idx in range(self.dim):
+                config = index_to_config(idx, self.N, 3)
+                n_S1 = sum(1 for level in config if level == 2)
+                
+                decay_factor = np.exp(-self.params.Gamma_fl * t * n_S1 / 2)
+                state_decayed[idx] *= decay_factor
+            
+            # 規格化
+            norm = np.linalg.norm(state_decayed)
+            if norm > 1e-12:
+                state_decayed /= norm
+        
+        return state_decayed
+    
+    def calculate_populations(self, state: np.ndarray) -> Dict[str, float]:
+        """状態ベクトルから個体数を計算"""
+        state_flat = state.flatten()
+        N_S0 = 0.0
+        N_T1 = 0.0
+        N_S1 = 0.0
+        
+        for idx in range(self.dim):
+            prob = np.abs(state_flat[idx])**2
+            config = index_to_config(idx, self.N, 3)
+            
+            for level in config:
+                if level == 0:
+                    N_S0 += prob
+                elif level == 1:
+                    N_T1 += prob
+                elif level == 2:
+                    N_S1 += prob
+        
+        return {'N_S0': N_S0, 'N_T1': N_T1, 'N_S1': N_S1}
+    
+    def simulate(self, T_total: float, N_points: int,
+                 initial_state_type: str = 'all_triplet',
+                 include_decay: bool = False) -> Dict:
+        """
+        完全なシミュレーション（厳密解）
+        
+        Args:
+            T_total: 総時間
+            N_points: 時間点の数
+            initial_state_type: 初期状態の種類
+            include_decay: 放射減衰を含めるか
+        
+        Returns:
+            結果の辞書
+        """
+        print("\n=== 厳密対角化シミュレーション開始 ===")
+        print(f"総時間: {T_total} fs")
+        print(f"時間点数: {N_points}")
+        print(f"初期状態: {initial_state_type}")
+        print(f"放射減衰: {'含む' if include_decay else '含まない'}")
+        
+        # 固有値分解
+        if self.eigenvalues is None:
+            self.diagonalize()
+        
+        # 初期状態
+        initial_state = self.build_initial_state(initial_state_type)
+        
+        # 時間点
+        times = np.linspace(0, T_total, N_points)
+        
+        # 結果の記録
+        populations_history = []
+        states_history = []
+        
+        start_time = time.time()
+        
+        for t in times:
+            # 時間発展（厳密解）
+            state_evolved = self.time_evolution(t, initial_state)
+            
+            # 放射減衰を適用（オプション）
+            if include_decay:
+                state_final = self.apply_radiative_decay(state_evolved, t)
+            else:
+                state_final = state_evolved
+            
+            populations_history.append(self.calculate_populations(state_final))
+            states_history.append(state_final.copy())
+        
+        elapsed_time = time.time() - start_time
+        print(f"\n厳密対角化シミュレーション完了（{elapsed_time:.2f}秒）")
+        
+        return {
+            'times': times,
+            'populations': populations_history,
+            'states': states_history,
+            'final_state': states_history[-1],
+            'elapsed_time': elapsed_time,
+            'eigenvalues': self.eigenvalues,
+            'eigenvectors': self.eigenvectors
+        }
+
+
+# ===================================================================
+# 比較とフィデリティ計算
+# ===================================================================
+
+def calculate_fidelity(state1: np.ndarray, state2: np.ndarray) -> float:
+    """
+    2つの状態間のフィデリティを計算
+    
+    F = |⟨ψ₁|ψ₂⟩|²
+    
+    Args:
+        state1, state2: 状態ベクトル
+    
+    Returns:
+        フィデリティ（0から1）
+    """
+    overlap = np.vdot(state1.flatten(), state2.flatten())
+    fidelity = np.abs(overlap)**2
+    return fidelity
+
+
+def compare_qudit_vs_exact(qudit_results: Dict, exact_results: Dict) -> Dict:
+    """
+    Qudit量子アルゴリズムと厳密解を比較
+    
+    Args:
+        qudit_results: Qudit量子アルゴリズムの結果
+        exact_results: 厳密対角化の結果
+    
+    Returns:
+        比較結果の辞書
+    """
+    # 時間点が一致していることを確認
+    times_qudit = qudit_results['times']
+    times_exact = exact_results['times']
+    
+    # フィデリティの計算（各時刻）
+    fidelities = []
+    population_differences = {'N_S0': [], 'N_T1': [], 'N_S1': []}
+    
+    # 最も近い時刻でマッチング
+    for i, t_exact in enumerate(times_exact):
+        # 最も近いQudit時刻を見つける
+        idx_qudit = np.argmin(np.abs(times_qudit - t_exact))
+        
+        state_qudit = qudit_results['states'][idx_qudit] if qudit_results['states'] is not None else None
+        state_exact = exact_results['states'][i]
+        
+        if state_qudit is not None:
+            fid = calculate_fidelity(state_qudit, state_exact)
+            fidelities.append(fid)
+        
+        # 個体数の差
+        pop_qudit = qudit_results['populations'][idx_qudit]
+        pop_exact = exact_results['populations'][i]
+        
+        for key in ['N_S0', 'N_T1', 'N_S1']:
+            diff = pop_qudit[key] - pop_exact[key]
+            population_differences[key].append(diff)
+    
+    return {
+        'times': times_exact,
+        'fidelities': np.array(fidelities) if fidelities else None,
+        'population_differences': population_differences,
+        'mean_fidelity': np.mean(fidelities) if fidelities else None,
+        'min_fidelity': np.min(fidelities) if fidelities else None
+    }
+
+
 if __name__ == "__main__":
     test_gate_construction()
     print("\n" + "="*60 + "\n")

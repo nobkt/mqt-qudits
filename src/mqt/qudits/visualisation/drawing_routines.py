@@ -34,7 +34,11 @@ def draw_qudit_local(circuit: QuantumCircuit, max_gates: int | None = None) -> N
                     print(f"--[{gate.__class__.__name__}]--", end="")
             elif gate.gate_type == GateTypes.TWO:
                 # Two-qudit gates
-                target_qudits = gate.target_qudits if isinstance(gate.target_qudits, list) else [gate.target_qudits]
+                # target_qudits can be either int or list[int], normalize to list
+                if isinstance(gate.target_qudits, list):
+                    target_qudits = gate.target_qudits
+                else:
+                    target_qudits = [gate.target_qudits]
                 if line in target_qudits:
                     if isinstance(gate, gates.CustomTwo):
                         print("--[CustomTwo]--", end="")

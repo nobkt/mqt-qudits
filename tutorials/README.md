@@ -73,43 +73,61 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Execution requirements and expected performance
 - Future extension possibilities
 
+#### 7. **exact_diagonalization_theory.md** (厳密対角化理論) ⭐ NEW
+**Complete theory for analytical solution comparison** using exact diagonalization. This document provides:
+- Mathematical formulation of exact diagonalization method
+- Hamiltonian matrix construction (81×81 for 4-molecule system)
+- Exact time evolution using eigenvalue decomposition
+- Comparison methodology with Qudit quantum algorithm
+- Fidelity calculation and error analysis
+- Convergence theory and verification checklist
+- Implementation algorithms with rigorous mathematical foundations
+- No heuristic methods - only exact mathematical operations
+- Complete Python implementation examples (350+ lines)
+
 **Reading order**:
 - **For complete understanding**: Document 1 → Document 2 → Document 3
 - **For implementation focus**: Start directly with Document 3
 - **Gate reference**: Document 4 (comprehensive reference for all available gates)
 - **N-molecule generalization**: Document 5
 - **Implementation completion**: Document 6
+- **Analytical solution verification**: Document 7
 
 ### Tutorial Notebook
 
 #### **four_molecule_linear_chain_quantum_dynamics.ipynb** ✨ COMPLETE
 **Complete tutorial implementation** of 4-molecule quantum dynamics using MQT-Qudits gates only (no heuristics). The notebook includes:
 
-**Structure** (10 cells):
+**Structure** (12 cells):
 1. Title and Introduction with implementation policy
 2. Theoretical Background (molecular states, Qudit representation, Hamiltonians)
 3. Suzuki-Trotter Decomposition theory
 4. Implementation Setup (imports and library loading)
 5. Physical Parameters configuration
 6. Quantum Circuit Construction with gate implementation
-7. **Circuit Visualization** with Qudit count and gate statistics ⭐ NEW
+7. Circuit Visualization with Qudit count and gate statistics
 8. Simulation Execution with progress tracking
-9. Results Visualization and physical interpretation
-10. Summary with references and future directions
+9. **Exact Diagonalization for Analytical Solution** ⭐ NEW
+10. **Comparison: Qudit Algorithm vs Analytical Solution** ⭐ NEW
+11. Results Visualization and physical interpretation
+12. Summary with references and future directions
 
 **Key Features**:
 - ✅ Uses only MQT-Qudits basic gates (VirtRz, CEx, R, Rh, Rz, X)
 - ✅ CustomTwo gates automatically decomposed to basic gates via LogEntQRCEXPass
 - ✅ No heuristic methods (no scipy.linalg.expm)
 - ✅ Complete circuit visualization showing Qudit configuration and gate composition
+- ✅ **Exact diagonalization for rigorous algorithm verification** ⭐ NEW
+- ✅ **Fidelity calculation between Qudit and exact solutions** ⭐ NEW
+- ✅ **Quantitative error analysis and convergence validation** ⭐ NEW
 - ✅ Physical interpretation of quantum dynamics results
 - ✅ Integration of all theoretical documentation
 
-**Companion Implementation**: `mqt_qudits_four_molecule_implementation.py` (489 lines)
+**Companion Implementation**: `mqt_qudits_four_molecule_implementation.py` (756 lines)
 
-**Execution Time**: ~15-20 seconds for full notebook (N_steps=20)
+**Execution Time**: ~20-30 seconds for full notebook (N_steps=20)
 
-**Status**: ✅ **COMPLETE AND VALIDATED**
+**Status**: ✅ **COMPLETE WITH ANALYTICAL VERIFICATION**
 
 ### Supporting Files
 

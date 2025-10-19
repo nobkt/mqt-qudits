@@ -126,7 +126,8 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - ✅ Uses only MQT-Qudits basic gates (VirtRz, CEx, R, Rh, Rz, X)
 - ✅ CustomTwo gates automatically decomposed to basic gates via LogEntQRCEXPass
 - ✅ No heuristic methods (no scipy.linalg.expm)
-- ✅ Complete circuit visualization showing Qudit configuration and gate composition
+- ✅ Complete circuit visualization with dynamic sizing and multi-row layout for large circuits
+- ✅ Qudit configuration and gate composition statistics
 - ✅ **Exact diagonalization for rigorous algorithm verification** ⭐ NEW
 - ✅ **Fidelity calculation between Qudit and exact solutions** ⭐ NEW
 - ✅ **Quantitative error analysis and convergence validation** ⭐ NEW
@@ -138,6 +139,20 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 **Execution Time**: ~20-30 seconds for full notebook (N_steps=20)
 
 **Status**: ✅ **COMPLETE WITH ANALYTICAL VERIFICATION**
+
+### Circuit Visualization Tool
+
+The tutorial uses an enhanced circuit visualization tool (`tools/visualize_circuit.py`) that automatically adapts to circuit complexity:
+
+**Features**:
+- **Dynamic Figure Sizing**: Automatically adjusts figure dimensions based on number of gates
+- **Multi-Row Layout**: Large circuits (>100 gates) are wrapped across multiple rows for readability
+- **Minimum Readability**: Maintains minimum gate width of 0.15 inches per gate
+- **No Compression**: All gates remain visible and readable, even for circuits with hundreds of gates
+
+**Example**: After decomposing CustomTwo gates, a circuit with 300+ basic gates is automatically displayed across multiple rows (~4 rows × 75 gates each), with each gate remaining clearly visible and labeled.
+
+This ensures that the decomposed circuits with hundreds of basic gates are properly displayed, addressing the issue where the previous fixed-size visualization made large circuits unreadable.
 
 ### Supporting Files
 

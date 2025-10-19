@@ -38,7 +38,7 @@ required_width_inches = circuit_width_units * (min_gate_width_inches / gate_widt
 
 ### Before（以前）
 ```
-ゲート数: 300
+ゲート数: 324
 図サイズ: 16 × 10インチ（固定）
 ゲート幅: 約0.03インチ
 結果: ❌ 読み取り不可能
@@ -46,9 +46,9 @@ required_width_inches = circuit_width_units * (min_gate_width_inches / gate_widt
 
 ### After（改善後）
 ```
-ゲート数: 300
+ゲート数: 324
 図サイズ: 29.9 × 45.0インチ（自動計算）
-行数: 4行（98, 98, 98, 6ゲート/行）
+行数: 4行（98, 98, 98, 30ゲート/行）
 ゲート幅: 0.15インチ
 結果: ✓ 読み取り可能
 ```
@@ -163,7 +163,7 @@ Visualization Layout:
 ## English Summary
 
 ### Problem
-Large decomposed circuits (300+ gates) were displayed in a fixed 16×10 inch figure, making individual gates unreadable (~0.03 inches wide).
+Large decomposed circuits (324+ gates) were displayed in a fixed 16×10 inch figure, making individual gates unreadable (~0.03 inches wide).
 
 ### Solution
 - **Dynamic figure sizing**: Automatically calculates optimal figure dimensions
@@ -176,7 +176,7 @@ Large decomposed circuits (300+ gates) were displayed in a fixed 16×10 inch fig
 - Medium circuits (50-100 gates): Single row, wider figure
 - Large circuits (> 100 gates): Multiple rows for readability
 
-Example: 300-gate circuit → 4 rows × ~75 gates/row → All gates readable at 0.15 inches width
+Example: 324-gate circuit → 4 rows (98, 98, 98, 30 gates/row) → All gates readable at 0.15 inches width
 
 ### Compatibility
 Fully backward compatible. No changes needed in existing code. The tool automatically adapts to circuit size.

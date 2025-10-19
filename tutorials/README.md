@@ -154,6 +154,57 @@ The tutorial uses an enhanced circuit visualization tool (`tools/visualize_circu
 
 This ensures that the decomposed circuits with hundreds of basic gates are properly displayed, addressing the issue where the previous fixed-size visualization made large circuits unreadable.
 
+### Qubit Version Documentation
+
+#### **QUBIT_TUTORIAL_INDEX.md** 📘 NEW - Complete Guide
+**Comprehensive index to all Qubit (2-level system) implementation resources**. This master document provides:
+- Complete navigation guide for all Qubit-related documentation (4,500+ lines)
+- Three distinct reading paths (beginner, implementer, decision-maker)
+- Qubit vs Qudit comparison analysis
+- Implementation status and continuation planning
+
+**Location**: `tutorials/QUBIT_TUTORIAL_INDEX.md`
+
+#### **doc/qubit/** - Qubit Implementation Documentation (4,500+ lines)
+Complete theoretical and technical foundation for implementing the same molecular triplet dynamics using **Qubits (2-level systems) and Qiskit framework**. This comprehensive documentation includes:
+
+1. **qubit_quantum_dynamics_molecular_triplet_states_theory.md** (1,079 lines, 32KB)
+   - 2-qubit encoding of 3-level molecular systems
+   - Pauli operator representation of Hamiltonians
+   - Physical subspace preservation theory
+   - Suzuki-Trotter decomposition for qubits
+
+2. **qubit_implementation_specification.md** (1,409 lines, 34KB)
+   - Qiskit gate catalog (20+ gates with matrix representations)
+   - State encoding: |S0⟩→|00⟩, |T1⟩→|01⟩, |S1⟩→|10⟩, |11⟩=unused
+   - Complete gate decomposition for H0, H_transfer, H_TTA
+   - Performance specifications and benchmarks
+
+3. **qubit_detailed_design.md** (1,447 lines, 41KB)
+   - Complete system architecture
+   - 6 main classes (PhysicalParameters, StateEncoder, HamiltonianGates, etc.)
+   - Implementation-ready Python code (~500 lines)
+   - Algorithm details and convergence analysis
+
+4. **README.md**, **COMPLETION_SUMMARY.md**, **CONTINUATION_PLAN.md**
+   - Project overview and navigation
+   - Completion report and statistics
+   - Strategic continuation planning with 3 scenarios
+
+#### **qubit/** - Implementation Resources
+**Current Status**: Documentation complete, implementation requires Qiskit dependency
+
+- **README.md**: Overview and usage guide
+- **IMPLEMENTATION_STATUS.md**: Detailed status report and requirements
+- **IMPLEMENTATION_GUIDE.md**: Step-by-step implementation guide with code examples
+
+**Key Comparison** (Qubit vs Qudit):
+- Qubit: ~430 gates/step (8x more), requires 2 qubits/molecule, 68% unused states
+- Qudit: ~55 gates/step, 1 qutrit/molecule, 0% unused states
+- Advantage: Qubit version runs on widely available hardware (IBMQ, Rigetti, IonQ)
+
+**Next Steps**: Implementation requires adding Qiskit to dependencies and 7-9 days of development work.
+
 ### Supporting Files
 
 - **NOTEBOOK_SUMMARY.md**: Overview of notebook structure and content

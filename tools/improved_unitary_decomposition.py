@@ -332,14 +332,26 @@ class ImprovedThreeQuditDecomposer:
     @staticmethod
     def _compute_givens_params(a: complex, b: complex) -> Tuple[float, float]:
         """
-        Givens回転のパラメータを計算
+        Givens回転のパラメータを計算（標準的なQR分解の方法）
         
-        目標: G @ [a, b]^T = [r, 0]^T
+        目標: G†@ [a, b]^T = [r, 0]^T
         
+        標準のGivens回転:
+        G = [[c,  s],
+             [-s*, c*]]
+        
+        ここで c, s は複素数で |c|^2 + |s|^2 = 1
+        
+        この実装では、量子ゲートとの対応のため、以下の形式を使用:
         G = [[c, -s*],
-             [s,  c ]]
+             [s,  c*]]
         
         ここで:
+        c = a* / r (正規化された a の複素共役)
+        s = b* / r (正規化された b の複素共役)
+        r = sqrt(|a|^2 + |b|^2)
+        
+        さらに、パラメータ表現に変換:
         c = cos(θ/2) e^(iφ/2)
         s = sin(θ/2) e^(-iφ/2)
         
@@ -354,48 +366,28 @@ class ImprovedThreeQuditDecomposer:
         if r < 1e-15:
             return 0.0, 0.0
         
-        # 正規化
-        a_norm = a / r
-        b_norm = b / r
+        # 標準的なGivensパラメータ
+        c_std = a.conj() / r  # = cos(angle) e^(iφ_c)
+        s_std = b.conj() / r  # = sin(angle) e^(iφ_s)
         
         # θの計算
-        # |c|^2 = cos^2(θ/2)
-        # |s|^2 = sin^2(θ/2)
-        # c a_norm - s* b_norm = 1
-        # より tan(θ/2) = |b_norm| / |a_norm|
-        
-        theta = 2.0 * np.arctan2(abs(b_norm), abs(a_norm))
+        # |c_std| = cos(angle), |s_std| = sin(angle)
+        theta = 2.0 * np.arctan2(abs(s_std), abs(c_std))
         
         # φの計算
-        if abs(b_norm) > 1e-10:
-            # c / s* = (a_norm) / (b_norm*) / tan(θ/2)
-            # arg(c) - arg(s*) = arg(a_norm) - arg(-b_norm)
-            # 2 arg(c) = φ (c = cos(θ/2) e^(iφ/2) より)
-            # 2 arg(s*) = -φ (s = sin(θ/2) e^(-iφ/2) より)
-            # したがって arg(c) - arg(s*) = φ
-            
-            # より直接的な方法:
-            # c = a_norm / cos(θ/2) の位相部分
-            # s = -b_norm / sin(θ/2) の位相部分
-            
-            cos_theta_2 = np.cos(theta / 2)
-            sin_theta_2 = np.sin(theta / 2)
-            
-            if abs(cos_theta_2) > 1e-10:
-                c_phase = np.angle(a_norm) - np.angle(cos_theta_2)
-            else:
-                c_phase = 0.0
-            
-            if abs(sin_theta_2) > 1e-10:
-                s_phase = np.angle(-b_norm) - np.angle(sin_theta_2)
-            else:
-                s_phase = 0.0
-            
-            # c = cos(θ/2) e^(iφ/2) => arg(c) = φ/2
-            # s = sin(θ/2) e^(-iφ/2) => arg(s) = -φ/2
-            # したがって φ = 2 arg(c) = -2 arg(s)
-            
-            phi = c_phase * 2
+        # c_std = cos(θ/2) e^(iφ_c)
+        # s_std = sin(θ/2) e^(iφ_s)
+        # 
+        # 量子ゲートの形式に合わせるため:
+        # c = c_std e^(-iφ_c) e^(iφ/2) = cos(θ/2) e^(iφ/2)
+        # s = s_std e^(-iφ_s) e^(-iφ/2) = sin(θ/2) e^(-iφ/2)
+        # 
+        # これより φ = φ_c + φ_s
+        
+        if abs(s_std) > 1e-10 and abs(c_std) > 1e-10:
+            phi_c = np.angle(c_std)
+            phi_s = np.angle(s_std)
+            phi = phi_c + phi_s
             phi = np.angle(np.exp(1j * phi))  # 正規化
         else:
             phi = 0.0
@@ -406,11 +398,26 @@ class ImprovedThreeQuditDecomposer:
     def _construct_givens_matrix(d: int, level1: int, level2: int,
                                  theta: float, phi: float) -> np.ndarray:
         """
-        Givens回転行列を構築
+        Givens回転行列を構築（標準QR分解の形式）
         
-        G = I + (c-1)(|level1⟩⟨level1| + |level2⟩⟨level2|)
-            - s* |level1⟩⟨level2|
-            + s |level2⟩⟨level1|
+        標準のGivens回転（実数の場合）:
+        G = [[c,  s],
+             [-s, c]]
+        
+        複素数への拡張（量子ゲート対応）:
+        G = [[c,  -s*],
+             [s,   c*]]
+        
+        ここで:
+        c = cos(θ/2) e^(iφ/2)
+        s = sin(θ/2) e^(-iφ/2)
+        
+        この行列はユニタリ: G† G = I
+        
+        検証:
+        [[c*, s*],   [[c,  -s*],     [[|c|^2 + |s|^2,  0           ],
+         [-s,  c]]    [s,   c*]]  =   [0,               |c|^2 + |s|^2]]
+                                    = I (∵ |c|^2 + |s|^2 = 1)
         
         Args:
             d: 行列の次元
@@ -419,7 +426,7 @@ class ImprovedThreeQuditDecomposer:
             phi: 位相
             
         Returns:
-            Givens回転行列
+            Givens回転行列（dxd）
         """
         G = np.eye(d, dtype=complex)
         

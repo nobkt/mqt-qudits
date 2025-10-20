@@ -10,11 +10,15 @@
 
 ```
 tutorials/qubit/
-├── README.md                      # このファイル
-├── IMPLEMENTATION_STATUS.md       # 実装状況の詳細報告
-└── ../doc/qubit/                  # 詳細ドキュメント（理論・仕様・設計）
+├── README.md                                                  # このファイル
+├── four_molecule_linear_chain_quantum_dynamics_qubit.ipynb   # ✅ Qubit版チュートリアル（ドキュメント専用版）
+├── NOTEBOOK_COMPLETION_REPORT.md                              # ✅ ノートブック作成完了報告
+├── IMPLEMENTATION_STATUS.md                                   # 実装状況の詳細報告
+├── IMPLEMENTATION_GUIDE.md                                    # 実装ガイド
+└── ../doc/qubit/                                              # 詳細ドキュメント（理論・仕様・設計）
     ├── README.md
     ├── COMPLETION_SUMMARY.md
+    ├── CONTINUATION_PLAN.md
     ├── qubit_quantum_dynamics_molecular_triplet_states_theory.md
     ├── qubit_implementation_specification.md
     └── qubit_detailed_design.md
@@ -64,12 +68,27 @@ tutorials/qubit/
    - 実装可能なPythonコード例（約500行）
    - ゲート分解アルゴリズムの詳細
 
+### ✅ 新規追加（2025-10-20）
+
+4. **Jupyter Notebookチュートリアル** ✅ **NEW**
+   - [`four_molecule_linear_chain_quantum_dynamics_qubit.ipynb`](./four_molecule_linear_chain_quantum_dynamics_qubit.ipynb)
+   - ドキュメント専用版として完成
+   - 理論的背景とQubit表現
+   - QubitとQuditの詳細比較
+   - 実装アーキテクチャと疑似コード
+   - 完全実装への道筋
+
+5. **ノートブック作成完了報告** ✅ **NEW**
+   - [`NOTEBOOK_COMPLETION_REPORT.md`](./NOTEBOOK_COMPLETION_REPORT.md)
+   - 成果物の詳細説明
+   - ヒューリスティック排除の方針
+   - 実装シナリオと推奨事項
+
 ### ⏳ 実装中/計画中
 
-- **Jupyter Notebookチュートリアル**: 準備完了、実装待ち
-- **完全なPython実装**: 設計完了、コーディング待ち
+- **完全なPython実装**: 設計完了、コーディング待ち（Qiskit依存の追加が必要）
 
-詳細は [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) を参照してください。
+詳細は [`IMPLEMENTATION_STATUS.md`](./IMPLEMENTATION_STATUS.md) および [`NOTEBOOK_COMPLETION_REPORT.md`](./NOTEBOOK_COMPLETION_REPORT.md) を参照してください。
 
 ---
 
@@ -303,10 +322,11 @@ simulator.plot_results(results)
 | 日付 | バージョン | 変更内容 |
 |------|----------|---------|
 | 2025-10-19 | 1.0.0 | 初版作成、ドキュメント完成 |
+| 2025-10-20 | 1.1.0 | Jupyter Notebookチュートリアル（ドキュメント専用版）追加 |
 
 ---
 
 **作成日**: 2025-10-19  
-**最終更新**: 2025-10-19  
-**ステータス**: 📝 **ドキュメント完成、実装準備完了**  
-**バージョン**: 1.0.0
+**最終更新**: 2025-10-20  
+**ステータス**: ✅ **Jupyter Notebook完成、ドキュメント専用版として提供**  
+**バージョン**: 1.1.0

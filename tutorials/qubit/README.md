@@ -1,5 +1,18 @@
 # Qubit版分子三重項状態量子ダイナミクスチュートリアル
 
+## 🔍 完全なドキュメントガイド
+
+**📖 [INDEX.md](INDEX.md) を最初にお読みください！**
+
+総合インデックスには以下が含まれています：
+- 全10ファイルの詳細説明
+- 読者別推奨ルート（初学者/実装者/研究者/管理者）
+- QubitとQuditの定量的・定性的比較
+- システム要件と実装の現状
+- 5,000行以上のドキュメントへのナビゲーション
+
+---
+
 ## 📚 概要
 
 このディレクトリには、`tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb`（Qudit版）と同等の分子三重項状態量子ダイナミクスシミュレーションを、**Qubit（2準位系）とQiskitフレームワーク**を用いて実施するための資料が含まれています。
@@ -10,15 +23,22 @@
 
 ```
 tutorials/qubit/
-├── README.md                      # このファイル
-├── IMPLEMENTATION_STATUS.md       # 実装状況の詳細報告
-└── ../doc/qubit/                  # 詳細ドキュメント（理論・仕様・設計）
-    ├── README.md
-    ├── COMPLETION_SUMMARY.md
-    ├── qubit_quantum_dynamics_molecular_triplet_states_theory.md
-    ├── qubit_implementation_specification.md
-    └── qubit_detailed_design.md
+├── README.md                                           # このファイル（簡易案内）
+├── INDEX.md                                            # 総合インデックス（必読！）
+├── IMPLEMENTATION_STATUS.md                            # 実装状況の詳細報告
+├── IMPLEMENTATION_GUIDE.md                             # 実装の手順ガイド
+├── IMPLEMENTATION_PLAN.md                              # 実装計画書（本PR追加）
+├── four_molecule_linear_chain_quantum_dynamics_qubit_guide.ipynb  # 実装ガイドNotebook（本PR追加）
+└── ../doc/qubit/                                       # 詳細ドキュメント（理論・仕様・設計）
+    ├── README.md                                       # ドキュメント説明
+    ├── COMPLETION_SUMMARY.md                           # 完了報告書
+    ├── CONTINUATION_PLAN.md                            # 継続計画
+    ├── qubit_quantum_dynamics_molecular_triplet_states_theory.md    # 理論書（1,079行）
+    ├── qubit_implementation_specification.md           # 仕様書（1,409行）
+    └── qubit_detailed_design.md                        # 設計書（1,447行）
 ```
+
+**合計**: 約5,000行以上の包括的ドキュメント
 
 ---
 

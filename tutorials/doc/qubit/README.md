@@ -33,7 +33,7 @@
 
 **内容**:
 - Toffoliゲートの15ゲート分解（Nielsen & Chuang, 2010）
-- 2制御RXXゲートの2つの分解方法（38ゲートwith ancilla, 25ゲートwithout ancilla）
+- 2制御RXXゲートの2つの分解方法（補助qubit有り38ゲート、補助qubit無し25ゲート）
 - 2制御RYゲートの8ゲート分解
 - 3次元ユニタリ変換の4-qubit実装
 - 完全な実装コードと検証テスト

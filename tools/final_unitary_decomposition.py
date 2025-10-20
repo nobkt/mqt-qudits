@@ -188,6 +188,13 @@ class FinalThreeQuditDecomposer:
         """
         標準Givens回転（準位iとj）
         
+        正しい公式（LAPACK ZLARTG準拠）:
+        r = sqrt(|a|² + |b|²)
+        c = a*/r
+        s = b*/r
+        
+        このとき G† [[a], [b]]^T = [[r], [0]]^T
+        
         目標: G† [a, b, ...]^T の第j要素をゼロにする
         """
         G = np.eye(d, dtype=complex)
@@ -196,6 +203,7 @@ class FinalThreeQuditDecomposer:
         if r < 1e-15:
             return G
         
+        # 正しい公式
         c = np.conj(a) / r
         s = np.conj(b) / r
         
@@ -209,40 +217,12 @@ class FinalThreeQuditDecomposer:
     @staticmethod
     def _compute_givens_02(d: int, i: int, j: int, a, b) -> np.ndarray:
         """準位0と2のGivens回転"""
-        G = np.eye(d, dtype=complex)
-        
-        r = np.sqrt(abs(a)**2 + abs(b)**2)
-        if r < 1e-15:
-            return G
-        
-        c = np.conj(a) / r
-        s = np.conj(b) / r
-        
-        G[i, i] = c
-        G[i, j] = s
-        G[j, i] = -np.conj(s)
-        G[j, j] = np.conj(c)
-        
-        return G
+        return FinalThreeQuditDecomposer._compute_givens(d, i, j, a, b)
     
     @staticmethod
     def _compute_givens_12(d: int, i: int, j: int, a, b) -> np.ndarray:
         """準位1と2のGivens回転"""
-        G = np.eye(d, dtype=complex)
-        
-        r = np.sqrt(abs(a)**2 + abs(b)**2)
-        if r < 1e-15:
-            return G
-        
-        c = np.conj(a) / r
-        s = np.conj(b) / r
-        
-        G[i, i] = c
-        G[i, j] = s
-        G[j, i] = -np.conj(s)
-        G[j, j] = np.conj(c)
-        
-        return G
+        return FinalThreeQuditDecomposer._compute_givens(d, i, j, a, b)
     
     @staticmethod
     def _fidelity(U1, U2):

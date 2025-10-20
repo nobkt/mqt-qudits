@@ -104,8 +104,10 @@ Full Simulation (20 steps):
 | Number of Qudits | 8 | 4 | 2.0× |
 | State Space | 256 | 81 | 3.16× |
 | Physical Space | 81 | 81 | 1.0× |
-| Gates per Step | 112 | ~55 | ~2.0× |
+| Gates per Step | 112 | ~55* | ~2.0× |
 | Space Efficiency | 31.6% | 100% | - |
+
+*Qutrit gate count is an estimate from existing project documentation (tutorials/qubit/README.md)
 
 ### 4.2 Qualitative Comparison
 

@@ -429,55 +429,51 @@ class SparseAwareMQTQuditTimeEvolution:
     
     def add_H_transfer_evolution_gates(self, circuit, dt: float):
         """
-        H_transferの時間発展ゲートを回路に追加（疎構造認識版）
+        H_transferの時間発展ゲートを回路に追加（直接実装版）
         
         従来: CustomTwoゲート → LogEntQRCEXPass → ~1000ゲート
-        改良: 疎構造検出 → IntegratedSparseCompilerV2 → ~1ゲート
+        改良: 基本ゲート直接構築 → ~6ゲート/ペア
         
         期待される構造: 2×2部分空間（|01⟩, |10⟩）
-        期待されるゲート数: ~1ゲート/ペア × 3ペア = ~3ゲート
+        実装: R, CEx, Rz ゲートの組み合わせ
+        期待されるゲート数: 6ゲート/ペア × 3ペア = 18ゲート
         """
         for pair_idx, (i, j) in enumerate(self.params.neighbors):
             V = self.params.V[pair_idx]
             theta = V * dt / self.params.hbar
             
-            # 9×9ユニタリ行列を構築
-            U = np.eye(9, dtype=complex)
-            cos_theta = np.cos(theta)
-            sin_theta = np.sin(theta)
+            # {|01⟩, |10⟩}部分空間での回転を基本ゲートで直接実装
+            # 以下のゲート列で実現:
+            # 1. 回転フレーム設定
+            # 2. CEx + Rz + CEx + Rz で部分空間回転
+            # 3. フレーム復元
             
-            U[1, 1] = cos_theta
-            U[1, 3] = -1j * sin_theta
-            U[3, 1] = -1j * sin_theta
-            U[3, 3] = cos_theta
-            
-            # 疎構造認識コンパイラでゲート列を生成
-            gate_info = self.gate_generator.compile_unitary_to_gates(U, [i, j])
-            
-            # ゲート列を回路に追加
-            self._add_gates_to_circuit(circuit, gate_info['gates'])
+            circuit.r(j, [0, 1, np.pi/2, -np.pi/2])  # フレーム設定
+            circuit.cx([i, j])  # CEx
+            circuit.rz(j, [0, 1, -theta/2])  # Z回転
+            circuit.cx([i, j])  # CEx
+            circuit.rz(j, [0, 1, theta/2])  # Z回転
+            circuit.r(j, [0, 1, -np.pi/2, -np.pi/2])  # フレーム復元
             
             # デバッグ情報（初回のみ）
             if pair_idx == 0:
-                print(f"H_transfer分解: {gate_info['structure_type']}, "
-                      f"{gate_info['gate_count']}ゲート, "
-                      f"忠実度={gate_info['fidelity']:.10f}")
+                print(f"H_transfer実装: 6ゲート（R, CEx, Rz, CEx, Rz, R）")
     
     def add_H_TTA_evolution_gates(self, circuit, dt: float):
         """
-        H_TTAの時間発展ゲートを回路に追加（疎構造認識版）
+        H_TTAの時間発展ゲートを回路に追加
         
-        従来: CustomTwoゲート → LogEntQRCEXPass → ~1000ゲート
-        改良: 疎構造検出 → IntegratedSparseCompilerV2 → ~6ゲート
+        構造: 3×3部分空間（|02⟩, |11⟩, |20⟩）
         
-        期待される構造: 3×3部分空間（|02⟩, |11⟩, |20⟩）
-        期待されるゲート数: ~6ゲート/ペア × 3ペア = ~18ゲート
+        注: 3×3ユニタリの効率的な基本ゲート分解は複雑なため、
+        現在はCustomTwoゲートを使用していますが、疎構造を認識した
+        小さなユニタリを使用することで、LogEntQRCEXPassでの
+        分解が効率化されます。
+        
+        将来的には、Givens分解を用いた直接実装に置き換え予定。
         """
         for pair_idx, (i, j) in enumerate(self.params.neighbors):
             J = self.params.J[pair_idx]
-            
-            # 9×9ユニタリ行列を構築
-            U = np.eye(9, dtype=complex)
             
             # 部分空間のハミルトニアン
             H_sub = J * np.array([
@@ -489,27 +485,25 @@ class SparseAwareMQTQuditTimeEvolution:
             # 固有値分解
             eigenvalues, eigenvectors = np.linalg.eigh(H_sub)
             
-            # 時間発展演算子
+            # 時間発展演算子（3×3部分空間のみ）
             phases = np.exp(-1j * eigenvalues * dt / self.params.hbar)
             U_sub = eigenvectors @ np.diag(phases) @ eigenvectors.conj().T
             
-            # 9×9行列の該当部分に埋め込む
-            indices = [2, 4, 6]
+            # 疎構造を保持: 9×9行列の該当部分のみ埋め込む
+            U = np.eye(9, dtype=complex)
+            indices = [2, 4, 6]  # |02⟩, |11⟩, |20⟩
             for a, idx_a in enumerate(indices):
                 for b, idx_b in enumerate(indices):
                     U[idx_a, idx_b] = U_sub[a, b]
             
-            # 疎構造認識コンパイラでゲート列を生成
-            gate_info = self.gate_generator.compile_unitary_to_gates(U, [i, j])
-            
-            # ゲート列を回路に追加
-            self._add_gates_to_circuit(circuit, gate_info['gates'])
+            # CustomTwoゲートを使用
+            # 注: 疎構造を保持しているため、LogEntQRCEXPassでの分解は
+            # 密な9×9ユニタリよりも効率的になる可能性があります
+            circuit.cu_two([i, j], U)
             
             # デバッグ情報（初回のみ）
             if pair_idx == 0:
-                print(f"H_TTA分解: {gate_info['structure_type']}, "
-                      f"{gate_info['gate_count']}ゲート, "
-                      f"忠実度={gate_info['fidelity']:.10f}")
+                print(f"H_TTA実装: CustomTwo（3×3部分空間、疎構造保持）")
     
     def _add_gates_to_circuit(self, circuit, gates: List[Dict]):
         """
@@ -562,16 +556,16 @@ class SparseAwareMQTQuditTimeEvolution:
     
     def decompose_custom_two_gates(self, circuit):
         """
-        CustomTwoゲートを基本ゲートに分解する（疎構造認識版）
+        CustomTwoゲートを基本ゲートに分解する
         
-        疎構造を持つCustomTwoゲートを、IntegratedSparseCompilerV2を使用して
-        効率的に基本ゲートに分解します。疎構造がない場合のみ、
-        LogEntQRCEXPassにフォールバックします。
+        注: H_transferは既に基本ゲート（R, CEx, Rz）で直接実装されているため、
+        分解が必要なのはH_TTAのCustomTwoゲートのみです。
         
-        これにより、H_transfer (2×2部分空間) とH_TTA (3×3部分空間)の
-        分解が劇的に効率化されます：
-        - H_transfer: 1000ゲート → 1ゲート (99.9%削減)
-        - H_TTA: 1000ゲート → 6ゲート (99.4%削減)
+        H_TTAは3×3部分空間を持つ疎構造ユニタリですが、現在は
+        LogEntQRCEXPassを使用して分解しています。
+        
+        将来の改善: Givens分解を用いた直接実装に置き換えることで、
+        更なるゲート数削減が可能です。
         
         Args:
             circuit: MQT-Qudits QuantumCircuit
@@ -582,26 +576,10 @@ class SparseAwareMQTQuditTimeEvolution:
         if not self.mqt_available:
             raise ImportError("mqt.quditsがインストールされていません")
         
-        from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
-        from mqt.qudits.quantum_circuit.components.extensions.gate_types import GateTypes
-        
-        # 新しい回路を作成
-        new_circuit = QuantumCircuit()
-        for register in circuit.registers:
-            new_circuit.append(register)
-        
-        # 各ゲートを処理
-        for gate in circuit.instructions:
-            if gate.gate_type == GateTypes.TWO:
-                # CustomTwoゲートを疎構造認識分解
-                decomposed_gates = self._decompose_custom_two_sparse_aware(gate)
-                for new_gate in decomposed_gates:
-                    new_circuit.instructions.append(new_gate)
-            else:
-                # その他のゲートはそのまま追加
-                new_circuit.instructions.append(gate)
-        
-        return new_circuit
+        from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
+        backend = self.provider.get_backend("faketraps3six")
+        compiler = LogEntQRCEXPass(backend)
+        return compiler.transpile(circuit)
     
     def _decompose_custom_two_sparse_aware(self, gate):
         """
@@ -622,40 +600,55 @@ class SparseAwareMQTQuditTimeEvolution:
         # quditインデックスを取得
         qudit_indices = gate.reference_lines
         
-        # ゲート列を生成
-        decomposed = []
-        
-        for mqt_gate in result.gate_sequence.gates:
-            gate_type = mqt_gate.gate_type
-            params = mqt_gate.parameters
+        # 疎構造がある場合は、部分空間のみの小さなCustomTwoゲートを作成
+        # これによりLogEntQRCEXPassがより効率的に分解できる
+        if result.structure_info.active_dimension in [2, 3]:
+            # 部分空間ユニタリを抽出
+            subspace_unitary = result.subspace_unitary
+            active_indices = result.structure_info.active_subspace
             
-            # MQT-Quditsゲートとして作成
-            # これらは9×9空間のグローバルインデックスを使用しているため、
-            # 2-qutrit空間のベースで動作する必要がある
+            # 縮約されたユニタリを9×9空間に埋め込む
+            # （非アクティブ部分は単位行列）
+            U_reduced = np.eye(9, dtype=complex)
+            for i, idx_i in enumerate(active_indices):
+                for j, idx_j in enumerate(active_indices):
+                    U_reduced[idx_i, idx_j] = subspace_unitary[i, j]
             
-            # ここで重要な洞察：疎構造の場合、ゲートは部分空間内で動作するため、
-            # 実際には非常に少数のゲートで実装可能
+            # 縮約されたCustomTwoゲートを作成
+            from mqt.qudits.quantum_circuit.gate import Gate
             
-            # しかし、MQT-Quditsの制約上、2-quditにまたがる操作は
-            # CustomTwoまたはCExなどの2-quditゲートが必要
+            reduced_gate = gate.parent_circuit.cu_two(qudit_indices, U_reduced)
             
-            # 現時点では、疎構造を保持したCustomTwoゲートとして返す
-            # （将来的にはCExゲートの組み合わせで実装可能）
-            pass
-        
-        # 疎構造の場合でも、現在のMQT-Quditsフレームワークでは
-        # 2-quditゲートが必要なため、LogEntQRCEXPassを使用
-        # ただし、将来的には疎構造を活用した専用分解を実装予定
-        from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
-        backend = self.provider.get_backend("faketraps3six")
-        compiler = LogEntQRCEXPass(backend)
-        
-        # 単一ゲートの回路を作成して分解
-        temp_circuit = gate.parent_circuit.copy()
-        temp_circuit.instructions = [gate]
-        decomposed_circuit = compiler.transpile(temp_circuit)
-        
-        return decomposed_circuit.instructions
+            # このゲートをLogEntQRCEXPassで分解
+            # 注：部分空間が小さいため、分解も効率的になるはず...
+            # しかし、LogEntQRCEXPassは依然として9×9全体を見るため、
+            # 実際にはあまり改善されない可能性がある
+            
+            from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
+            backend = self.provider.get_backend("faketraps3six")
+            compiler = LogEntQRCEXPass(backend)
+            
+            # 一時的な回路を作成
+            from mqt.qudits.quantum_circuit import QuantumCircuit
+            temp_circuit = QuantumCircuit()
+            for reg in gate.parent_circuit.registers:
+                temp_circuit.append(reg)
+            temp_circuit.instructions = [reduced_gate]
+            
+            # 分解
+            decomposed_circuit = compiler.transpile(temp_circuit)
+            return decomposed_circuit.instructions
+        else:
+            # 疎構造でない場合は通常の分解
+            from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
+            backend = self.provider.get_backend("faketraps3six")
+            compiler = LogEntQRCEXPass(backend)
+            
+            temp_circuit = gate.parent_circuit.copy()
+            temp_circuit.instructions = [gate]
+            decomposed_circuit = compiler.transpile(temp_circuit)
+            
+            return decomposed_circuit.instructions
     
     def get_compilation_report(self) -> str:
         """コンパイル統計レポートを取得"""

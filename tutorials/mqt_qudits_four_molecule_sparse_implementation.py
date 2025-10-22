@@ -382,6 +382,279 @@ class SparseAwareMQTQuditTimeEvolution:
 
 
 # ===================================================================
+# 鈴木トロッター分解シミュレータ（疎構造認識版）
+# ===================================================================
+
+class SuzukiTrotterMQTQuditSimulator:
+    """
+    鈴木トロッターシミュレータ（疎構造認識版）
+    
+    疎構造認識時間発展演算子を使用して、
+    4分子系の量子ダイナミクスをシミュレートします。
+    
+    従来のSuzukiTrotterMQTQuditSimulatorと同じインターフェースを持ちますが、
+    SparseAwareMQTQuditTimeEvolutionを内部で使用します。
+    """
+    
+    def __init__(self, params: PhysicalParameters):
+        """
+        Args:
+            params: 物理パラメータ
+        """
+        self.params = params
+        self.time_evol = SparseAwareMQTQuditTimeEvolution(params)
+        self.N = params.N_molecules
+        self.dim = 3 ** self.N
+        
+        # MQT-Quditsのインポート
+        try:
+            from mqt.qudits.simulation import MQTQuditProvider
+            self.provider = MQTQuditProvider()
+            self.backend = self.provider.get_backend("tnsim")
+            self.mqt_available = True
+        except ImportError:
+            self.mqt_available = False
+            print("警告: mqt.quditsがインストールされていません。")
+    
+    def build_trotter_circuit(self, dt: float, n_steps: int, initial_state: Optional[np.ndarray] = None):
+        """
+        鈴木トロッター回路を構築
+        
+        Args:
+            dt: 時間刻み幅 (fs)
+            n_steps: トロッターステップ数
+            initial_state: 初期状態ベクトル（None の場合は |T1,T1,S0,S0⟩）
+            
+        Returns:
+            circuit: QuantumCircuit
+        """
+        if not self.mqt_available:
+            raise ImportError("mqt.quditsがインストールされていません")
+        
+        from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
+        
+        # 回路初期化
+        circuit = QuantumCircuit()
+        reg = QuantumRegister("molecules", self.N, [3] * self.N)
+        circuit.append(reg)
+        
+        # 初期状態の設定（必要に応じて）
+        if initial_state is not None:
+            # 初期状態を設定するゲートを追加
+            # （実装は省略、実際には状態ベクトルから回路を構築する必要がある）
+            pass
+        
+        # トロッターステップ
+        for step in range(n_steps):
+            # 対称鈴木トロッター分解: H0(dt/2) -> H1(dt) -> H0(dt/2)
+            self.time_evol.add_H0_evolution_gates(circuit, dt/2)
+            self.time_evol.add_H_transfer_evolution_gates(circuit, dt)
+            self.time_evol.add_H_TTA_evolution_gates(circuit, dt)
+            self.time_evol.add_H0_evolution_gates(circuit, dt/2)
+        
+        return circuit
+    
+    def run_simulation(self, dt: float, n_steps: int, initial_state: Optional[np.ndarray] = None):
+        """
+        シミュレーションを実行
+        
+        Args:
+            dt: 時間刻み幅 (fs)
+            n_steps: トロッターステップ数
+            initial_state: 初期状態ベクトル
+            
+        Returns:
+            result: シミュレーション結果
+        """
+        if not self.mqt_available:
+            raise ImportError("mqt.quditsがインストールされていません")
+        
+        # 回路構築
+        circuit = self.build_trotter_circuit(dt, n_steps, initial_state)
+        
+        # 初期状態が指定されていない場合のデフォルト
+        if initial_state is None:
+            # |T1,T1,S0,S0⟩ = |1,1,0,0⟩
+            initial_state = np.zeros(self.dim, dtype=complex)
+            config = [1, 1, 0, 0]
+            idx = config_to_index(config)
+            initial_state[idx] = 1.0
+        
+        # バックエンドで実行
+        result = self.backend.run(circuit, initial_state)
+        
+        return result
+    
+    def get_compilation_report(self) -> str:
+        """コンパイル統計レポートを取得"""
+        return self.time_evol.get_compilation_report()
+
+
+# ===================================================================
+# 厳密対角化ソルバー
+# ===================================================================
+
+class ExactDiagonalizationSolver:
+    """
+    厳密対角化による解析解計算
+    
+    ハミルトニアン全体を対角化して、
+    時間発展の解析解を計算します。
+    """
+    
+    def __init__(self, params: PhysicalParameters):
+        """
+        Args:
+            params: 物理パラメータ
+        """
+        self.params = params
+        self.N = params.N_molecules
+        self.dim = 3 ** self.N
+        self.H = None
+        self.eigenvalues = None
+        self.eigenvectors = None
+    
+    def build_hamiltonian(self) -> np.ndarray:
+        """
+        全ハミルトニアンを構築
+        
+        Returns:
+            H: dim × dim ハミルトニアン行列
+        """
+        H = np.zeros((self.dim, self.dim), dtype=complex)
+        
+        # H0: 対角項
+        for i in range(self.dim):
+            config = index_to_config(i, self.N)
+            E = sum(self.params.E_T if level == 1 else 
+                   self.params.E_S if level == 2 else 0
+                   for level in config)
+            H[i, i] = E
+        
+        # H_transfer: エネルギー移動項
+        for pair_idx, (mol_i, mol_j) in enumerate(self.params.neighbors):
+            V = self.params.V[pair_idx]
+            for idx in range(self.dim):
+                config = index_to_config(idx, self.N)
+                # |01⟩ <-> |10⟩ 遷移
+                if config[mol_i] == 0 and config[mol_j] == 1:
+                    new_config = config.copy()
+                    new_config[mol_i] = 1
+                    new_config[mol_j] = 0
+                    new_idx = config_to_index(new_config)
+                    H[idx, new_idx] = V
+                    H[new_idx, idx] = V
+        
+        # H_TTA: 三重項-三重項消滅項
+        for pair_idx, (mol_i, mol_j) in enumerate(self.params.neighbors):
+            J = self.params.J[pair_idx]
+            for idx in range(self.dim):
+                config = index_to_config(idx, self.N)
+                # |02⟩ <-> |11⟩ 遷移
+                if config[mol_i] == 0 and config[mol_j] == 2:
+                    new_config = config.copy()
+                    new_config[mol_i] = 1
+                    new_config[mol_j] = 1
+                    new_idx = config_to_index(new_config)
+                    H[idx, new_idx] = J
+                    H[new_idx, idx] = J
+                # |11⟩ <-> |20⟩ 遷移
+                if config[mol_i] == 1 and config[mol_j] == 1:
+                    new_config1 = config.copy()
+                    new_config1[mol_i] = 2
+                    new_config1[mol_j] = 0
+                    new_idx1 = config_to_index(new_config1)
+                    H[idx, new_idx1] = J
+                    H[new_idx1, idx] = J
+        
+        self.H = H
+        return H
+    
+    def diagonalize(self):
+        """ハミルトニアンを対角化"""
+        if self.H is None:
+            self.build_hamiltonian()
+        
+        self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.H)
+    
+    def time_evolve(self, initial_state: np.ndarray, time: float) -> np.ndarray:
+        """
+        状態を時間発展
+        
+        Args:
+            initial_state: 初期状態ベクトル
+            time: 時間 (fs)
+            
+        Returns:
+            evolved_state: 時間発展後の状態ベクトル
+        """
+        if self.eigenvalues is None or self.eigenvectors is None:
+            self.diagonalize()
+        
+        # 初期状態を固有状態基底で展開
+        coeffs = self.eigenvectors.conj().T @ initial_state
+        
+        # 時間発展
+        phases = np.exp(-1j * self.eigenvalues * time / self.params.hbar)
+        evolved_coeffs = coeffs * phases
+        
+        # 元の基底に戻す
+        evolved_state = self.eigenvectors @ evolved_coeffs
+        
+        return evolved_state
+
+
+# ===================================================================
+# ユーティリティ関数
+# ===================================================================
+
+def calculate_fidelity(state1: np.ndarray, state2: np.ndarray) -> float:
+    """
+    2つの状態ベクトル間の忠実度を計算
+    
+    Args:
+        state1: 状態ベクトル1
+        state2: 状態ベクトル2
+        
+    Returns:
+        fidelity: 忠実度 |⟨ψ1|ψ2⟩|^2
+    """
+    overlap = np.abs(np.vdot(state1, state2))
+    return overlap ** 2
+
+
+def compare_qudit_vs_exact(qudit_state: np.ndarray, exact_state: np.ndarray) -> Dict:
+    """
+    Qudit実装と厳密解を比較
+    
+    Args:
+        qudit_state: Quditシミュレーション結果
+        exact_state: 厳密対角化結果
+        
+    Returns:
+        comparison: 比較結果の辞書
+    """
+    fidelity = calculate_fidelity(qudit_state, exact_state)
+    
+    # 各状態の占有確率
+    qudit_probs = np.abs(qudit_state) ** 2
+    exact_probs = np.abs(exact_state) ** 2
+    
+    # 確率の差
+    prob_diff = np.abs(qudit_probs - exact_probs)
+    max_diff = np.max(prob_diff)
+    mean_diff = np.mean(prob_diff)
+    
+    return {
+        'fidelity': fidelity,
+        'max_prob_diff': max_diff,
+        'mean_prob_diff': mean_diff,
+        'qudit_probs': qudit_probs,
+        'exact_probs': exact_probs
+    }
+
+
+# ===================================================================
 # 使用例（メイン実行時）
 # ===================================================================
 

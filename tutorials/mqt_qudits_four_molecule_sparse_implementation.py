@@ -486,6 +486,30 @@ class SparseAwareMQTQuditTimeEvolution:
             else:
                 print(f"警告: 未知のゲートタイプ {gate_type}")
     
+    def decompose_custom_two_gates(self, circuit):
+        """
+        CustomTwoゲートを基本ゲートに分解する
+        
+        疎構造認識コンパイラが生成したCustomTwoゲートを、
+        LogEntQRCEXPassコンパイラを使用して基本ゲートに分解します。
+        
+        注: 疎構造認識コンパイラは既にほとんどのゲートを基本ゲートに
+        分解済みですが、一部の複雑な構造でCustomTwoが残る場合があります。
+        
+        Args:
+            circuit: MQT-Qudits QuantumCircuit
+            
+        Returns:
+            分解後の量子回路
+        """
+        if not self.mqt_available:
+            raise ImportError("mqt.quditsがインストールされていません")
+        
+        from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
+        backend = self.provider.get_backend("faketraps3six")
+        compiler = LogEntQRCEXPass(backend)
+        return compiler.transpile(circuit)
+    
     def get_compilation_report(self) -> str:
         """コンパイル統計レポートを取得"""
         return self.gate_generator.get_compilation_report()

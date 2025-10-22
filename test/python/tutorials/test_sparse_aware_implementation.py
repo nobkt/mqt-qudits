@@ -146,6 +146,22 @@ def test_time_evolution_instantiation():
     print(f"✓ 時間発展演算子インスタンス化テスト合格")
 
 
+def test_decompose_custom_two_gates_method_exists():
+    """decompose_custom_two_gatesメソッドの存在確認テスト"""
+    params = PhysicalParameters()
+    time_evol = SparseAwareMQTQuditTimeEvolution(params)
+    
+    # メソッドが存在することを確認
+    assert hasattr(time_evol, 'decompose_custom_two_gates'), \
+        "decompose_custom_two_gatesメソッドが存在しません"
+    
+    # メソッドが呼び出し可能であることを確認
+    assert callable(time_evol.decompose_custom_two_gates), \
+        "decompose_custom_two_gatesが呼び出し可能ではありません"
+    
+    print(f"✓ decompose_custom_two_gatesメソッド存在確認テスト合格")
+
+
 def test_hamiltonian_construction():
     """ハミルトニアン構築のテスト"""
     from mqt_qudits_four_molecule_sparse_implementation import ExactDiagonalizationSolver
@@ -175,6 +191,8 @@ if __name__ == "__main__":
     
     try:
         test_time_evolution_instantiation()
+        print()
+        test_decompose_custom_two_gates_method_exists()
         print()
         test_hamiltonian_construction()
         print()

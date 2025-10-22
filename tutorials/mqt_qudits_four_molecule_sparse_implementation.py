@@ -132,15 +132,49 @@ class SparseAwareMQTGateGenerator:
         # IntegratedSparseCompilerV2でコンパイル
         result = self.compiler.compile(U)
         
+        # active_subspaceが複数quditにまたがるかチェック
+        dimensions = [3, 3]  # 2-qutrit system
+        subspace_type = self._analyze_subspace(result.structure_info.active_subspace, dimensions)
+        
         # ゲート情報を抽出
         gates = []
-        for gate in result.gate_sequence.gates:
+        
+        if subspace_type['type'] == 'multi_qudit':
+            # 複数quditにまたがる場合はCustomTwoゲートを使用
+            # （単一qudit R/Rz/Rhゲートでは表現不可能）
             gate_info = {
-                'type': gate.gate_type,
+                'type': 'CustomTwo',
                 'qudit_indices': qudit_indices,
-                'params': gate.parameters
+                'params': {'unitary': U}
             }
             gates.append(gate_info)
+        else:
+            # 単一quditの場合は通常のゲート列を使用（グローバルインデックスをローカルに変換）
+            for gate in result.gate_sequence.gates:
+                gate_params = gate.parameters.copy()
+                
+                # グローバルインデックスをローカルインデックスに変換
+                if gate.gate_type in ['R', 'Rz', 'Rh'] and 'level1' in gate_params and 'level2' in gate_params:
+                    global_level1 = gate_params['level1']
+                    global_level2 = gate_params['level2']
+                    
+                    # 単一quditの場合、そのquditのローカルレベルを取得
+                    local_level1 = subspace_type['global_to_local'][global_level1]
+                    local_level2 = subspace_type['global_to_local'][global_level2]
+                    
+                    gate_params['level1'] = local_level1
+                    gate_params['level2'] = local_level2
+                elif gate.gate_type == 'VirtRz' and 'level' in gate_params:
+                    global_level = gate_params['level']
+                    local_level = subspace_type['global_to_local'][global_level]
+                    gate_params['level'] = local_level
+                
+                gate_info = {
+                    'type': gate.gate_type,
+                    'qudit_indices': [qudit_indices[subspace_type['qudit_idx']]] if subspace_type['type'] == 'single_qudit' else qudit_indices,
+                    'params': gate_params
+                }
+                gates.append(gate_info)
         
         # 統計更新
         structure_type = self._classify_structure(result)
@@ -157,6 +191,76 @@ class SparseAwareMQTGateGenerator:
             'fidelity': result.gate_sequence.fidelity,
             'active_indices': result.structure_info.active_subspace
         }
+    
+    def _global_index_to_qudit_states(self, global_idx: int, dimensions: List[int]) -> List[int]:
+        """
+        グローバルインデックスを各quditのローカル状態に変換
+        
+        Args:
+            global_idx: 複合ヒルベルト空間でのインデックス
+            dimensions: 各quditの次元 [d1, d2, ..., dn]
+        
+        Returns:
+            [state1, state2, ..., staten] 各quditのローカル状態
+        """
+        states = []
+        idx = global_idx
+        for dim in reversed(dimensions):
+            states.append(idx % dim)
+            idx //= dim
+        return list(reversed(states))
+    
+    def _analyze_subspace(self, active_indices: List[int], dimensions: List[int]) -> Dict:
+        """
+        active_subspaceが単一quditか複数quditにまたがるかを解析
+        
+        Args:
+            active_indices: アクティブ部分空間のグローバルインデックス
+            dimensions: 各quditの次元
+        
+        Returns:
+            {
+                'type': 'single_qudit' or 'multi_qudit',
+                'qudit_idx': (single_quditの場合) どのquditか,
+                'global_to_local': (single_quditの場合) グローバル→ローカルインデックスマッピング,
+                'involved_qudits': (multi_quditの場合) 関与するquditのリスト
+            }
+        """
+        states = [self._global_index_to_qudit_states(idx, dimensions) for idx in active_indices]
+        n_qudits = len(dimensions)
+        involved_qudits = []
+        
+        # どのquditで状態が変化しているかをチェック
+        for qudit_idx in range(n_qudits):
+            qudit_states = [state[qudit_idx] for state in states]
+            if len(set(qudit_states)) > 1:
+                involved_qudits.append(qudit_idx)
+        
+        if len(involved_qudits) == 1:
+            # 単一quditの部分空間
+            qudit_idx = involved_qudits[0]
+            local_levels = sorted(set([state[qudit_idx] for state in states]))
+            
+            # グローバルインデックス → ローカルレベルのマッピングを構築
+            global_to_local = {}
+            for global_idx in active_indices:
+                state = self._global_index_to_qudit_states(global_idx, dimensions)
+                local_level = state[qudit_idx]
+                global_to_local[global_idx] = local_level
+            
+            return {
+                'type': 'single_qudit',
+                'qudit_idx': qudit_idx,
+                'local_levels': local_levels,
+                'global_to_local': global_to_local,
+                'involved_qudits': involved_qudits
+            }
+        else:
+            # 複数quditにまたがる部分空間
+            return {
+                'type': 'multi_qudit',
+                'involved_qudits': involved_qudits
+            }
     
     def _classify_structure(self, result) -> str:
         """コンパイル結果から構造タイプを分類"""
@@ -337,6 +441,7 @@ class SparseAwareMQTQuditTimeEvolution:
         - VirtRz: 仮想Z回転
         - R: 回転ゲート
         - CEx: 制御Exchangeゲート
+        - CustomTwo: 2-quditカスタムゲート（複数quditにまたがる疎構造用）
         
         Args:
             circuit: MQT-Qudits QuantumCircuit
@@ -361,7 +466,7 @@ class SparseAwareMQTQuditTimeEvolution:
             
             elif gate_type == 'CEx':
                 # CEx([qudit_i, qudit_j])
-                circuit.cex(qudits)
+                circuit.cx(qudits)
             
             elif gate_type == 'Rz':
                 # Rz(qudit, [level_a, level_b, phase])
@@ -372,6 +477,11 @@ class SparseAwareMQTQuditTimeEvolution:
                 # Rh(qudit, [level_a, level_b, theta])
                 circuit.rh(qudits[0], [params['level1'], params['level2'], 
                                        params['theta']])
+            
+            elif gate_type == 'CustomTwo':
+                # CustomTwo([qudit_i, qudit_j], unitary_matrix)
+                # 複数quditにまたがる疎構造の場合に使用
+                circuit.cu_two(qudits, params['unitary'])
             
             else:
                 print(f"警告: 未知のゲートタイプ {gate_type}")

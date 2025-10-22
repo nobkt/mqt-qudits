@@ -356,7 +356,7 @@ class SparseAwareMQTQuditTimeEvolution:
             
             elif gate_type == 'R':
                 # R(qudit, [level_a, level_b, theta, phi])
-                circuit.r(qudits[0], [params['level_a'], params['level_b'], 
+                circuit.r(qudits[0], [params['level1'], params['level2'], 
                                      params['theta'], params['phi']])
             
             elif gate_type == 'CEx':
@@ -365,12 +365,12 @@ class SparseAwareMQTQuditTimeEvolution:
             
             elif gate_type == 'Rz':
                 # Rz(qudit, [level_a, level_b, phase])
-                circuit.rz(qudits[0], [params['level_a'], params['level_b'], 
+                circuit.rz(qudits[0], [params['level1'], params['level2'], 
                                        params['phase']])
             
             elif gate_type == 'Rh':
                 # Rh(qudit, [level_a, level_b, theta])
-                circuit.rh(qudits[0], [params['level_a'], params['level_b'], 
+                circuit.rh(qudits[0], [params['level1'], params['level2'], 
                                        params['theta']])
             
             else:

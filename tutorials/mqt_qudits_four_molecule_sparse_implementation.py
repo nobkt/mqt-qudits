@@ -1097,6 +1097,179 @@ class ExactDiagonalizationSolver:
         evolved_state = self.eigenvectors @ evolved_coeffs
         
         return evolved_state
+    
+    def build_initial_state(self, state_type: str = 'all_triplet') -> np.ndarray:
+        """
+        初期状態ベクトルを構築
+        
+        Args:
+            state_type: 'all_triplet', 'alternating', 'single_triplet'
+        
+        Returns:
+            初期状態ベクトル（81次元）
+        """
+        state = np.zeros(self.dim, dtype=complex)
+        
+        if state_type == 'all_triplet':
+            # |1111⟩
+            config = [1, 1, 1, 1]
+            idx = config_to_index(config, 3)
+            state[idx] = 1.0
+        
+        elif state_type == 'alternating':
+            # |1010⟩
+            config = [1, 0, 1, 0]
+            idx = config_to_index(config, 3)
+            state[idx] = 1.0
+        
+        elif state_type == 'single_triplet':
+            # |1000⟩
+            config = [1, 0, 0, 0]
+            idx = config_to_index(config, 3)
+            state[idx] = 1.0
+        
+        return state
+    
+    def time_evolution(self, t: float, initial_state: np.ndarray) -> np.ndarray:
+        """
+        厳密な時間発展（解析解）
+        
+        U(t) = exp(-i H t / ℏ) |ψ₀⟩
+        
+        固有基底での計算により厳密解を得る
+        
+        Args:
+            t: 時間
+            initial_state: 初期状態ベクトル（81次元）
+        
+        Returns:
+            時間発展後の状態ベクトル（厳密解）
+        """
+        if self.eigenvalues is None or self.eigenvectors is None:
+            raise RuntimeError("先にdiagonalize()を実行してください")
+        
+        # 初期状態を固有基底に展開
+        coeffs = self.eigenvectors.conj().T @ initial_state.flatten()
+        
+        # 時間発展（各固有状態の位相が独立に変化）
+        time_evolved_coeffs = coeffs * np.exp(-1j * self.eigenvalues * t / self.params.hbar)
+        
+        # 元の基底に戻す
+        state_final = self.eigenvectors @ time_evolved_coeffs
+        
+        # 規格化の確認
+        norm = np.linalg.norm(state_final)
+        assert abs(norm - 1.0) < 1e-10, f"規格化エラー: norm={norm}"
+        
+        return state_final
+    
+    def apply_radiative_decay(self, state: np.ndarray, t: float) -> np.ndarray:
+        """
+        放射減衰を適用（非ユニタリ操作）
+        
+        厳密対角化では時間発展はユニタリだが、
+        放射減衰は非ユニタリなので別途適用
+        """
+        state_decayed = state.copy()
+        
+        if self.params.Gamma_fl > 0:
+            for idx in range(self.dim):
+                config = index_to_config(idx, self.N, 3)
+                n_S1 = sum(1 for level in config if level == 2)
+                
+                decay_factor = np.exp(-self.params.Gamma_fl * t * n_S1 / 2)
+                state_decayed[idx] *= decay_factor
+            
+            # 規格化
+            norm = np.linalg.norm(state_decayed)
+            if norm > 1e-12:
+                state_decayed /= norm
+        
+        return state_decayed
+    
+    def calculate_populations(self, state: np.ndarray) -> Dict[str, float]:
+        """状態ベクトルから個体数を計算"""
+        state_flat = state.flatten()
+        N_S0 = 0.0
+        N_T1 = 0.0
+        N_S1 = 0.0
+        
+        for idx in range(self.dim):
+            prob = np.abs(state_flat[idx])**2
+            config = index_to_config(idx, self.N, 3)
+            
+            for level in config:
+                if level == 0:
+                    N_S0 += prob
+                elif level == 1:
+                    N_T1 += prob
+                elif level == 2:
+                    N_S1 += prob
+        
+        return {'N_S0': N_S0, 'N_T1': N_T1, 'N_S1': N_S1}
+    
+    def simulate(self, T_total: float, N_points: int,
+                 initial_state_type: str = 'all_triplet',
+                 include_decay: bool = False) -> Dict:
+        """
+        完全なシミュレーション（厳密解）
+        
+        Args:
+            T_total: 総時間
+            N_points: 時間点の数
+            initial_state_type: 初期状態の種類
+            include_decay: 放射減衰を含めるか
+        
+        Returns:
+            結果の辞書
+        """
+        print("\n=== 厳密対角化シミュレーション開始 ===")
+        print(f"総時間: {T_total} fs")
+        print(f"時間点数: {N_points}")
+        print(f"初期状態: {initial_state_type}")
+        print(f"放射減衰: {'含む' if include_decay else '含まない'}")
+        
+        # 固有値分解
+        if self.eigenvalues is None:
+            self.diagonalize()
+        
+        # 初期状態
+        initial_state = self.build_initial_state(initial_state_type)
+        
+        # 時間点
+        times = np.linspace(0, T_total, N_points)
+        
+        # 結果の記録
+        populations_history = []
+        states_history = []
+        
+        start_time = time.time()
+        
+        for t in times:
+            # 時間発展（厳密解）
+            state_evolved = self.time_evolution(t, initial_state)
+            
+            # 放射減衰を適用（オプション）
+            if include_decay:
+                state_final = self.apply_radiative_decay(state_evolved, t)
+            else:
+                state_final = state_evolved
+            
+            populations_history.append(self.calculate_populations(state_final))
+            states_history.append(state_final.copy())
+        
+        elapsed_time = time.time() - start_time
+        print(f"\n厳密対角化シミュレーション完了（{elapsed_time:.2f}秒）")
+        
+        return {
+            'times': times,
+            'populations': populations_history,
+            'states': states_history,
+            'final_state': states_history[-1],
+            'elapsed_time': elapsed_time,
+            'eigenvalues': self.eigenvalues,
+            'eigenvectors': self.eigenvectors
+        }
 
 
 # ===================================================================

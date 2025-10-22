@@ -136,9 +136,9 @@ class SparseAwareMQTGateGenerator:
         gates = []
         for gate in result.gate_sequence.gates:
             gate_info = {
-                'type': gate['type'],
+                'type': gate.gate_type,
                 'qudit_indices': qudit_indices,
-                'params': gate.get('params', {})
+                'params': gate.parameters
             }
             gates.append(gate_info)
         

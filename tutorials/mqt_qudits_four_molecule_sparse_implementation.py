@@ -699,6 +699,218 @@ class SuzukiTrotterMQTQuditSimulator:
             self.mqt_available = False
             print("警告: mqt.quditsがインストールされていません。")
     
+    def build_initial_state_circuit(self, state_type: str = 'all_triplet'):
+        """
+        初期状態を準備する回路を構築
+        
+        MQT-QuditsのXゲートを使用:
+        X|0⟩ = |1⟩, X|1⟩ = |2⟩, X|2⟩ = |0⟩ (巡回)
+        
+        Args:
+            state_type: 'all_triplet', 'alternating', 'single_triplet'
+            
+        Returns:
+            circuit: QuantumCircuit
+        """
+        if not self.mqt_available:
+            raise ImportError("mqt.quditsがインストールされていません")
+        
+        from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
+        
+        circuit = QuantumCircuit()
+        reg = QuantumRegister("molecules", self.N, [3] * self.N)
+        circuit.append(reg)
+        
+        if state_type == 'all_triplet':
+            # 全て |1⟩ (T1) にする: X を1回適用
+            for i in range(self.N):
+                circuit.x(i)
+        
+        elif state_type == 'alternating':
+            # |1010⟩
+            for i in range(0, self.N, 2):
+                circuit.x(i)
+        
+        elif state_type == 'single_triplet':
+            # |1000⟩
+            circuit.x(0)
+        
+        return circuit
+    
+    def add_single_trotter_step(self, circuit, dt: float):
+        """
+        2次対称鈴木トロッター分解の1ステップを回路に追加
+        
+        U(Δt) ≈ e^{-iH0Δt/2ℏ} e^{-iH_tr Δt/2ℏ} e^{-iH_TTA Δt/2ℏ}
+                × e^{-iH_TTA Δt/2ℏ} e^{-iH_tr Δt/2ℏ} e^{-iH0Δt/2ℏ}
+        
+        Args:
+            circuit: QuantumCircuit
+            dt: 時間刻み
+        """
+        # 前半の対称分解
+        self.time_evol.add_H0_evolution_gates(circuit, dt/2)
+        self.time_evol.add_H_transfer_evolution_gates(circuit, dt/2)
+        self.time_evol.add_H_TTA_evolution_gates(circuit, dt/2)
+        
+        # 後半の対称分解（逆順）
+        self.time_evol.add_H_TTA_evolution_gates(circuit, dt/2)
+        self.time_evol.add_H_transfer_evolution_gates(circuit, dt/2)
+        self.time_evol.add_H0_evolution_gates(circuit, dt/2)
+    
+    def apply_radiative_decay_to_statevector(self, state_vector: np.ndarray, 
+                                             dt: float) -> np.ndarray:
+        """
+        放射減衰を状態ベクトルに適用（非ユニタリ操作）
+        
+        準位 |2⟩ (S1) の振幅に exp(-Γ_fl * dt / 2) を掛けて規格化
+        
+        Args:
+            state_vector: 入力状態ベクトル
+            dt: 時間刻み
+            
+        Returns:
+            減衰適用後の状態ベクトル
+        """
+        state = state_vector.flatten().copy()
+        
+        if self.params.Gamma_fl > 0:
+            for idx in range(self.dim):
+                config = index_to_config(idx, self.N, 3)
+                n_S1 = sum(1 for level in config if level == 2)
+                
+                decay_factor = np.exp(-self.params.Gamma_fl * dt * n_S1 / 2)
+                state[idx] *= decay_factor
+            
+            # 規格化
+            norm = np.linalg.norm(state)
+            if norm > 1e-12:
+                state /= norm
+        
+        return state
+    
+    def calculate_populations(self, state_vector: np.ndarray) -> Dict[str, float]:
+        """
+        状態ベクトルから個体数を計算
+        
+        Args:
+            state_vector: 状態ベクトル
+            
+        Returns:
+            個体数の辞書 {'N_S0': float, 'N_T1': float, 'N_S1': float}
+        """
+        state = state_vector.flatten()
+        N_S0 = 0.0
+        N_T1 = 0.0
+        N_S1 = 0.0
+        
+        for idx in range(self.dim):
+            prob = np.abs(state[idx])**2
+            config = index_to_config(idx, self.N, 3)
+            
+            for level in config:
+                if level == 0:
+                    N_S0 += prob
+                elif level == 1:
+                    N_T1 += prob
+                elif level == 2:
+                    N_S1 += prob
+        
+        return {'N_S0': N_S0, 'N_T1': N_T1, 'N_S1': N_S1}
+    
+    def simulate(self, T_total: float, N_steps: int,
+                 initial_state_type: str = 'all_triplet',
+                 track_dynamics: bool = True) -> Dict:
+        """
+        完全なシミュレーションを実行
+        
+        実装方針:
+        1. 各時間ステップごとに、初期状態+そこまでの時間発展回路を構築
+        2. MQT-Qudits TNSimバックエンドで回路を実行
+        3. 結果の状態ベクトルに放射減衰を適用
+        4. 個体数を計算
+        
+        Args:
+            T_total: 総時間 (fs)
+            N_steps: ステップ数
+            initial_state_type: 初期状態の種類
+            track_dynamics: 時間発展を記録するか
+            
+        Returns:
+            結果の辞書
+        """
+        dt = T_total / N_steps
+        
+        print("=== Starting MQT-Qudits Gate-Based Suzuki-Trotter Simulation ===")
+        print(f"Total time: {T_total} fs")
+        print(f"Number of steps: {N_steps}")
+        print(f"Time step: {dt:.4f} fs")
+        print(f"Initial state: {initial_state_type}")
+        print()
+        
+        # 結果の記録
+        times = [0.0]
+        populations_history = []
+        states_history = [] if track_dynamics else None
+        
+        # 初期状態の準備と評価
+        init_circuit = self.build_initial_state_circuit(initial_state_type)
+        job = self.backend.run(init_circuit)
+        result = job.result()
+        current_state = result.get_state_vector().flatten()
+        
+        populations_history.append(self.calculate_populations(current_state))
+        if states_history is not None:
+            states_history.append(current_state.copy())
+        
+        # 時間発展ループ
+        start_time = time.time()
+        
+        for step in range(N_steps):
+            # 初期状態 + (step+1)ステップ分の回路を構築
+            circuit = self.build_initial_state_circuit(initial_state_type)
+            
+            for s in range(step + 1):
+                self.add_single_trotter_step(circuit, dt)
+            
+            # CustomTwoゲートを基本ゲートに分解（互換性のため）
+            circuit = self.time_evol.decompose_custom_two_gates(circuit)
+            
+            # 回路を実行
+            job = self.backend.run(circuit)
+            result = job.result()
+            state_after_unitary = result.get_state_vector().flatten()
+            
+            # 放射減衰を適用
+            current_state = self.apply_radiative_decay_to_statevector(
+                state_after_unitary, dt * (step + 1)
+            )
+            
+            if track_dynamics:
+                t = (step + 1) * dt
+                times.append(t)
+                populations_history.append(self.calculate_populations(current_state))
+                if states_history is not None:
+                    states_history.append(current_state.copy())
+            
+            # 進捗表示
+            if (step + 1) % max(1, N_steps // 10) == 0 or step == N_steps - 1:
+                progress = (step + 1) / N_steps * 100
+                print(f"Progress: {progress:5.1f}% (step {step+1}/{N_steps})")
+        
+        elapsed_time = time.time() - start_time
+        print(f"\nSimulation completed in {elapsed_time:.2f} seconds")
+        
+        return {
+            'times': np.array(times),
+            'populations': populations_history,
+            'states': states_history,
+            'final_state': current_state,
+            'elapsed_time': elapsed_time,
+            'dt': dt,
+            'N_steps': N_steps
+        }
+    
     def build_trotter_circuit(self, dt: float, n_steps: int, initial_state: Optional[np.ndarray] = None):
         """
         鈴木トロッター回路を構築

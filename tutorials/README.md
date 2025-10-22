@@ -212,6 +212,143 @@ Complete theoretical and technical foundation for implementing the same molecula
 - **NOTEBOOK_MODIFICATION.md**: History of notebook modifications
 - **REFACTORING_SUMMARY.md**: Summary of code refactoring
 
+## 疎構造認識コンパイラを使用したQuditシミュレーション
+
+### 概要
+
+4分子線形鎖の量子ダイナミクスシミュレーションにおいて、疎構造認識コンパイラを使用することで、従来のLogEntQRCEXPass方式と比較して**99.6%のゲート数削減**を実現しました。
+
+### 実装比較
+
+| 実装方式 | Qubit数/Qudit数 | ゲート数/ステップ | 20ステップ総数 | 備考 |
+|---------|----------------|-----------------|---------------|------|
+| Qubit | 8 qubits | 112 | 2,240 | 標準的な実装 |
+| Qudit（従来） | 4 qutrits | 6,182 | 123,640 | LogEntQRCEXPass使用 |
+| **Qudit（改良）** | 4 qutrits | **29** | **580** | **疎構造認識使用** |
+
+### 主な改善点
+
+1. **疎構造の自動検出**
+   - H_transfer: 2×2部分空間を自動検出
+   - H_TTA: 3×3部分空間を自動検出
+
+2. **最適化された分解**
+   - 2×2部分空間: ~1,000ゲート → ~1ゲート (99.9%削減)
+   - 3×3部分空間: ~1,000ゲート → ~6ゲート (99.4%削減)
+
+3. **数学的厳密性の保証**
+   - 忠実度 = 1.0 を保証
+   - ヒューリスティック・近似を一切使用しない
+   - 厳密な線形代数のみ使用
+
+### 使用方法
+
+#### 基本的な使用
+
+```python
+from tutorials.mqt_qudits_four_molecule_sparse_implementation import (
+    PhysicalParameters,
+    SparseAwareMQTQuditTimeEvolution
+)
+
+# パラメータ初期化
+params = PhysicalParameters()
+
+# 疎構造認識版時間発展演算子
+time_evol = SparseAwareMQTQuditTimeEvolution(params)
+
+# 回路構築（従来と同じインターフェース）
+# ... 回路初期化 ...
+
+# ゲート追加
+dt = 10.0  # fs
+time_evol.add_H0_evolution_gates(circuit, dt/2)
+time_evol.add_H_transfer_evolution_gates(circuit, dt/2)
+time_evol.add_H_TTA_evolution_gates(circuit, dt/2)
+
+# 統計レポート
+print(time_evol.get_compilation_report())
+```
+
+#### ノートブックでの使用
+
+`tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb`を参照してください。
+
+### 理論的基盤
+
+詳細な理論的基盤は以下の文書を参照:
+- `tutorials/doc/SPARSE_COMPILER_THEORETICAL_FOUNDATION_JA.md`
+- `tutorials/doc/PR46_FRAMEWORK_INTEGRATION_SPECIFICATION_JA.md`
+- `tutorials/doc/PR46_IMPLEMENTATION_DESIGN.md`
+
+### テストとベンチマーク
+
+#### テストの実行
+
+```bash
+# 疎構造認識実装のテスト
+python3 test/python/tutorials/test_sparse_aware_implementation.py
+
+# 出力例:
+# ✓ 忠実度保存テスト合格
+#   忠実度: 1.0000000000
+# ✓ 疎構造検出テスト合格
+#   2×2部分空間: 検出成功
+#   3×3部分空間: 検出成功
+# ✓ ゲート数削減テスト合格
+#   検出された2×2部分空間: 3
+#   検出された3×3部分空間: 3
+# ✓ 統計レポート生成テスト合格
+```
+
+#### ベンチマークの実行
+
+```bash
+# 性能ベンチマーク
+python3 tools/benchmark_sparse_compiler.py
+
+# 出力例:
+# 【ゲート数】
+#   H0: 8 ゲート
+#   H_transfer: 3 ゲート
+#   H_TTA: 18 ゲート
+#   合計（疎構造認識）: 29 ゲート
+#   合計（従来方式推定）: 6,008 ゲート
+#   削減率: 99.5%
+#
+# 【性能】
+#   コンパイル時間: 17.75 ms
+#   ピークメモリ使用量: 0.02 MB
+```
+
+### 参考文献
+
+- PR#42-46: 疎構造認識コンパイラの開発
+- PR#47: チュートリアルへの統合
+
+## トラブルシューティング
+
+### Q: ゲート数が期待より多い
+
+A: 以下を確認してください:
+1. `IntegratedSparseCompilerV2`が正しくインポートされているか
+2. `optimize_gates=True`が設定されているか
+3. 統計レポートで疎構造が正しく検出されているか
+
+### Q: 忠実度が1.0でない
+
+A: これは通常発生すべきではありません。以下を確認:
+1. 数値許容誤差の設定（デフォルト: 1e-10）
+2. ユニタリ行列の構築が正しいか
+3. Issue報告をお願いします
+
+### Q: ImportErrorが発生する
+
+A: 以下を確認:
+1. `mqt.qudits`がインストールされているか
+2. `tools/`ディレクトリへのパスが正しく設定されているか
+3. `numpy`, `scipy`がインストールされているか
+
 ## Language
 
 The documentation is written in Japanese (日本語) with complete LaTeX mathematical formulations and English-language Python code examples.

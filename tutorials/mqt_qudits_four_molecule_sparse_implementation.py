@@ -1291,34 +1291,51 @@ def calculate_fidelity(state1: np.ndarray, state2: np.ndarray) -> float:
     return overlap ** 2
 
 
-def compare_qudit_vs_exact(qudit_state: np.ndarray, exact_state: np.ndarray) -> Dict:
+def compare_qudit_vs_exact(qudit_results: Dict, exact_results: Dict) -> Dict:
     """
-    Qudit実装と厳密解を比較
+    Qudit量子アルゴリズムと厳密解を比較
     
     Args:
-        qudit_state: Quditシミュレーション結果
-        exact_state: 厳密対角化結果
-        
+        qudit_results: Qudit量子アルゴリズムの結果
+        exact_results: 厳密対角化の結果
+    
     Returns:
-        comparison: 比較結果の辞書
+        比較結果の辞書
     """
-    fidelity = calculate_fidelity(qudit_state, exact_state)
+    # 時間点が一致していることを確認
+    times_qudit = qudit_results['times']
+    times_exact = exact_results['times']
     
-    # 各状態の占有確率
-    qudit_probs = np.abs(qudit_state) ** 2
-    exact_probs = np.abs(exact_state) ** 2
+    # フィデリティの計算（各時刻）
+    fidelities = []
+    population_differences = {'N_S0': [], 'N_T1': [], 'N_S1': []}
     
-    # 確率の差
-    prob_diff = np.abs(qudit_probs - exact_probs)
-    max_diff = np.max(prob_diff)
-    mean_diff = np.mean(prob_diff)
+    # 最も近い時刻でマッチング
+    for i, t_exact in enumerate(times_exact):
+        # 最も近いQudit時刻を見つける
+        idx_qudit = np.argmin(np.abs(times_qudit - t_exact))
+        
+        state_qudit = qudit_results['states'][idx_qudit] if qudit_results['states'] is not None else None
+        state_exact = exact_results['states'][i]
+        
+        if state_qudit is not None:
+            fid = calculate_fidelity(state_qudit, state_exact)
+            fidelities.append(fid)
+        
+        # 個体数の差
+        pop_qudit = qudit_results['populations'][idx_qudit]
+        pop_exact = exact_results['populations'][i]
+        
+        for key in ['N_S0', 'N_T1', 'N_S1']:
+            diff = pop_qudit[key] - pop_exact[key]
+            population_differences[key].append(diff)
     
     return {
-        'fidelity': fidelity,
-        'max_prob_diff': max_diff,
-        'mean_prob_diff': mean_diff,
-        'qudit_probs': qudit_probs,
-        'exact_probs': exact_probs
+        'times': times_exact,
+        'fidelities': np.array(fidelities) if fidelities else None,
+        'population_differences': population_differences,
+        'mean_fidelity': np.mean(fidelities) if fidelities else None,
+        'min_fidelity': np.min(fidelities) if fidelities else None
     }
 
 

@@ -575,15 +575,16 @@ class SparseAwareMQTQuditTimeEvolution:
         """
         CustomTwoゲートを基本ゲートに分解する
         
-        注: H_transferとH_TTAは両方とも既に基本ゲート（R, CEx, Rz, VirtRz）で
-        直接実装されているため、CustomTwoゲートは存在しません。
-        このメソッドは互換性のために残されていますが、実際には何もしません。
+        H_transferは基本ゲート（R, CEx, Rz, VirtRz）で直接実装されていますが、
+        H_TTAは正確なユニタリ演算を実現するためにCustomTwoゲートを使用します。
+        
+        このメソッドはLogEntQRCEXPassを使用してCustomTwoゲートを基本ゲートに分解します。
         
         Args:
             circuit: MQT-Qudits QuantumCircuit
             
         Returns:
-            入力回路（変更なし）
+            分解後の回路
         """
         if not self.mqt_available:
             raise ImportError("mqt.quditsがインストールされていません")
@@ -593,11 +594,8 @@ class SparseAwareMQTQuditTimeEvolution:
                             for gate in circuit.instructions)
         
         if has_custom_two:
-            # もしCustomTwoゲートが存在する場合は警告
-            print("警告: CustomTwoゲートが見つかりました。")
-            print("これは予期しない動作です。H_transferとH_TTAは直接実装されているべきです。")
-            
-            # フォールバック: LogEntQRCEXPassを使用
+            # CustomTwoゲートを基本ゲートに分解
+            # H_TTAで使用されるCustomTwoゲートをLogEntQRCEXPassで分解
             from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
             backend = self.provider.get_backend("faketraps3six")
             compiler = LogEntQRCEXPass(backend)

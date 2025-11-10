@@ -411,6 +411,22 @@ class SparseAwareMQTQuditTimeEvolution:
             print("警告: mqt.quditsがインストールされていません。")
             print("ゲート生成のみ実行し、実際の回路構築はスキップされます。")
     
+    def _matrix_exponential(self, M: np.ndarray) -> np.ndarray:
+        """
+        行列指数関数を計算: exp(M)
+        
+        scipy.linalg.expmを使用して数学的に厳密な計算を行います。
+        これはヒューリスティックではなく、数値線形代数の標準手法です。
+        
+        Args:
+            M: 入力行列
+            
+        Returns:
+            exp(M): 行列指数関数
+        """
+        from scipy.linalg import expm
+        return expm(M)
+    
     def add_H0_evolution_gates(self, circuit, dt: float):
         """
         H0の時間発展ゲートを回路に追加
@@ -461,53 +477,50 @@ class SparseAwareMQTQuditTimeEvolution:
     
     def add_H_TTA_evolution_gates(self, circuit, dt: float):
         """
-        H_TTAの時間発展ゲートを回路に追加（近似直接実装版）
+        H_TTAの時間発展ゲートを回路に追加（正確な実装版）
         
         構造: 3×3部分空間（|02⟩, |11⟩, |20⟩）
         
-        H_TTAハミルトニアンは対称性を持ち、簡単な形をしているため、
-        直接的な実装が可能です。Trotter分解の精度は十分高く、
-        忠実度は1.0に近い値を保ちます。
+        H_TTAハミルトニアンの正確な時間発展演算子 U = exp(-i H_TTA dt / ℏ) を
+        CustomTwoゲートで実装します。
         
-        実装: 各隣接ペアに対して、約10-15個の基本ゲートを使用
+        H_TTA = J * (|02⟩⟨11| + |11⟩⟨02| + |11⟩⟨20| + |20⟩⟨11|)
+        
+        このハミルトニアンは3つの状態を結合する:
+        - |02⟩ ↔ |11⟩ (S0,S1) ↔ (T1,T1)
+        - |11⟩ ↔ |20⟩ (T1,T1) ↔ (S1,S0)
         """
         for pair_idx, (i, j) in enumerate(self.params.neighbors):
             J = self.params.J[pair_idx]
             
-            # H_TTAの時間発展角度
-            # H_TTA部分空間での時間発展を近似的に実装
-            theta = J * dt / self.params.hbar
-            
-            # 3×3部分空間 {|02⟩, |11⟩, |20⟩} での時間発展を
-            # 基本ゲートで近似的に実装
+            # 9×9の2-qutrit空間でH_TTAハミルトニアン行列を構築
+            # 状態の順序: |00⟩, |01⟩, |02⟩, |10⟩, |11⟩, |12⟩, |20⟩, |21⟩, |22⟩
+            # インデックス:  0    1    2    3    4    5    6    7    8
             # 
+            # TTA過程で関与する状態:
+            # |02⟩ (index 2): 分子i=S0(0), 分子j=S1(2)
+            # |11⟩ (index 4): 分子i=T1(1), 分子j=T1(1)
+            # |20⟩ (index 6): 分子i=S1(2), 分子j=S0(0)
+            
+            H_TTA = np.zeros((9, 9), dtype=complex)
+            
             # |02⟩ ↔ |11⟩ の結合
-            # |02⟩ ↔ |20⟩ の結合  
-            # これらは TTA過程を表す
+            H_TTA[2, 4] = J
+            H_TTA[4, 2] = J
             
-            # 準位ごとの位相回転（H_TTAの対角成分）
-            # 実際のH_TTAは対角成分が0なので、ここでは非対角要素の効果を
-            # 回転ゲートで近似
+            # |11⟩ ↔ |20⟩ の結合
+            H_TTA[4, 6] = J
+            H_TTA[6, 4] = J
             
-            # |02⟩ と |11⟩ 間の結合を R + CEx で実装
-            # これは |0⟩_i|2⟩_j ↔ |1⟩_i|1⟩_j の遷移
-            circuit.r(i, [0, 1, theta, 0.0])  # qudit i: |0⟩→|1⟩ 方向の回転
-            circuit.r(j, [2, 1, theta, 0.0])  # qudit j: |2⟩→|1⟩ 方向の回転
-            circuit.cx([i, j])  # 結合操作
-            circuit.r(i, [0, 1, -theta, 0.0])  # 逆回転
-            circuit.r(j, [2, 1, -theta, 0.0])  # 逆回転
+            # 時間発展演算子 U = exp(-i H_TTA dt / ℏ)
+            U_TTA = self._matrix_exponential(-1j * H_TTA * dt / self.params.hbar)
             
-            # |02⟩ と |20⟩ 間の結合を R + CEx で実装  
-            # これは |0⟩_i|2⟩_j ↔ |2⟩_i|0⟩_j の遷移
-            circuit.r(i, [0, 2, theta, 0.0])  # qudit i: |0⟩→|2⟩ 方向の回転
-            circuit.r(j, [2, 0, theta, 0.0])  # qudit j: |2⟩→|0⟩ 方向の回転
-            circuit.cx([i, j])  # 結合操作
-            circuit.r(i, [0, 2, -theta, 0.0])  # 逆回転
-            circuit.r(j, [2, 0, -theta, 0.0])  # 逆回転
+            # CustomTwoゲートとして回路に追加
+            circuit.cu_two([i, j], U_TTA)
             
             # デバッグ情報（初回のみ）
             if pair_idx == 0:
-                print(f"H_TTA実装: 基本ゲート直接実装（10ゲート: R, CEx組み合わせ）")
+                print(f"H_TTA実装: CustomTwoゲート（正確な行列指数関数）")
     
     def _add_gates_to_circuit(self, circuit, gates: List[Dict]):
         """

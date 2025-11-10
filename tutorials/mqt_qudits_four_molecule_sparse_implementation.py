@@ -707,7 +707,7 @@ class SuzukiTrotterMQTQuditSimulator:
         X|0⟩ = |1⟩, X|1⟩ = |2⟩, X|2⟩ = |0⟩ (巡回)
         
         Args:
-            state_type: 'all_triplet', 'alternating', 'single_triplet'
+            state_type: 'all_triplet', 'alternating', 'single_triplet', 'edge_triplet'
             
         Returns:
             circuit: QuantumCircuit
@@ -734,6 +734,11 @@ class SuzukiTrotterMQTQuditSimulator:
         elif state_type == 'single_triplet':
             # |1000⟩
             circuit.x(0)
+        
+        elif state_type == 'edge_triplet':
+            # 両端のみ |1⟩ (T1) にする: |1001⟩ (4分子の場合)
+            circuit.x(0)
+            circuit.x(self.N - 1)
         
         return circuit
     
@@ -1103,7 +1108,7 @@ class ExactDiagonalizationSolver:
         初期状態ベクトルを構築
         
         Args:
-            state_type: 'all_triplet', 'alternating', 'single_triplet'
+            state_type: 'all_triplet', 'alternating', 'single_triplet', 'edge_triplet'
         
         Returns:
             初期状態ベクトル（81次元）
@@ -1125,6 +1130,12 @@ class ExactDiagonalizationSolver:
         elif state_type == 'single_triplet':
             # |1000⟩
             config = [1, 0, 0, 0]
+            idx = config_to_index(config, 3)
+            state[idx] = 1.0
+        
+        elif state_type == 'edge_triplet':
+            # 両端のみ三重項: |1001⟩ (4分子の場合)
+            config = [1, 0, 0, 1]
             idx = config_to_index(config, 3)
             state[idx] = 1.0
         

@@ -444,7 +444,7 @@ class SparseAwareMQTQuditTimeEvolution:
         
         これは数学的に厳密な解析解であり、近似やヒューリスティックは含まれません。
         
-        実装: CustomTwoゲートで9×9ユニタリ行列を構築
+        実装: IntegratedSparseCompilerV2を使用して基本ゲートに直接コンパイル
         基底順序: |00⟩, |01⟩, |02⟩, |10⟩, |11⟩, |12⟩, |20⟩, |21⟩, |22⟩
         """
         for pair_idx, (i, j) in enumerate(self.params.neighbors):
@@ -464,12 +464,16 @@ class SparseAwareMQTQuditTimeEvolution:
             U[3, 1] = -1j * sin_theta
             U[3, 3] = cos_theta
             
-            # CustomTwoゲートを適用
-            circuit.cu_two([i, j], U)
+            # IntegratedSparseCompilerV2で基本ゲートに直接コンパイル
+            gate_info = self.gate_generator.compile_unitary_to_gates(U, [i, j])
+            
+            # ゲートを回路に追加
+            self._add_gates_to_circuit(circuit, gate_info['gates'])
             
             # デバッグ情報（初回のみ）
             if pair_idx == 0:
-                print(f"H_transfer実装: 厳密な解析解による時間発展（CustomTwoゲート、後で基本ゲートに分解）")
+                print(f"H_transfer実装: 厳密な解析解 → {len(gate_info['gates'])}個の基本ゲート " +
+                      f"(構造: {gate_info['structure_type']})")
     
     def add_H_TTA_evolution_gates(self, circuit, dt: float):
         """
@@ -488,7 +492,7 @@ class SparseAwareMQTQuditTimeEvolution:
         これは数学的に厳密な実装であり、近似やヒューリスティックは含まれません。
         固有値分解と行列指数関数は厳密な数学的操作です。
         
-        実装: CustomTwoゲートで9×9ユニタリ行列を構築
+        実装: IntegratedSparseCompilerV2を使用して基本ゲートに直接コンパイル
         基底順序での位置: |02⟩=2, |11⟩=4, |20⟩=6
         """
         for pair_idx, (i, j) in enumerate(self.params.neighbors):
@@ -520,12 +524,16 @@ class SparseAwareMQTQuditTimeEvolution:
                 for b, idx_b in enumerate(indices):
                     U[idx_a, idx_b] = U_sub[a, b]
             
-            # CustomTwoゲートを適用
-            circuit.cu_two([i, j], U)
+            # IntegratedSparseCompilerV2で基本ゲートに直接コンパイル
+            gate_info = self.gate_generator.compile_unitary_to_gates(U, [i, j])
+            
+            # ゲートを回路に追加
+            self._add_gates_to_circuit(circuit, gate_info['gates'])
             
             # デバッグ情報（初回のみ）
             if pair_idx == 0:
-                print(f"H_TTA実装: 厳密な固有値分解による時間発展（CustomTwoゲート、後で基本ゲートに分解）")
+                print(f"H_TTA実装: 厳密な固有値分解 → {len(gate_info['gates'])}個の基本ゲート " +
+                      f"(構造: {gate_info['structure_type']})")
     
     def _add_gates_to_circuit(self, circuit, gates: List[Dict]):
         """
@@ -580,18 +588,17 @@ class SparseAwareMQTQuditTimeEvolution:
         """
         CustomTwoゲートを基本ゲートに分解する
         
-        H_transferとH_TTAは両方ともCustomTwoゲートを使用して厳密に実装されています。
-        このメソッドは、LogEntQRCEXPassを使用してCustomTwoゲートを基本ゲートに分解します。
+        注: 現在の実装では、H_transferとH_TTAの時間発展は
+        IntegratedSparseCompilerV2により直接基本ゲートに変換されているため、
+        CustomTwoゲートは存在しません。このメソッドは互換性のために残されています。
         
-        疎構造認識により、分解後のゲート数は大幅に削減されます:
-        - H_transfer: 2×2部分空間 → ~1-6ゲート
-        - H_TTA: 3×3部分空間 → ~6-15ゲート
+        もしCustomTwoゲートが見つかった場合は、LogEntQRCEXPassで分解します。
         
         Args:
             circuit: MQT-Qudits QuantumCircuit
             
         Returns:
-            分解後の回路
+            回路（通常は変更なし）
         """
         if not self.mqt_available:
             raise ImportError("mqt.quditsがインストールされていません")
@@ -601,10 +608,10 @@ class SparseAwareMQTQuditTimeEvolution:
                             for gate in circuit.instructions)
         
         if has_custom_two:
-            # CustomTwoゲートを基本ゲートに分解
-            print("CustomTwoゲートを基本ゲートに分解中...")
+            # 予期しないCustomTwoゲートが見つかった場合
+            print("警告: CustomTwoゲートが見つかりました。これは予期しない動作です。")
+            print("LogEntQRCEXPassで分解します...")
             
-            # LogEntQRCEXPassを使用
             from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
             backend = self.provider.get_backend("faketraps3six")
             compiler = LogEntQRCEXPass(backend)

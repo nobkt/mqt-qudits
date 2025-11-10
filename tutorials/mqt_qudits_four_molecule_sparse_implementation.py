@@ -461,53 +461,44 @@ class SparseAwareMQTQuditTimeEvolution:
     
     def add_H_TTA_evolution_gates(self, circuit, dt: float):
         """
-        H_TTAの時間発展ゲートを回路に追加（近似直接実装版）
+        H_TTAの時間発展ゲートを回路に追加（厳密実装版）
         
         構造: 3×3部分空間（|02⟩, |11⟩, |20⟩）
         
-        H_TTAハミルトニアンは対称性を持ち、簡単な形をしているため、
-        直接的な実装が可能です。Trotter分解の精度は十分高く、
-        忠実度は1.0に近い値を保ちます。
+        実装戦略:
+        1. 厳密な9×9ユニタリ行列を構築: U = exp(-i*H_TTA*dt/ℏ)
+        2. IntegratedSparseCompilerV2で3×3部分空間を検出
+        3. 基本ゲート(VirtRz, R, Rh, Rz, CEx)に厳密分解
         
-        実装: 各隣接ペアに対して、約10-15個の基本ゲートを使用
+        ヒューリスティックや近似は一切使用しません。
         """
+        # Import exact Hamiltonian builders
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).parent))
+        from exact_hamiltonian_builders import build_H_TTA_unitary
+        
         for pair_idx, (i, j) in enumerate(self.params.neighbors):
             J = self.params.J[pair_idx]
             
-            # H_TTAの時間発展角度
-            # H_TTA部分空間での時間発展を近似的に実装
-            theta = J * dt / self.params.hbar
+            # Build exact 9×9 unitary matrix for H_TTA time evolution
+            # This is mathematically exact - no approximations
+            U_TTA = build_H_TTA_unitary(J, dt, self.params.hbar, dim=3)
             
-            # 3×3部分空間 {|02⟩, |11⟩, |20⟩} での時間発展を
-            # 基本ゲートで近似的に実装
-            # 
-            # |02⟩ ↔ |11⟩ の結合
-            # |02⟩ ↔ |20⟩ の結合  
-            # これらは TTA過程を表す
+            # Compile the exact unitary using sparse structure-aware compiler
+            # The compiler will detect the 3×3 active subspace {|02⟩, |11⟩, |20⟩}
+            # and decompose it efficiently into basic gates
+            result = self.gate_generator.compile_unitary_to_gates(U_TTA, [i, j])
             
-            # 準位ごとの位相回転（H_TTAの対角成分）
-            # 実際のH_TTAは対角成分が0なので、ここでは非対角要素の効果を
-            # 回転ゲートで近似
+            # Add the compiled gates to the circuit
+            self._add_gates_to_circuit(circuit, result['gates'])
             
-            # |02⟩ と |11⟩ 間の結合を R + CEx で実装
-            # これは |0⟩_i|2⟩_j ↔ |1⟩_i|1⟩_j の遷移
-            circuit.r(i, [0, 1, theta, 0.0])  # qudit i: |0⟩→|1⟩ 方向の回転
-            circuit.r(j, [2, 1, theta, 0.0])  # qudit j: |2⟩→|1⟩ 方向の回転
-            circuit.cx([i, j])  # 結合操作
-            circuit.r(i, [0, 1, -theta, 0.0])  # 逆回転
-            circuit.r(j, [2, 1, -theta, 0.0])  # 逆回転
-            
-            # |02⟩ と |20⟩ 間の結合を R + CEx で実装  
-            # これは |0⟩_i|2⟩_j ↔ |2⟩_i|0⟩_j の遷移
-            circuit.r(i, [0, 2, theta, 0.0])  # qudit i: |0⟩→|2⟩ 方向の回転
-            circuit.r(j, [2, 0, theta, 0.0])  # qudit j: |2⟩→|0⟩ 方向の回転
-            circuit.cx([i, j])  # 結合操作
-            circuit.r(i, [0, 2, -theta, 0.0])  # 逆回転
-            circuit.r(j, [2, 0, -theta, 0.0])  # 逆回転
-            
-            # デバッグ情報（初回のみ）
+            # Debug info (first pair only)
             if pair_idx == 0:
-                print(f"H_TTA実装: 基本ゲート直接実装（10ゲート: R, CEx組み合わせ）")
+                print(f"H_TTA実装: 厳密実装（疎構造認識コンパイラ使用）")
+                print(f"  部分空間: {result['structure_type']}")
+                print(f"  ゲート数: {result['gate_count']}")
+                print(f"  忠実度: {result['fidelity']:.10f}")
     
     def _add_gates_to_circuit(self, circuit, gates: List[Dict]):
         """

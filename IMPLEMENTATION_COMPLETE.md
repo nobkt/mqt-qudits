@@ -1,233 +1,125 @@
-# Implementation Complete: Qudit Tutorial Circuit Analysis
+# 🎉 Shot-Based Simulation Implementation - COMPLETE
 
-## Executive Summary
+## Status: ✅ COMPLETE AND VERIFIED
 
-The qudit tutorial notebook (`tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb`) has been successfully updated to match the output format of the qubit tutorial, as requested in the problem statement.
+All requirements from the problem statement have been successfully implemented and verified.
 
-## Problem Statement (Original Request in Japanese)
+## Quick Summary
 
-The issue requested that the qudit tutorial should output:
-1. 【単一トロッターステップの回路サイズ】(Single Trotter step circuit size)
-2. 【単一トロッターステップの回路】の図 (Visualization of single Trotter step circuit)
+This PR adds shot-based quantum simulation support to both Qubit and Qudit implementations in the quantum dynamics comparison notebook, along with circuit visualizations for one Suzuki-Trotter step.
 
-These were present in the qubit tutorial but missing from the qudit tutorial in the same structured format.
+## Requirements Met ✅
 
-## Solution Implemented
+| Requirement | Status | Details |
+|-------------|--------|---------|
+| Qubit shot-based simulation | ✅ | Using Qiskit Sampler, 10k shots |
+| Qudit shot-based simulation | ✅ | Statevector sampling, 10k shots |
+| Qubit circuit visualization | ✅ | 1 Trotter step, already existed |
+| Qudit circuit visualization | ✅ | 1 Trotter step, newly added |
+| No heuristics/fallback | ✅ | Exact probability sampling only |
+| Verification | ✅ | All tests passed |
+| Security scan | ✅ | CodeQL: no vulnerabilities |
 
-### What Was Changed
+## Key Changes
 
-**One new code cell added** between Sections 5 and 5.5:
-- **New Section 5.5**: "量子回路の解析" (Circuit Analysis)
-- **Renumbered Section 5.5 → 5.6**: "量子回路の可視化（詳細図）"
+### 1. Qubit Simulation (Cell: 5bf25d98)
+```python
+# Before: Statevector simulation
+state = Statevector(circuit)
+pop = calculate_populations(state)
 
-### What Was NOT Changed
-
-- ❌ No modifications to implementation code
-- ❌ No changes to gate implementations
-- ❌ No changes to visualization tools
-- ❌ No addition of heuristic methods
-- ❌ No approximations introduced
-
-This ensures **minimal, surgical changes** as required.
-
-## Output Comparison
-
-### Qubit Tutorial (Reference)
-```
-=== 量子回路の解析 ===
-
-【システム構成】
-分子数: 4
-必要なQubit数: 8 (分子あたり2 Qubit)
-エンコーディング: |S0⟩→|00⟩, |T1⟩→|01⟩, |S1⟩→|10⟩
-
-【単一トロッターステップの回路サイズ】
-ゲート数: 112
-回路深さ: 26
-使用Qubit数: 8
-
-【ゲートタイプ別内訳】
-x: 48個, rz: 30個, cx: 16個, cry: 12個, rxx: 6個
-
-【全シミュレーション統計】
-トロッターステップ数: 20
-総ゲート数: 2240
-ステップあたり平均ゲート数: 112.0
+# After: Shot-based simulation
+sampler = Sampler()
+job = sampler.run(circuit, shots=10000)
+counts = job.result().quasi_dists[0].binary_probabilities()
+pop = calculate_populations_from_counts(counts, shots)
 ```
 
-### Qudit Tutorial (After Changes)
+### 2. Qudit Simulation (New method in sparse implementation)
+```python
+def simulate_shot_based(self, ..., shots=10000):
+    # Get exact statevector
+    state_vector = result.get_state_vector()
+    
+    # Compute probability distribution
+    probabilities = np.abs(state_vector)**2
+    probabilities /= np.sum(probabilities)
+    
+    # Sample from distribution
+    samples = np.random.choice(dim, size=shots, p=probabilities)
+    
+    # Calculate populations from samples
+    return calculate_populations_from_samples(samples, shots)
 ```
-=== 量子回路の解析 ===
 
-【システム構成】
-分子数: 4
-必要なQudit数: 4 (分子あたり1 Qudit)
-エンコーディング: |S0⟩→|0⟩, |T1⟩→|1⟩, |S1⟩→|2⟩
+### 3. Circuit Visualizations
+- **Qubit**: Uses `circuit_drawer` from Qiskit (Cell: c7fe05f9)
+- **Qudit**: Uses `plot_circuit` from MQT-Qudits (Cell: qudit_viz_1step) ⭐ NEW
 
-【単一トロッターステップの回路サイズ】
-ゲート数: 3344
-使用Qudit数: 4
+## Verification
 
-【ゲートタイプ別内訳】
-Rh: 864個, R: 846個, Rz: 690個, CEx: 576個, VirtRz: 368個
-
-【全シミュレーション統計】
-トロッターステップ数: 20 (予定)
-総ゲート数: 66880 (予定)
-ステップあたり平均ゲート数: 3344.0
+Run the verification script:
+```bash
+python verify_implementation.py
 ```
+
+Expected output:
+```
+✅ ALL VERIFICATIONS PASSED
+   Implementation is complete and correct!
+```
+
+## Files
+
+### Modified
+1. `tutorials/quantum_dynamics_complete_comparison.ipynb`
+   - Updated cells: 5bf25d98 (Qubit), 397deb45 (Qudit)
+   - Added cell: qudit_viz_1step (Qudit visualization)
+
+2. `tutorials/mqt_qudits_four_molecule_sparse_implementation.py`
+   - Added: `simulate_shot_based()` method
+   - Added: `calculate_populations_from_samples()` method
+
+### New
+3. `verify_implementation.py` - Verification script
+4. `SHOT_BASED_IMPLEMENTATION_SUMMARY.md` - Technical details
+5. `PR_SHOT_BASED_SIMULATION.md` - PR description (JP/EN)
+6. `update_notebook_full.py` - Automation script
 
 ## Technical Details
 
-### New Section 5.5 Code
+- **Shots**: 10,000 per time step (both Qubit and Qudit)
+- **Statistical error**: ~1% (∝ 1/√shots)
+- **Sampling method**: 
+  - Qubit: Qiskit Sampler primitive
+  - Qudit: NumPy random.choice from exact probability distribution
+- **No approximations**: All sampling from exact quantum states
 
-```python
-# 5.5. 量子回路の解析
+## Documentation
 
-print("=== 量子回路の解析 ===")
-print()
+- 📄 `PR_SHOT_BASED_SIMULATION.md` - Overview (Japanese/English)
+- 📄 `SHOT_BASED_IMPLEMENTATION_SUMMARY.md` - Detailed technical documentation
+- 📄 `verify_implementation.py` - Automated verification tests
 
-# System Configuration
-print("【システム構成】")
-print(f"分子数: {params.N_molecules}")
-print(f"必要なQudit数: {params.N_molecules} (分子あたり1 Qudit)")
-print(f"エンコーディング: |S0⟩→|0⟩, |T1⟩→|1⟩, |S1⟩→|2⟩")
-print()
+## Next Steps
 
-# Circuit depth calculation (with error handling)
-try:
-    circuit_depth = decomposed_circuit.depth() if hasattr(decomposed_circuit, 'depth') else "N/A"
-except:
-    circuit_depth = "N/A"
+1. ✅ Implementation complete
+2. ✅ Verification complete
+3. ✅ Documentation complete
+4. ✅ Security scan complete
+5. 🔄 Ready for review and testing
+6. 🔄 Ready for merge
 
-# Single Trotter Step Circuit Size
-print("【単一トロッターステップの回路サイズ】")
-print(f"ゲート数: {total_after}")
-if circuit_depth != "N/A":
-    print(f"回路深さ: {circuit_depth}")
-print(f"使用Qudit数: {params.N_molecules}")
-print()
+## Contact
 
-# Gate Type Breakdown
-print("【ゲートタイプ別内訳】")
-for gate_name, count in sorted(gate_counts.items(), key=lambda x: x[1], reverse=True):
-    print(f"{gate_name}: {count}個")
-print()
-
-# Full Simulation Statistics
-N_steps_planned = 20
-total_gates_planned = total_after * N_steps_planned
-
-print("【全シミュレーション統計】")
-print(f"トロッターステップ数: {N_steps_planned} (予定)")
-print(f"総ゲート数: {total_gates_planned} (予定)")
-print(f"ステップあたり平均ゲート数: {total_after:.1f}")
-```
-
-### Key Features
-
-1. **Uses existing variables**: `params`, `total_after`, `gate_counts`, `decomposed_circuit`
-2. **Graceful error handling**: Handles cases where `depth()` method is not available
-3. **Sorted output**: Gate types sorted by frequency (most used first)
-4. **Predictive statistics**: Shows planned simulation statistics
-
-## Circuit Visualization
-
-Section 5.6 (formerly 5.5) already provides comprehensive circuit visualization:
-- Uses `visualize_circuit_with_decomposition` tool
-- Shows circuits before and after decomposition
-- Displays both CustomTwo gates and basic gates
-
-This satisfies the requirement for 【単一トロッターステップの回路】の図.
-
-## Verification Results
-
-### JSON Validation
-✅ Notebook JSON syntax is valid
-
-### Logic Testing
-✅ Created and executed test script (`/tmp/test_notebook_section.py`)
-✅ Output format matches expected structure
-✅ All four sections present and correctly formatted
-
-### Expected Values Match
-✅ Gate counts match problem statement (CEx: 576, R: 846, Rh: 864, Rz: 690, VirtRz: 368)
-✅ Total gates: 3344 (matches problem statement)
-
-## Documentation Created
-
-1. **NOTEBOOK_MODIFICATION_SUMMARY.md** (4906 bytes)
-   - Detailed description of changes
-   - Implementation notes
-   - Testing instructions
-
-2. **OUTPUT_COMPARISON.md** (4092 bytes)
-   - Side-by-side comparison
-   - Structural analysis
-   - Key differences explained
-
-3. **VISUAL_SUMMARY.md** (5615 bytes)
-   - Before/after notebook structure
-   - Visual flow diagram
-   - Code examples
-
-4. **IMPLEMENTATION_COMPLETE.md** (this file)
-   - Executive summary
-   - Complete solution overview
-   - Verification results
-
-## Requirements Checklist
-
-✅ Added 【単一トロッターステップの回路サイズ】 section
-✅ Added 【単一トロッターステップの回路】 visualization (already in 5.6)
-✅ Output format matches qubit tutorial structure
-✅ All four required sections present:
-   - 【システム構成】
-   - 【単一トロッターステップの回路サイズ】
-   - 【ゲートタイプ別内訳】
-   - 【全シミュレーション統計】
-✅ No heuristic methods introduced
-✅ Minimal, surgical changes only (1 new cell, 1 renumbered)
-✅ All existing functionality preserved
-✅ Comprehensive documentation provided
-
-## How to Test
-
-1. **Install dependencies**:
-   ```bash
-   pip install mqt.qudits numpy matplotlib
-   ```
-
-2. **Navigate to tutorials directory**:
-   ```bash
-   cd /home/runner/work/mqt-qudits/mqt-qudits/tutorials
-   ```
-
-3. **Run notebook**:
-   ```bash
-   jupyter notebook four_molecule_linear_chain_quantum_dynamics.ipynb
-   ```
-
-4. **Execute cells sequentially** up to Section 5.5
-
-5. **Verify output**:
-   - Section 5.5 should print structured circuit analysis
-   - Section 5.6 should display circuit diagrams
-   - Output should match the format shown in OUTPUT_COMPARISON.md
-
-## Conclusion
-
-The modification successfully addresses all requirements from the problem statement:
-- ✅ Qudit tutorial now outputs circuit analysis in the same format as qubit tutorial
-- ✅ Single Trotter step circuit size is displayed
-- ✅ Single Trotter step circuit visualization is available
-- ✅ No heuristic methods or approximations were introduced
-- ✅ Changes are minimal and surgical
-
-The implementation is complete, tested, and ready for use.
+For questions or issues, please refer to:
+- Technical details: `SHOT_BASED_IMPLEMENTATION_SUMMARY.md`
+- PR overview: `PR_SHOT_BASED_SIMULATION.md`
+- Run verification: `python verify_implementation.py`
 
 ---
 
-**Date**: 2025-10-22
-**Implementation**: Complete
-**Status**: Ready for review
+**Implementation Date**: 2025-11-10  
+**Status**: ✅ COMPLETE  
+**Verification**: ✅ ALL TESTS PASSED  
+**Security**: ✅ NO VULNERABILITIES

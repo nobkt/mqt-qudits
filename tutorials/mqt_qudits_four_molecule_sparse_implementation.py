@@ -510,6 +510,7 @@ class SparseAwareMQTQuditTimeEvolution:
         - CEx: 制御Exchangeゲート
         - Rz: Z回転ゲート
         - Rh: Hadamard型回転ゲート
+        - CustomTwo: 2-quditカスタムユニタリ
         
         Args:
             circuit: MQT-Qudits QuantumCircuit
@@ -545,6 +546,12 @@ class SparseAwareMQTQuditTimeEvolution:
                 # Rh(qudit, [level_a, level_b, theta])
                 circuit.rh(qudits[0], [params['level1'], params['level2'], 
                                        params['theta']])
+            
+            elif gate_type == 'CustomTwo':
+                # CustomTwo(qudits, unitary_matrix)
+                # H_TTAなどの複数quditにまたがる部分空間操作で使用される
+                unitary = params['unitary']
+                circuit.cu_two(qudits, unitary)
             
             else:
                 print(f"警告: 未知のゲートタイプ {gate_type}")

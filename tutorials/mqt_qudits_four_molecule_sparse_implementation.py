@@ -916,6 +916,158 @@ class SuzukiTrotterMQTQuditSimulator:
             'N_steps': N_steps
         }
     
+    def calculate_populations_from_samples(self, samples: List[int], shots: int) -> Dict[str, float]:
+        """
+        サンプル（状態インデックスのリスト）から個体数を計算
+        
+        Args:
+            samples: 状態インデックスのリスト
+            shots: 総ショット数
+            
+        Returns:
+            個体数の辞書 {'N_S0': float, 'N_T1': float, 'N_S1': float}
+        """
+        N_S0 = 0.0
+        N_T1 = 0.0
+        N_S1 = 0.0
+        
+        for state_idx in samples:
+            config = index_to_config(state_idx, self.N, 3)
+            for level in config:
+                if level == 0:
+                    N_S0 += 1.0
+                elif level == 1:
+                    N_T1 += 1.0
+                elif level == 2:
+                    N_S1 += 1.0
+        
+        # 正規化
+        N_S0 /= shots
+        N_T1 /= shots
+        N_S1 /= shots
+        
+        return {'N_S0': N_S0, 'N_T1': N_T1, 'N_S1': N_S1}
+    
+    def simulate_shot_based(self, T_total: float, N_steps: int,
+                           initial_state_type: str = 'all_triplet',
+                           track_dynamics: bool = True,
+                           shots: int = 10000) -> Dict:
+        """
+        完全なシミュレーションを実行（ショットベース）
+        
+        実装方針:
+        1. 各時間ステップごとに、初期状態+そこまでの時間発展回路を構築
+        2. MQT-Qudits TNSimバックエンドで回路を実行して状態ベクトルを取得
+        3. 状態ベクトルから確率分布を計算
+        4. 確率分布から指定ショット数だけサンプリング
+        5. サンプルから個体数を計算
+        
+        Args:
+            T_total: 総時間 (fs)
+            N_steps: ステップ数
+            initial_state_type: 初期状態の種類
+            track_dynamics: 時間発展を記録するか
+            shots: 各時刻でのサンプリングショット数
+            
+        Returns:
+            結果の辞書
+        """
+        dt = T_total / N_steps
+        
+        print("=== Starting MQT-Qudits Shot-Based Suzuki-Trotter Simulation ===")
+        print(f"Total time: {T_total} fs")
+        print(f"Number of steps: {N_steps}")
+        print(f"Time step: {dt:.4f} fs")
+        print(f"Initial state: {initial_state_type}")
+        print(f"Shots per time step: {shots}")
+        print()
+        
+        # 結果の記録
+        times = [0.0]
+        populations_history = []
+        
+        # 初期状態の準備と評価
+        init_circuit = self.build_initial_state_circuit(initial_state_type)
+        job = self.backend.run(init_circuit)
+        result = job.result()
+        current_state = result.get_state_vector().flatten()
+        
+        # 初期状態からサンプリング
+        probabilities = np.abs(current_state)**2
+        samples_0 = np.random.choice(self.dim, size=shots, p=probabilities)
+        populations_history.append(self.calculate_populations_from_samples(samples_0, shots))
+        
+        # 1トロッターステップの回路を保存（可視化用）
+        step_circuit_temp = self.build_initial_state_circuit('all_triplet')  # テンプレート
+        # 空の回路を作成
+        from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
+        step_circuit = QuantumCircuit()
+        reg = QuantumRegister("molecules", self.N, [3] * self.N)
+        step_circuit.append(reg)
+        self.add_single_trotter_step(step_circuit, dt)
+        step_circuit_decomposed = self.time_evol.decompose_custom_two_gates(step_circuit)
+        
+        # 時間発展ループ
+        start_time = time.time()
+        
+        for step in range(N_steps):
+            # 初期状態 + (step+1)ステップ分の回路を構築
+            circuit = self.build_initial_state_circuit(initial_state_type)
+            
+            for s in range(step + 1):
+                self.add_single_trotter_step(circuit, dt)
+            
+            # CustomTwoゲートを基本ゲートに分解
+            circuit = self.time_evol.decompose_custom_two_gates(circuit)
+            
+            # 回路を実行して状態ベクトルを取得
+            job = self.backend.run(circuit)
+            result = job.result()
+            state_after_unitary = result.get_state_vector().flatten()
+            
+            # 放射減衰を適用
+            current_state = self.apply_radiative_decay_to_statevector(
+                state_after_unitary, dt * (step + 1)
+            )
+            
+            # 状態ベクトルからサンプリング
+            probabilities = np.abs(current_state)**2
+            probabilities = probabilities / np.sum(probabilities)  # 正規化
+            samples = np.random.choice(self.dim, size=shots, p=probabilities)
+            
+            if track_dynamics:
+                t = (step + 1) * dt
+                times.append(t)
+                populations_history.append(self.calculate_populations_from_samples(samples, shots))
+            
+            # 進捗表示
+            if (step + 1) % max(1, N_steps // 10) == 0 or step == N_steps - 1:
+                progress = (step + 1) / N_steps * 100
+                pop = populations_history[-1]
+                print(f"Progress: {progress:5.1f}% (step {step+1}/{N_steps}), "
+                      f"N_T1={pop['N_T1']:.4f}, N_S1={pop['N_S1']:.4f}")
+        
+        elapsed_time = time.time() - start_time
+        print(f"\nShot-based simulation completed in {elapsed_time:.2f} seconds")
+        
+        # ゲート統計を計算
+        total_gates = len(circuit.instructions)
+        gates_per_step = len(step_circuit.instructions)
+        
+        return {
+            'times': np.array(times),
+            'populations': populations_history,
+            'final_state': current_state,
+            'elapsed_time': elapsed_time,
+            'dt': dt,
+            'N_steps': N_steps,
+            'method': 'Qudit (MQT - Shot-based)',
+            'shots': shots,
+            'step_circuit': step_circuit_decomposed,
+            'total_gates': total_gates,
+            'gates_per_step': gates_per_step
+        }
+    
     def build_trotter_circuit(self, dt: float, n_steps: int, initial_state: Optional[np.ndarray] = None):
         """
         鈴木トロッター回路を構築

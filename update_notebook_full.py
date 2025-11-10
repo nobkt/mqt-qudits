@@ -336,6 +336,62 @@ def get_qubit_shot_based_cell():
     ]
 
 
+def get_qudit_shot_based_cell():
+    """Update Qudit simulation cell to use shot-based approach."""
+    return [
+        "# Quditシミュレータの実装（ショットベース）\n",
+        "\n",
+        "# MQT-Quditsの完全実装をインポート\n",
+        "import sys\n",
+        "sys.path.append('.')\n",
+        "\n",
+        "try:\n",
+        "    from mqt_qudits_four_molecule_sparse_implementation import (\n",
+        "        PhysicalParameters as MQTPhysicalParameters,\n",
+        "        SparseAwareMQTQuditTimeEvolution,\n",
+        "        SuzukiTrotterMQTQuditSimulator,\n",
+        "        index_to_config,\n",
+        "        config_to_index,\n",
+        "        config_to_state_name\n",
+        "    )\n",
+        "    mqt_available = True\n",
+        "    print(\"✓ MQT-Qudits完全実装モジュールを読み込みました\")\n",
+        "except ImportError as e:\n",
+        "    mqt_available = False\n",
+        "    print(f\"警告: MQT-Quditsモジュールのインポートに失敗しました: {e}\")\n",
+        "\n",
+        "if mqt_available:\n",
+        "    # MQT用のパラメータを準備（既存のparamsと一致させる）\n",
+        "    mqt_params = MQTPhysicalParameters()\n",
+        "    \n",
+        "    print(\"\\n\" + \"=\"*70)\n",
+        "    print(\"Quditベースシミュレーション準備（ショットベース）\")\n",
+        "    print(\"=\"*70)\n",
+        "    print(f\"分子数: {mqt_params.N_molecules}\")\n",
+        "    print(f\"必要Qutrit数: {mqt_params.N_molecules}\")\n",
+        "    print(f\"状態空間: 3^{mqt_params.N_molecules} = {3**mqt_params.N_molecules}次元\")\n",
+        "    print(f\"ショット数: 10000\")\n",
+        "    print(\"=\"*70)\n",
+        "    \n",
+        "    # シミュレータの初期化\n",
+        "    qudit_simulator = SuzukiTrotterMQTQuditSimulator(mqt_params)\n",
+        "    \n",
+        "    # シミュレーション実行（ショットベース）\n",
+        "    qudit_results = qudit_simulator.simulate_shot_based(\n",
+        "        T_total=params.T_total,\n",
+        "        N_steps=params.N_steps,\n",
+        "        initial_state_type=params.initial_state_type,\n",
+        "        track_dynamics=True,\n",
+        "        shots=10000\n",
+        "    )\n",
+        "    \n",
+        "    print(\"\\n✓ Quditシミュレーション完了\")\n",
+        "else:\n",
+        "    print(\"\\nMQT-Quditsが利用できないため、Quditシミュレーションをスキップします\")\n",
+        "    qudit_results = None\n"
+    ]
+
+
 def get_qudit_visualization_cell():
     """New cell to visualize Qudit circuit for 1 Trotter step."""
     return [
@@ -351,8 +407,6 @@ def get_qudit_visualization_cell():
         "    print(f\"\\n1トロッターステップの回路:\")\n",
         "    if 'gates_per_step' in qudit_results:\n",
         "        print(f\"  ゲート数: {qudit_results['gates_per_step']}\")\n",
-        "    if 'depth_per_step' in qudit_results:\n",
-        "        print(f\"  回路深さ: {qudit_results['depth_per_step']}\")\n",
         "    print()\n",
         "    \n",
         "    # 回路可視化ツールをインポート\n",
@@ -395,15 +449,21 @@ def main():
     with open(notebook_path, 'r', encoding='utf-8') as f:
         nb = json.load(f)
     
-    # 1. Update Qubit simulator cell (already done, but ensure it's current)
+    # 1. Update Qubit simulator cell (id: 5bf25d98)
     for cell in nb['cells']:
         if cell.get('id') == '5bf25d98' and cell.get('cell_type') == 'code':
             cell['source'] = get_qubit_shot_based_cell()
             print("✓ Updated Qubit simulator to use shot-based simulation")
             break
     
-    # 2. Insert Qudit visualization cell after Qudit results cell
-    # Find cell with id 'd25f7dff' and insert after it
+    # 2. Update Qudit simulator cell (id: 397deb45)
+    for cell in nb['cells']:
+        if cell.get('id') == '397deb45' and cell.get('cell_type') == 'code':
+            cell['source'] = get_qudit_shot_based_cell()
+            print("✓ Updated Qudit simulator to use shot-based simulation")
+            break
+    
+    # 3. Update/Insert Qudit visualization cell after id 'd25f7dff'
     for i, cell in enumerate(nb['cells']):
         if cell.get('id') == 'd25f7dff':
             # Check if next cell is already our visualization
@@ -447,8 +507,9 @@ def main():
     print("\nSummary of changes:")
     print("  1. Qubit simulation: Converted to shot-based using Qiskit Sampler")
     print("  2. Qubit visualization: Already present (1 Trotter step)")
-    print("  3. Qudit visualization: Added/updated (1 Trotter step)")
-    print("  4. No heuristics or fallback workarounds used")
+    print("  3. Qudit simulation: Converted to shot-based using statevector sampling")
+    print("  4. Qudit visualization: Added/updated (1 Trotter step)")
+    print("  5. No heuristics or fallback workarounds used")
     
     return 0
 

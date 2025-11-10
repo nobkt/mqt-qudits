@@ -477,18 +477,20 @@ class SparseAwareMQTQuditTimeEvolution:
     
     def add_H_TTA_evolution_gates(self, circuit, dt: float):
         """
-        H_TTAの時間発展ゲートを回路に追加（正確な実装版）
+        H_TTAの時間発展ゲートを回路に追加（IntegratedSparseCompilerV2使用版）
         
         構造: 3×3部分空間（|02⟩, |11⟩, |20⟩）
         
         H_TTAハミルトニアンの正確な時間発展演算子 U = exp(-i H_TTA dt / ℏ) を
-        CustomTwoゲートで実装します。
+        IntegratedSparseCompilerV2で効率的に基本ゲートに分解します。
         
         H_TTA = J * (|02⟩⟨11| + |11⟩⟨02| + |11⟩⟨20| + |20⟩⟨11|)
         
         このハミルトニアンは3つの状態を結合する:
         - |02⟩ ↔ |11⟩ (S0,S1) ↔ (T1,T1)
         - |11⟩ ↔ |20⟩ (T1,T1) ↔ (S1,S0)
+        
+        IntegratedSparseCompilerV2は疎構造を認識し、約6個の基本ゲートで実装します。
         """
         for pair_idx, (i, j) in enumerate(self.params.neighbors):
             J = self.params.J[pair_idx]
@@ -515,12 +517,110 @@ class SparseAwareMQTQuditTimeEvolution:
             # 時間発展演算子 U = exp(-i H_TTA dt / ℏ)
             U_TTA = self._matrix_exponential(-1j * H_TTA * dt / self.params.hbar)
             
-            # CustomTwoゲートとして回路に追加
-            circuit.cu_two([i, j], U_TTA)
+            # IntegratedSparseCompilerV2で基本ゲートに分解
+            result = self.gate_generator.compiler.compile(U_TTA)
+            
+            # ゲート列を回路に追加
+            qudit_indices = [i, j]
+            dimensions = [3, 3]
+            
+            for mqt_gate in result.gate_sequence.gates:
+                gate_type = mqt_gate.gate_type
+                params = mqt_gate.parameters
+                
+                if gate_type == 'VirtRz':
+                    # VirtRz: グローバルレベルをqudit+ローカルレベルに変換
+                    global_level = params['level']
+                    state = self.gate_generator._global_index_to_qudit_states(global_level, dimensions)
+                    
+                    # どのquditで非ゼロ状態か判定
+                    for qudit_idx, local_level in enumerate(state):
+                        if local_level != 0 or sum(state) == 0:
+                            target_qudit = qudit_indices[qudit_idx]
+                            circuit.virtrz(target_qudit, [local_level, params['phase']])
+                            break
+                
+                elif gate_type in ['R', 'Rz', 'Rh']:
+                    # R/Rz/Rh: 2つのグローバルレベルを変換
+                    global_level1 = params['level1']
+                    global_level2 = params['level2']
+                    
+                    state1 = self.gate_generator._global_index_to_qudit_states(global_level1, dimensions)
+                    state2 = self.gate_generator._global_index_to_qudit_states(global_level2, dimensions)
+                    
+                    # どのquditで状態が変化しているか判定
+                    diff_qudits = []
+                    for qudit_idx in range(len(dimensions)):
+                        if state1[qudit_idx] != state2[qudit_idx]:
+                            diff_qudits.append(qudit_idx)
+                    
+                    if len(diff_qudits) == 1:
+                        # 単一quditの回転
+                        qudit_idx = diff_qudits[0]
+                        target_qudit = qudit_indices[qudit_idx]
+                        local_level1 = state1[qudit_idx]
+                        local_level2 = state2[qudit_idx]
+                        
+                        if gate_type == 'R':
+                            circuit.r(target_qudit, [local_level1, local_level2, 
+                                                    params['theta'], params['phi']])
+                        elif gate_type == 'Rz':
+                            circuit.rz(target_qudit, [local_level1, local_level2, 
+                                                     params['phase']])
+                        elif gate_type == 'Rh':
+                            circuit.rh(target_qudit, [local_level1, local_level2, 
+                                                     params['theta']])
+                    elif len(diff_qudits) == 2:
+                        # 2-quditゲート: グローバルレベルでの回転を2-quditユニタリに変換
+                        # 9×9ユニタリを構築して該当する2準位に回転を適用
+                        U_gate = np.eye(9, dtype=complex)
+                        
+                        if gate_type == 'R':
+                            # R gate: e^{-i theta/2 (cos(phi) X + sin(phi) Y)}
+                            theta = params['theta']
+                            phi = params['phi']
+                            c = np.cos(theta / 2)
+                            s = np.sin(theta / 2)
+                            e_iphi = np.exp(1j * phi)
+                            e_minusiphi = np.exp(-1j * phi)
+                            
+                            U_2x2 = np.array([
+                                [c, -1j * s * e_minusiphi],
+                                [-1j * s * e_iphi, c]
+                            ], dtype=complex)
+                        elif gate_type == 'Rz':
+                            # Rz gate: diagonal phase rotation
+                            phase = params['phase']
+                            U_2x2 = np.array([
+                                [np.exp(-1j * phase / 2), 0],
+                                [0, np.exp(1j * phase / 2)]
+                            ], dtype=complex)
+                        elif gate_type == 'Rh':
+                            # Rh gate: Hadamard-like rotation
+                            theta = params['theta']
+                            c = np.cos(theta)
+                            s = np.sin(theta)
+                            U_2x2 = np.array([
+                                [c, s],
+                                [s, -c]
+                            ], dtype=complex) / np.sqrt(2)
+                        
+                        # 2×2ユニタリを9×9空間の該当する2準位に埋め込む
+                        U_gate[global_level1, global_level1] = U_2x2[0, 0]
+                        U_gate[global_level1, global_level2] = U_2x2[0, 1]
+                        U_gate[global_level2, global_level1] = U_2x2[1, 0]
+                        U_gate[global_level2, global_level2] = U_2x2[1, 1]
+                        
+                        # CustomTwoゲートとして追加
+                        circuit.cu_two(qudit_indices, U_gate)
+                
+                elif gate_type == 'CEx':
+                    # CEx: 制御Exchangeゲート
+                    circuit.cx(qudit_indices)
             
             # デバッグ情報（初回のみ）
             if pair_idx == 0:
-                print(f"H_TTA実装: CustomTwoゲート（正確な行列指数関数）")
+                print(f"H_TTA実装: IntegratedSparseCompilerV2（{len(result.gate_sequence.gates)}個の基本ゲート）")
     
     def _add_gates_to_circuit(self, circuit, gates: List[Dict]):
         """
@@ -575,10 +675,11 @@ class SparseAwareMQTQuditTimeEvolution:
         """
         CustomTwoゲートを基本ゲートに分解する
         
-        H_transferは基本ゲート（R, CEx, Rz, VirtRz）で直接実装されていますが、
-        H_TTAは正確なユニタリ演算を実現するためにCustomTwoゲートを使用します。
+        H_TTAの実装でIntegratedSparseCompilerV2が生成した2準位回転のCustomTwoゲートを
+        LogEntQRCEXPassで基本ゲートに分解します。
         
-        このメソッドはLogEntQRCEXPassを使用してCustomTwoゲートを基本ゲートに分解します。
+        これらのCustomTwoゲートは2準位のみに作用するため、LogEntQRCEXPassで
+        効率的に分解できます（元の9×9フル空間のものより遥かに少ないゲート数）。
         
         Args:
             circuit: MQT-Qudits QuantumCircuit
@@ -595,7 +696,7 @@ class SparseAwareMQTQuditTimeEvolution:
         
         if has_custom_two:
             # CustomTwoゲートを基本ゲートに分解
-            # H_TTAで使用されるCustomTwoゲートをLogEntQRCEXPassで分解
+            # IntegratedSparseCompilerV2で生成された2準位回転を分解
             from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
             backend = self.provider.get_backend("faketraps3six")
             compiler = LogEntQRCEXPass(backend)

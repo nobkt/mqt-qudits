@@ -1042,8 +1042,10 @@ class ExactDiagonalizationSolver:
                     new_config[mol_i] = 1
                     new_config[mol_j] = 0
                     new_idx = config_to_index(new_config)
-                    H[idx, new_idx] = V
-                    H[new_idx, idx] = V
+                    # Only set each matrix element once to avoid double-counting
+                    if idx < new_idx:
+                        H[idx, new_idx] = V
+                        H[new_idx, idx] = V
         
         # H_TTA: 三重項-三重項消滅項
         for pair_idx, (mol_i, mol_j) in enumerate(self.params.neighbors):
@@ -1056,16 +1058,20 @@ class ExactDiagonalizationSolver:
                     new_config[mol_i] = 1
                     new_config[mol_j] = 1
                     new_idx = config_to_index(new_config)
-                    H[idx, new_idx] = J
-                    H[new_idx, idx] = J
+                    # Only set each matrix element once to avoid double-counting
+                    if idx < new_idx:
+                        H[idx, new_idx] = J
+                        H[new_idx, idx] = J
                 # |11⟩ <-> |20⟩ 遷移
                 if config[mol_i] == 1 and config[mol_j] == 1:
                     new_config1 = config.copy()
                     new_config1[mol_i] = 2
                     new_config1[mol_j] = 0
                     new_idx1 = config_to_index(new_config1)
-                    H[idx, new_idx1] = J
-                    H[new_idx1, idx] = J
+                    # Only set each matrix element once to avoid double-counting
+                    if idx < new_idx1:
+                        H[idx, new_idx1] = J
+                        H[new_idx1, idx] = J
         
         self.H = H
         return H

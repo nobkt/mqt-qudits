@@ -101,13 +101,14 @@ The per-neighbor-pair gate application introduces additional Trotter error becau
 ## Next Steps
 1. ✅ **Decision Made**: Implement Option 1 (Modify Classical Simulator)
 2. ✅ Implement chosen solution
-3. ⏳ Run full 3-way validation
-4. ⏳ Verify all methods match within acceptable tolerance
-5. ⏳ Run CodeQL security check
-6. ⏳ Update documentation
-7. ⏳ Final review
+3. ✅ Fix Qudit simulation population bug (CustomTwo gate handler)
+4. ⏳ Run full 3-way validation
+5. ⏳ Verify all methods match within acceptable tolerance
+6. ⏳ Run CodeQL security check
+7. ⏳ Update notebook documentation
+8. ⏳ Final review
 
-## Implementation Update (Current Session)
+## Implementation Update (Previous Session)
 
 ### Changes Made
 1. **Modified ClassicalSuzukiTrotterSimulator** to use per-pair Trotter decomposition:
@@ -128,11 +129,50 @@ The per-neighbor-pair gate application introduces additional Trotter error becau
 ### Files Modified
 - `tutorials/quantum_dynamics_complete_comparison.ipynb` - Updated ClassicalSuzukiTrotterSimulator
 
+## Implementation Update (Current Session - PR#71 Continuation)
+
+### Critical Bug Fixed: Qudit Simulation Populations Not Changing
+
+**Problem**: Qudit-based quantum simulation showed populations frozen at initial values, indicating time evolution was not executing.
+
+**Root Cause**: `_add_gates_to_circuit()` method in `mqt_qudits_four_molecule_sparse_implementation.py` did not handle 'CustomTwo' gate type.
+
+**Details**:
+- H_TTA creates multi-qudit subspace operations for {|02⟩, |11⟩, |20⟩}
+- These states span both qudits, so `compile_unitary_to_gates` creates CustomTwo gates
+- `_add_gates_to_circuit` only handled VirtRz, R, CEx, Rz, Rh gates
+- CustomTwo gates were **silently ignored** → no time evolution occurred!
+
+**Fix Applied**:
+1. Added CustomTwo gate handling in `_add_gates_to_circuit`:
+   ```python
+   elif gate_type == 'CustomTwo':
+       unitary = params['unitary']
+       circuit.cu_two(qudits, unitary)
+   ```
+
+2. Updated misleading warning in `decompose_custom_two_gates`:
+   - Removed "unexpected behavior" warning
+   - Documented that CustomTwo gates are expected for multi-qudit subspaces
+   - LogEntQRCEXPass decomposition is mathematically exact
+
+**Verification**:
+- Before fix: N_T1=2.0, N_S1=0.0 (frozen at all timesteps)
+- After fix: N_T1: 2.0→1.989, N_S1: 0.0→0.012 (correctly evolving)
+- All 22 exact Hamiltonian tests pass ✓
+- All 7 sparse implementation tests pass ✓
+
+**Files Modified**:
+- `tutorials/mqt_qudits_four_molecule_sparse_implementation.py`
+  - Fixed `_add_gates_to_circuit` method
+  - Updated `decompose_custom_two_gates` comments
+
 ## Success Criteria Status
 - ✅ No approximations in individual Hamiltonians
 - ✅ Exact unitaries via scipy.linalg.expm
-- ✅ All unit tests pass (22/22)
+- ✅ All unit tests pass (22/22 exact Hamiltonians + 7/7 sparse implementation)
 - ✅ Trotter decomposition mismatch resolved
+- ✅ Qudit simulation population bug fixed
 - ⏳ 3-way validation matching (ready to run complete notebook)
 - ⏳ CodeQL security check (pending)
-- ⏳ Documentation updates (pending)
+- ⏳ Notebook documentation updates (pending)

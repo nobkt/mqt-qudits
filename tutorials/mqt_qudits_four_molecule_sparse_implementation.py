@@ -578,11 +578,12 @@ class SparseAwareMQTQuditTimeEvolution:
                             for gate in circuit.instructions)
         
         if has_custom_two:
-            # もしCustomTwoゲートが存在する場合は警告
-            print("警告: CustomTwoゲートが見つかりました。")
-            print("これは予期しない動作です。H_transferとH_TTAは直接実装されているべきです。")
+            # CustomTwoゲートが存在する場合（H_TTAなど）
+            # H_TTAの3×3部分空間{|02⟩, |11⟩, |20⟩}は両quditにまたがるため、
+            # CustomTwoゲートとして実装され、LogEntQRCEXPassで分解される
+            # これは数学的に厳密な実装である
             
-            # フォールバック: LogEntQRCEXPassを使用
+            # LogEntQRCEXPassを使用して分解
             from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
             backend = self.provider.get_backend("faketraps3six")
             compiler = LogEntQRCEXPass(backend)

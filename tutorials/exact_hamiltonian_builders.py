@@ -49,9 +49,12 @@ def build_H_TTA_matrix(J: float, dim: int = 3) -> np.ndarray:
     Build the exact H_TTA Hamiltonian matrix for a pair of qudits.
     
     For two d-level systems (default d=3 for qutrits):
-    H_TTA = J (|02⟩⟨11| + |11⟩⟨02| + |20⟩⟨11| + |11⟩⟨20|)
+    H_TTA = J (|02⟩⟨11| + |11⟩⟨02|)
     
-    This operates only on the 3×3 subspace {|02⟩, |11⟩, |20⟩}.
+    This couples |S0⟩_i|S1⟩_j ↔ |T1⟩_i|T1⟩_j which corresponds to
+    the TTA process: |T1⟩_i|T1⟩_j → |S0⟩_i|S1⟩_j (and reverse).
+    
+    This operates only on the 2×2 subspace {|02⟩, |11⟩}.
     
     Args:
         J: TTA coupling strength (eV)
@@ -65,15 +68,15 @@ def build_H_TTA_matrix(J: float, dim: int = 3) -> np.ndarray:
     
     # State indices in |ij⟩ notation (i,j ∈ {0,1,2} for qutrits)
     # Index = i*dim + j
+    # |S0⟩_i|S1⟩_j = |0⟩_i|2⟩_j = |02⟩
     idx_02 = 0 * dim + 2  # = 2 for dim=3
+    # |T1⟩_i|T1⟩_j = |1⟩_i|1⟩_j = |11⟩
     idx_11 = 1 * dim + 1  # = 4 for dim=3
-    idx_20 = 2 * dim + 0  # = 6 for dim=3
     
-    # H_TTA = J(|02⟩⟨11| + |11⟩⟨02| + |20⟩⟨11| + |11⟩⟨20|)
+    # H_TTA = J(|02⟩⟨11| + |11⟩⟨02|)
+    # This implements: J(|S0⟩_i|S1⟩_j⟨T1|_i⟨T1|_j + h.c.)
     H[idx_02, idx_11] = J
     H[idx_11, idx_02] = J
-    H[idx_20, idx_11] = J
-    H[idx_11, idx_20] = J
     
     return H
 

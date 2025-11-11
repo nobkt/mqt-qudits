@@ -76,10 +76,8 @@ def build_H_TTA_qubit_unitary(J: float, dt: float, hbar: float = 0.6582119569) -
     - |01⟩_i|01⟩_j ↔ |00⟩_i|10⟩_j
     - |0101⟩ ↔ |0010⟩
     
-    And symmetrically:
-    - |T1⟩_i|T1⟩_j ↔ |S1⟩_i|S0⟩_j
-    - |01⟩_i|01⟩_j ↔ |10⟩_i|00⟩_j
-    - |0101⟩ ↔ |1000⟩
+    This implements the TTA process for ordered pair (i,j):
+    J(|S0⟩_i|S1⟩_j⟨T1|_i⟨T1|_j + h.c.)
     
     Args:
         J: TTA coupling (eV)
@@ -99,15 +97,10 @@ def build_H_TTA_qubit_unitary(J: float, dt: float, hbar: float = 0.6582119569) -
     # Little-endian: q3=0, q2=0, q1=1, q0=0
     idx_00_10 = 0b0010  # = 2
     
-    # |S1⟩_i|S0⟩_j = |10⟩_i|00⟩_j = |1000⟩
-    # Little-endian: q3=1, q2=0, q1=0, q0=0
-    idx_10_00 = 0b1000  # = 8
-    
-    # H_TTA = J(|0010⟩⟨0101| + |0101⟩⟨0010| + |1000⟩⟨0101| + |0101⟩⟨1000|)
+    # H_TTA = J(|0010⟩⟨0101| + |0101⟩⟨0010|)
+    # This implements: J(|S0⟩_i|S1⟩_j⟨T1|_i⟨T1|_j + h.c.)
     H[idx_00_10, idx_01_01] = J
     H[idx_01_01, idx_00_10] = J
-    H[idx_10_00, idx_01_01] = J
-    H[idx_01_01, idx_10_00] = J
     
     # Time evolution
     U = scipy.linalg.expm(-1j * H * dt / hbar)

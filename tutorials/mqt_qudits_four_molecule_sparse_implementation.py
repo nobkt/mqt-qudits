@@ -828,11 +828,11 @@ class SuzukiTrotterMQTQuditSimulator:
         """
         完全なシミュレーションを実行
         
-        実装方針:
-        1. 各時間ステップごとに、初期状態+そこまでの時間発展回路を構築
-        2. MQT-Qudits TNSimバックエンドで回路を実行
-        3. 結果の状態ベクトルに放射減衰を適用
-        4. 個体数を計算
+        実装方針（修正版 - O(N)複雑度）:
+        1. 単一トロッターステップ回路を一度だけ構築
+        2. その回路のユニタリ行列を取得
+        3. 初期状態ベクトルに対して反復的にユニタリを適用
+        4. 各ステップで放射減衰を適用し、個体数を計算
         
         Args:
             T_total: 総時間 (fs)
@@ -852,6 +852,28 @@ class SuzukiTrotterMQTQuditSimulator:
         print(f"Initial state: {initial_state_type}")
         print()
         
+        # 単一トロッターステップ回路を構築（一度だけ！）
+        print("Building single Trotter step circuit...")
+        from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
+        
+        step_circuit = QuantumCircuit()
+        reg = QuantumRegister("molecules", self.N, [3] * self.N)
+        step_circuit.append(reg)
+        self.add_single_trotter_step(step_circuit, dt)
+        
+        # CustomTwoゲートを基本ゲートに分解
+        step_circuit = self.time_evol.decompose_custom_two_gates(step_circuit)
+        
+        # 単一ステップのユニタリ行列を取得
+        print("Extracting unitary matrix from circuit...")
+        job = self.backend.run(step_circuit)
+        result = job.result()
+        # ユニタリ行列を取得（回路の時間発展演算子）
+        step_unitary = result.get_unitary().reshape(self.dim, self.dim)
+        
+        print(f"Trotter step circuit: {len(step_circuit.instructions)} gates")
+        print()
+        
         # 結果の記録
         times = [0.0]
         populations_history = []
@@ -867,27 +889,16 @@ class SuzukiTrotterMQTQuditSimulator:
         if states_history is not None:
             states_history.append(current_state.copy())
         
-        # 時間発展ループ
+        # 時間発展ループ（O(N)複雑度）
         start_time = time.time()
         
         for step in range(N_steps):
-            # 初期状態 + (step+1)ステップ分の回路を構築
-            circuit = self.build_initial_state_circuit(initial_state_type)
-            
-            for s in range(step + 1):
-                self.add_single_trotter_step(circuit, dt)
-            
-            # CustomTwoゲートを基本ゲートに分解（互換性のため）
-            circuit = self.time_evol.decompose_custom_two_gates(circuit)
-            
-            # 回路を実行
-            job = self.backend.run(circuit)
-            result = job.result()
-            state_after_unitary = result.get_state_vector().flatten()
+            # 単一トロッターステップのユニタリを現在の状態に適用
+            current_state = step_unitary @ current_state
             
             # 放射減衰を適用
             current_state = self.apply_radiative_decay_to_statevector(
-                state_after_unitary, dt * (step + 1)
+                current_state, dt * (step + 1)
             )
             
             if track_dynamics:
@@ -954,12 +965,12 @@ class SuzukiTrotterMQTQuditSimulator:
         """
         完全なシミュレーションを実行（ショットベース）
         
-        実装方針:
-        1. 各時間ステップごとに、初期状態+そこまでの時間発展回路を構築
-        2. MQT-Qudits TNSimバックエンドで回路を実行して状態ベクトルを取得
-        3. 状態ベクトルから確率分布を計算
-        4. 確率分布から指定ショット数だけサンプリング
-        5. サンプルから個体数を計算
+        実装方針（修正版 - O(N)複雑度）:
+        1. 単一トロッターステップ回路を一度だけ構築
+        2. その回路のユニタリ行列を取得
+        3. 初期状態ベクトルに対して反復的にユニタリを適用
+        4. 各ステップで放射減衰を適用
+        5. 状態ベクトルからサンプリングして個体数を計算
         
         Args:
             T_total: 総時間 (fs)
@@ -981,6 +992,28 @@ class SuzukiTrotterMQTQuditSimulator:
         print(f"Shots per time step: {shots}")
         print()
         
+        # 単一トロッターステップ回路を構築（一度だけ！）
+        print("Building single Trotter step circuit...")
+        from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
+        
+        step_circuit = QuantumCircuit()
+        reg = QuantumRegister("molecules", self.N, [3] * self.N)
+        step_circuit.append(reg)
+        self.add_single_trotter_step(step_circuit, dt)
+        
+        # CustomTwoゲートを基本ゲートに分解
+        step_circuit_decomposed = self.time_evol.decompose_custom_two_gates(step_circuit)
+        
+        # 単一ステップのユニタリ行列を取得
+        print("Extracting unitary matrix from circuit...")
+        job = self.backend.run(step_circuit_decomposed)
+        result = job.result()
+        # ユニタリ行列を取得（回路の時間発展演算子）
+        step_unitary = result.get_unitary().reshape(self.dim, self.dim)
+        
+        print(f"Trotter step circuit: {len(step_circuit_decomposed.instructions)} gates")
+        print()
+        
         # 結果の記録
         times = [0.0]
         populations_history = []
@@ -996,37 +1029,16 @@ class SuzukiTrotterMQTQuditSimulator:
         samples_0 = np.random.choice(self.dim, size=shots, p=probabilities)
         populations_history.append(self.calculate_populations_from_samples(samples_0, shots))
         
-        # 1トロッターステップの回路を保存（可視化用）
-        step_circuit_temp = self.build_initial_state_circuit('all_triplet')  # テンプレート
-        # 空の回路を作成
-        from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
-        step_circuit = QuantumCircuit()
-        reg = QuantumRegister("molecules", self.N, [3] * self.N)
-        step_circuit.append(reg)
-        self.add_single_trotter_step(step_circuit, dt)
-        step_circuit_decomposed = self.time_evol.decompose_custom_two_gates(step_circuit)
-        
-        # 時間発展ループ
+        # 時間発展ループ（O(N)複雑度）
         start_time = time.time()
         
         for step in range(N_steps):
-            # 初期状態 + (step+1)ステップ分の回路を構築
-            circuit = self.build_initial_state_circuit(initial_state_type)
-            
-            for s in range(step + 1):
-                self.add_single_trotter_step(circuit, dt)
-            
-            # CustomTwoゲートを基本ゲートに分解
-            circuit = self.time_evol.decompose_custom_two_gates(circuit)
-            
-            # 回路を実行して状態ベクトルを取得
-            job = self.backend.run(circuit)
-            result = job.result()
-            state_after_unitary = result.get_state_vector().flatten()
+            # 単一トロッターステップのユニタリを現在の状態に適用
+            current_state = step_unitary @ current_state
             
             # 放射減衰を適用
             current_state = self.apply_radiative_decay_to_statevector(
-                state_after_unitary, dt * (step + 1)
+                current_state, dt * (step + 1)
             )
             
             # 状態ベクトルからサンプリング
@@ -1050,8 +1062,8 @@ class SuzukiTrotterMQTQuditSimulator:
         print(f"\nShot-based simulation completed in {elapsed_time:.2f} seconds")
         
         # ゲート統計を計算
-        total_gates = len(circuit.instructions)
-        gates_per_step = len(step_circuit.instructions)
+        gates_per_step = len(step_circuit_decomposed.instructions)
+        total_gates = gates_per_step * N_steps  # 総ゲート数（概念的な値）
         
         return {
             'times': np.array(times),

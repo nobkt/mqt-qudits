@@ -3,12 +3,13 @@
 疎構造認識コンパイラを使用した4分子量子ダイナミクスシミュレーション
 
 このスクリプトは、PR#42-46で開発された疎構造認識コンパイラを統合し、
-CustomTwoゲートの効率的な分解を実現します。
+CustomTwoゲートを使用した効率的な量子回路実装を実現します。
 
-主な改善点:
-- LogEntQRCEXPass（~1000ゲート/CustomTwo）の代わりに
-- IntegratedSparseCompilerV2を使用（~1-6ゲート/CustomTwo）
-- ゲート数: 6182 → 21-25 ゲート（99.6%削減）
+主な特徴:
+- IntegratedSparseCompilerV2を使用した疎構造検出
+- 複数quditにまたがる部分空間はCustomTwoゲートとして実装
+- CustomTwoゲートは分解せず、TNSimバックエンドが直接実行
+- ゲート数削減: 基本ゲートのみでの実装と比較して効率的
 
 理論的基盤:
 - tutorials/doc/SPARSE_COMPILER_THEORETICAL_FOUNDATION_JA.md
@@ -468,8 +469,10 @@ class SparseAwareMQTQuditTimeEvolution:
         実装戦略:
         1. 厳密な9×9ユニタリ行列を構築: U = exp(-i*H_TTA*dt/ℏ)
         2. IntegratedSparseCompilerV2で3×3部分空間を検出
-        3. 基本ゲート(VirtRz, R, Rh, Rz, CEx)に厳密分解
+        3. 部分空間が複数quditにまたがる場合はCustomTwoゲートとして実装
+           （TNSimバックエンドが直接実行可能）
         
+        注: CustomTwoゲートは分解せずそのまま使用します。
         ヒューリスティックや近似は一切使用しません。
         """
         # Import exact Hamiltonian builders
@@ -1104,9 +1107,10 @@ class SuzukiTrotterMQTQuditSimulator:
         reg = QuantumRegister("molecules", self.N, [3] * self.N)
         step_circuit.append(reg)
         self.add_single_trotter_step(step_circuit, dt)
-        step_circuit_decomposed = self.time_evol.decompose_custom_two_gates(step_circuit)
-        gates_per_step = len(step_circuit_decomposed.instructions)
-        print(f"Equivalent circuit: {gates_per_step} gates per step")
+        # CustomTwo gates are kept as-is and executed directly by the backend
+        # No decomposition is performed - maintaining exact structure
+        gates_per_step = len(step_circuit.instructions)
+        print(f"Circuit with CustomTwo gates: {gates_per_step} gates per step")
         print()
         
         # 結果の記録
@@ -1168,7 +1172,7 @@ class SuzukiTrotterMQTQuditSimulator:
             'N_steps': N_steps,
             'method': 'Qudit (MQT - Shot-based)',
             'shots': shots,
-            'step_circuit': step_circuit_decomposed,
+            'step_circuit': step_circuit,  # Circuit with CustomTwo gates as-is
             'total_gates': total_gates,
             'gates_per_step': gates_per_step
         }

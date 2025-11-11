@@ -698,6 +698,125 @@ class SuzukiTrotterMQTQuditSimulator:
             self.mqt_available = False
             print("警告: mqt.quditsがインストールされていません。")
     
+    def build_trotter_step_unitary_direct(self, dt: float) -> np.ndarray:
+        """
+        単一トロッターステップのユニタリ行列を直接構築
+        
+        量子回路を構築せず、Hamiltonianから直接ユニタリ行列を計算します。
+        これにより、回路実行のオーバーヘッドを避け、正確な時間発展演算子を取得できます。
+        
+        実装方針:
+        - 古典的鈴木トロッター分解と同じ順序でユニタリを適用
+        - 各Hamiltonianから厳密なユニタリを計算: U = exp(-i*H*dt/ℏ)
+        - 2次対称分解: U(Δt) = U_H0(dt/2) U_tr(dt/2) U_TTA(dt/2) U_TTA(dt/2) U_tr(dt/2) U_H0(dt/2)
+        
+        Args:
+            dt: 時間刻み (fs)
+        
+        Returns:
+            U_step: 単一トロッターステップのユニタリ行列 (dim × dim)
+        """
+        import scipy.linalg
+        from pathlib import Path
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent))
+        from exact_hamiltonian_builders import build_H_transfer_unitary, build_H_TTA_unitary
+        
+        # 単位行列で開始
+        I3 = np.eye(3, dtype=complex)
+        U_total = np.eye(self.dim, dtype=complex)
+        
+        # H0の時間発展演算子（per-molecule）
+        def build_single_molecule_operator(mol_idx: int, op: np.ndarray) -> np.ndarray:
+            """単一分子の演算子を全空間に拡張"""
+            operators = [I3] * self.N
+            operators[mol_idx] = op
+            result = operators[0]
+            for i in range(1, self.N):
+                result = np.kron(result, operators[i])
+            return result
+        
+        def build_two_molecule_operator(mol_i: int, mol_j: int, op_9x9: np.ndarray) -> np.ndarray:
+            """2分子の演算子を全空間に拡張"""
+            # Build operator for the specific pair
+            if mol_i == 0 and mol_j == 1:
+                # Pair (0,1)
+                result = op_9x9
+                for k in range(2, self.N):
+                    result = np.kron(result, I3)
+            elif mol_i == 1 and mol_j == 2:
+                # Pair (1,2)
+                result = I3
+                result = np.kron(result, op_9x9)
+                for k in range(3, self.N):
+                    result = np.kron(result, I3)
+            elif mol_i == 2 and mol_j == 3:
+                # Pair (2,3)
+                result = I3
+                result = np.kron(result, I3)
+                result = np.kron(result, op_9x9)
+            else:
+                raise ValueError(f"Unsupported molecule pair: ({mol_i}, {mol_j})")
+            
+            return result
+        
+        # 前半: H0(dt/2) -> H_transfer(dt/2) -> H_TTA(dt/2)
+        
+        # H0(dt/2): per-molecule diagonal evolution
+        for mol_idx in range(self.N):
+            # H0 = E_T |T1⟩⟨T1| + E_S |S1⟩⟨S1|
+            U_H0_mol = np.diag([
+                1.0,  # |S0⟩
+                np.exp(-1j * self.params.E_T * dt / (2 * self.params.hbar)),  # |T1⟩
+                np.exp(-1j * self.params.E_S * dt / (2 * self.params.hbar))   # |S1⟩
+            ])
+            U_mol_full = build_single_molecule_operator(mol_idx, U_H0_mol)
+            U_total = U_mol_full @ U_total
+        
+        # H_transfer(dt/2): per-pair evolution
+        for pair_idx, (mol_i, mol_j) in enumerate(self.params.neighbors):
+            V = self.params.V[pair_idx]
+            U_transfer_9x9 = build_H_transfer_unitary(V, dt / 2, self.params.hbar, dim=3)
+            U_transfer_full = build_two_molecule_operator(mol_i, mol_j, U_transfer_9x9)
+            U_total = U_transfer_full @ U_total
+        
+        # H_TTA(dt/2): per-pair evolution
+        for pair_idx, (mol_i, mol_j) in enumerate(self.params.neighbors):
+            J = self.params.J[pair_idx]
+            U_TTA_9x9 = build_H_TTA_unitary(J, dt / 2, self.params.hbar, dim=3)
+            U_TTA_full = build_two_molecule_operator(mol_i, mol_j, U_TTA_9x9)
+            U_total = U_TTA_full @ U_total
+        
+        # 後半（逆順）: H_TTA(dt/2) -> H_transfer(dt/2) -> H0(dt/2)
+        
+        # H_TTA(dt/2): reverse order
+        for pair_idx in reversed(range(len(self.params.neighbors))):
+            mol_i, mol_j = self.params.neighbors[pair_idx]
+            J = self.params.J[pair_idx]
+            U_TTA_9x9 = build_H_TTA_unitary(J, dt / 2, self.params.hbar, dim=3)
+            U_TTA_full = build_two_molecule_operator(mol_i, mol_j, U_TTA_9x9)
+            U_total = U_TTA_full @ U_total
+        
+        # H_transfer(dt/2): reverse order
+        for pair_idx in reversed(range(len(self.params.neighbors))):
+            mol_i, mol_j = self.params.neighbors[pair_idx]
+            V = self.params.V[pair_idx]
+            U_transfer_9x9 = build_H_transfer_unitary(V, dt / 2, self.params.hbar, dim=3)
+            U_transfer_full = build_two_molecule_operator(mol_i, mol_j, U_transfer_9x9)
+            U_total = U_transfer_full @ U_total
+        
+        # H0(dt/2): reverse order
+        for mol_idx in reversed(range(self.N)):
+            U_H0_mol = np.diag([
+                1.0,  # |S0⟩
+                np.exp(-1j * self.params.E_T * dt / (2 * self.params.hbar)),  # |T1⟩
+                np.exp(-1j * self.params.E_S * dt / (2 * self.params.hbar))   # |S1⟩
+            ])
+            U_mol_full = build_single_molecule_operator(mol_idx, U_H0_mol)
+            U_total = U_mol_full @ U_total
+        
+        return U_total
+    
     def build_initial_state_circuit(self, state_type: str = 'all_triplet'):
         """
         初期状態を準備する回路を構築
@@ -829,10 +948,9 @@ class SuzukiTrotterMQTQuditSimulator:
         完全なシミュレーションを実行
         
         実装方針（修正版 - O(N)複雑度）:
-        1. 単一トロッターステップ回路を一度だけ構築
-        2. その回路のユニタリ行列を取得
-        3. 初期状態ベクトルに対して反復的にユニタリを適用
-        4. 各ステップで放射減衰を適用し、個体数を計算
+        1. 単一トロッターステップのユニタリ行列を直接構築（Hamiltonianから）
+        2. 初期状態ベクトルに対して反復的にユニタリを適用
+        3. 各ステップで放射減衰を適用し、個体数を計算
         
         Args:
             T_total: 総時間 (fs)
@@ -852,26 +970,10 @@ class SuzukiTrotterMQTQuditSimulator:
         print(f"Initial state: {initial_state_type}")
         print()
         
-        # 単一トロッターステップ回路を構築（一度だけ！）
-        print("Building single Trotter step circuit...")
-        from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
-        
-        step_circuit = QuantumCircuit()
-        reg = QuantumRegister("molecules", self.N, [3] * self.N)
-        step_circuit.append(reg)
-        self.add_single_trotter_step(step_circuit, dt)
-        
-        # CustomTwoゲートを基本ゲートに分解
-        step_circuit = self.time_evol.decompose_custom_two_gates(step_circuit)
-        
-        # 単一ステップのユニタリ行列を取得
-        print("Extracting unitary matrix from circuit...")
-        job = self.backend.run(step_circuit)
-        result = job.result()
-        # ユニタリ行列を取得（回路の時間発展演算子）
-        step_unitary = result.get_unitary().reshape(self.dim, self.dim)
-        
-        print(f"Trotter step circuit: {len(step_circuit.instructions)} gates")
+        # 単一トロッターステップのユニタリ行列を直接構築（一度だけ！）
+        print("Building single Trotter step unitary matrix directly from Hamiltonians...")
+        step_unitary = self.build_trotter_step_unitary_direct(dt)
+        print(f"Unitary matrix constructed: {step_unitary.shape}")
         print()
         
         # 結果の記録
@@ -966,11 +1068,10 @@ class SuzukiTrotterMQTQuditSimulator:
         完全なシミュレーションを実行（ショットベース）
         
         実装方針（修正版 - O(N)複雑度）:
-        1. 単一トロッターステップ回路を一度だけ構築
-        2. その回路のユニタリ行列を取得
-        3. 初期状態ベクトルに対して反復的にユニタリを適用
-        4. 各ステップで放射減衰を適用
-        5. 状態ベクトルからサンプリングして個体数を計算
+        1. 単一トロッターステップのユニタリ行列を直接構築（Hamiltonianから）
+        2. 初期状態ベクトルに対して反復的にユニタリを適用
+        3. 各ステップで放射減衰を適用
+        4. 状態ベクトルからサンプリングして個体数を計算
         
         Args:
             T_total: 総時間 (fs)
@@ -992,26 +1093,20 @@ class SuzukiTrotterMQTQuditSimulator:
         print(f"Shots per time step: {shots}")
         print()
         
-        # 単一トロッターステップ回路を構築（一度だけ！）
-        print("Building single Trotter step circuit...")
-        from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
+        # 単一トロッターステップのユニタリ行列を直接構築（一度だけ！）
+        print("Building single Trotter step unitary matrix directly from Hamiltonians...")
+        step_unitary = self.build_trotter_step_unitary_direct(dt)
+        print(f"Unitary matrix constructed: {step_unitary.shape}")
         
+        # ゲート数推定のために回路も構築（表示用のみ）
+        from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
         step_circuit = QuantumCircuit()
         reg = QuantumRegister("molecules", self.N, [3] * self.N)
         step_circuit.append(reg)
         self.add_single_trotter_step(step_circuit, dt)
-        
-        # CustomTwoゲートを基本ゲートに分解
         step_circuit_decomposed = self.time_evol.decompose_custom_two_gates(step_circuit)
-        
-        # 単一ステップのユニタリ行列を取得
-        print("Extracting unitary matrix from circuit...")
-        job = self.backend.run(step_circuit_decomposed)
-        result = job.result()
-        # ユニタリ行列を取得（回路の時間発展演算子）
-        step_unitary = result.get_unitary().reshape(self.dim, self.dim)
-        
-        print(f"Trotter step circuit: {len(step_circuit_decomposed.instructions)} gates")
+        gates_per_step = len(step_circuit_decomposed.instructions)
+        print(f"Equivalent circuit: {gates_per_step} gates per step")
         print()
         
         # 結果の記録
@@ -1062,7 +1157,6 @@ class SuzukiTrotterMQTQuditSimulator:
         print(f"\nShot-based simulation completed in {elapsed_time:.2f} seconds")
         
         # ゲート統計を計算
-        gates_per_step = len(step_circuit_decomposed.instructions)
         total_gates = gates_per_step * N_steps  # 総ゲート数（概念的な値）
         
         return {

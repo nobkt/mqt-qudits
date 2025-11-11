@@ -339,6 +339,7 @@ class ExactQubitMolecularDynamicsSimulator:
             'total_depth': total_depth,
             'gates_per_step': len(step_circuit.data),
             'depth_per_step': step_circuit.depth(),
+            'step_circuit': step_circuit,
             'method': 'Qubit (Exact)',
             'shots': shots
         }

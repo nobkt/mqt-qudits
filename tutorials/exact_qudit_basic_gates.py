@@ -48,20 +48,20 @@ def apply_H_transfer_basic_gates(circuit, qudit_i: int, qudit_j: int,
     theta = V * dt / hbar
     
     # Phase adjustment (virtual gates to realize -i factor)
-    circuit.virtrz(qudit_i, 1, -np.pi/2)      # |T_1⟩ に -π/2 位相
-    circuit.virtrz(qudit_j, 0, -np.pi/2)      # |S_0⟩ に -π/2 位相
+    circuit.virtrz(qudit_i, [1, -np.pi/2])      # |T_1⟩ に -π/2 位相
+    circuit.virtrz(qudit_j, [0, -np.pi/2])      # |S_0⟩ に -π/2 位相
     
     # Main rotation (CEx gates)
-    # CEx(control, target, control_level, target_level, angle)
+    # cx([control, target], [level_a, level_b, control_level, angle])
     # When control qudit is in |0⟩ (S0), rotate target qudit levels 0-1 (S0-T1)
-    circuit.cex(qudit_i, qudit_j, 0, 0, theta)
+    circuit.cx([qudit_i, qudit_j], [0, 1, 0, theta])
     
     # Reverse control (for symmetry: |10⟩ ↔ |01⟩)
-    circuit.cex(qudit_j, qudit_i, 0, 0, theta)
+    circuit.cx([qudit_j, qudit_i], [0, 1, 0, theta])
     
     # Phase correction (inverse of initial phase adjustment)
-    circuit.virtrz(qudit_i, 1, np.pi/2)
-    circuit.virtrz(qudit_j, 0, np.pi/2)
+    circuit.virtrz(qudit_i, [1, np.pi/2])
+    circuit.virtrz(qudit_j, [0, np.pi/2])
 
 
 def apply_H_TTA_basic_gates(circuit, qudit_i: int, qudit_j: int,
@@ -137,27 +137,27 @@ def apply_H_TTA_basic_gates(circuit, qudit_i: int, qudit_j: int,
     # Apply decomposition in reverse order (gates are applied right-to-left)
     
     # Diagonal phases
-    circuit.virtrz(qudit_i, 0, phi_0)
-    circuit.virtrz(qudit_i, 1, phi_1)
-    circuit.virtrz(qudit_i, 2, phi_2)
-    circuit.virtrz(qudit_j, 0, phi_0)
-    circuit.virtrz(qudit_j, 1, phi_1)
-    circuit.virtrz(qudit_j, 2, phi_2)
+    circuit.virtrz(qudit_i, [0, phi_0])
+    circuit.virtrz(qudit_i, [1, phi_1])
+    circuit.virtrz(qudit_i, [2, phi_2])
+    circuit.virtrz(qudit_j, [0, phi_0])
+    circuit.virtrz(qudit_j, [1, phi_1])
+    circuit.virtrz(qudit_j, [2, phi_2])
     
     # Givens rotations (implementing the orthogonal part of QR decomposition)
     # These rotations are applied to both qudits to realize the 2-qudit unitary
     
     # G_01: Rotation between |0⟩ and |1⟩ (levels 0-1)
-    circuit.r(qudit_i, theta_1, 0)
-    circuit.r(qudit_j, theta_1, 0)
+    circuit.r(qudit_i, [0, 1, theta_1, 0.0])
+    circuit.r(qudit_j, [0, 1, theta_1, 0.0])
     
     # G_12: Rotation between |1⟩ and |2⟩ (levels 1-2)
     # This requires a controlled rotation since it involves both qudits
-    circuit.cex(qudit_i, qudit_j, 1, 1, theta_2)
+    circuit.cx([qudit_i, qudit_j], [1, 2, 1, theta_2])
     
     # G_02: Rotation between |0⟩ and |2⟩ (controlled by the other qudit)
-    circuit.cex(qudit_j, qudit_i, 2, 0, theta_3)
-    circuit.cex(qudit_i, qudit_j, 2, 0, theta_3)
+    circuit.cx([qudit_j, qudit_i], [0, 2, 2, theta_3])
+    circuit.cx([qudit_i, qudit_j], [0, 2, 2, theta_3])
 
 
 def verify_H_transfer_decomposition(V: float, dt: float, hbar: float,

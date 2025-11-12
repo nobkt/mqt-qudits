@@ -56,7 +56,12 @@ class Gate(Instruction):
         self._label = label
         self._controls_data: ControlData | None = None
         if control_set:
-            self.control(**vars(control_set))
+            # Handle ControlData unpacking - compatible with both regular and slotted dataclasses
+            if hasattr(control_set, '__dict__'):
+                self.control(**vars(control_set))
+            else:
+                # Fallback for slotted dataclasses or direct attribute access
+                self.control(indices=control_set.indices, ctrl_states=control_set.ctrl_states)
 
         self.is_long_range = self.check_long_range()
         # inheritable parameters

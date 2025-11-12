@@ -209,13 +209,30 @@ def test_basic_gate_decomposition():
     apply_H_transfer_basic_gates(qc_test, 0, 1, V, dt, hbar)
     op_test = Operator(qc_test)
     
-    # Compare matrices
-    matrix_error = np.linalg.norm(op_ref.data - op_test.data, ord='fro')
+    # Compare matrices (accounting for possible global phase difference)
+    # Global phase doesn't affect physical observables
     fidelity = np.abs(np.trace(op_ref.data.conj().T @ op_test.data)) / 256
+    
+    # Find global phase by comparing a non-zero element
+    global_phase = 1.0
+    for i in range(256):
+        for j in range(256):
+            if abs(op_ref.data[i, j]) > 1e-10 and abs(op_test.data[i, j]) > 1e-10:
+                global_phase = op_test.data[i, j] / op_ref.data[i, j]
+                break
+        if abs(global_phase - 1.0) > 1e-10:
+            break
+    
+    # Correct for global phase
+    op_test_corrected = op_test.data / global_phase
+    matrix_error = np.linalg.norm(op_ref.data - op_test_corrected, ord='fro')
+    max_element_error = np.max(np.abs(op_ref.data - op_test_corrected))
     
     print(f"   Reference (UnitaryGate): {qc_ref.count_ops()}")
     print(f"   Decomposed (basic gates): {qc_test.count_ops()}")
+    print(f"   Global phase: {np.angle(global_phase):.6f} rad")
     print(f"   Matrix Frobenius error: {matrix_error:.2e}")
+    print(f"   Max element error: {max_element_error:.2e}")
     print(f"   Fidelity: {fidelity:.15f}")
     print(f"   Unitarity check: {np.linalg.norm(op_test.data.conj().T @ op_test.data - np.eye(256), ord='fro'):.2e}")
     
@@ -241,13 +258,30 @@ def test_basic_gate_decomposition():
     apply_H_TTA_basic_gates(qc_test, 0, 1, J, dt, hbar)
     op_test = Operator(qc_test)
     
-    # Compare
-    matrix_error = np.linalg.norm(op_ref.data - op_test.data, ord='fro')
+    # Compare (accounting for possible global phase difference)
+    # Global phase doesn't affect physical observables, so we correct for it
     fidelity = np.abs(np.trace(op_ref.data.conj().T @ op_test.data)) / 256
+    
+    # Find global phase by comparing a non-zero element
+    global_phase = 1.0
+    for i in range(256):
+        for j in range(256):
+            if abs(op_ref.data[i, j]) > 1e-10 and abs(op_test.data[i, j]) > 1e-10:
+                global_phase = op_test.data[i, j] / op_ref.data[i, j]
+                break
+        if abs(global_phase - 1.0) > 1e-10:
+            break
+    
+    # Correct for global phase
+    op_test_corrected = op_test.data / global_phase
+    matrix_error = np.linalg.norm(op_ref.data - op_test_corrected, ord='fro')
+    max_element_error = np.max(np.abs(op_ref.data - op_test_corrected))
     
     print(f"   Reference (UnitaryGate): {qc_ref.count_ops()}")
     print(f"   Decomposed (basic gates): {qc_test.count_ops()}")
+    print(f"   Global phase: {np.angle(global_phase):.6f} rad")
     print(f"   Matrix Frobenius error: {matrix_error:.2e}")
+    print(f"   Max element error: {max_element_error:.2e}")
     print(f"   Fidelity: {fidelity:.15f}")
     print(f"   Unitarity check: {np.linalg.norm(op_test.data.conj().T @ op_test.data - np.eye(256), ord='fro'):.2e}")
     

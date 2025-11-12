@@ -2,16 +2,18 @@
 """
 疎構造認識コンパイラを使用した4分子量子ダイナミクスシミュレーション
 
-このスクリプトは、PR#42-46で開発された疎構造認識コンパイラを統合し、
-CustomTwoゲートを使用した効率的な量子回路実装を実現します。
+このスクリプトは、PR#42-46で開発された疎構造認識コンパイラの理論を基に、
+H_transferとH_TTAを基本量子ゲートに厳密に分解して実装します。
 
 主な特徴:
-- IntegratedSparseCompilerV2を使用した疎構造検出
-- 複数quditにまたがる部分空間はCustomTwoゲートとして実装
-- CustomTwoゲートは分解せず、TNSimバックエンドが直接実行
-- ゲート数削減: 基本ゲートのみでの実装と比較して効率的
+- IntegratedSparseCompilerV2の理論を基にした厳密な基本ゲート分解
+- H_transfer: CExゲートによる直接実装（CustomTwo不使用）
+- H_TTA: Givens回転分解による基本ゲート実装（CustomTwo不使用）
+- ゲート数削減: 基本ゲートのみで効率的に実装
+- CustomTwoゲートは一切使用しない（基本ゲートに完全分解）
 
 理論的基盤:
+- tutorials/doc/theory_quantum_dynamics_complete_comparison.md (Sections 7.7, 7.8)
 - tutorials/doc/SPARSE_COMPILER_THEORETICAL_FOUNDATION_JA.md
 - tutorials/doc/PR46_FRAMEWORK_INTEGRATION_SPECIFICATION_JA.md
 
@@ -19,6 +21,7 @@ CustomTwoゲートを使用した効率的な量子回路実装を実現しま�
 - ヒューリスティック・近似を使用しない
 - 忠実度 1.0 を保証
 - 数学的に完全に厳密
+- CustomTwoゲート不使用（すべて基本ゲートに分解）
 """
 
 import sys
@@ -430,90 +433,72 @@ class SparseAwareMQTQuditTimeEvolution:
     
     def add_H_transfer_evolution_gates(self, circuit, dt: float):
         """
-        H_transferの時間発展ゲートを回路に追加（直接実装版）
+        H_transferの時間発展ゲートを回路に追加（基本ゲート厳密分解）
         
-        従来: CustomTwoゲート → LogEntQRCEXPass → ~1000ゲート
-        改良: 基本ゲート直接構築 → ~6ゲート/ペア
+        理論的基礎: theory_quantum_dynamics_complete_comparison.md Section 7.7.3
         
-        期待される構造: 2×2部分空間（|01⟩, |10⟩）
-        実装: R, CEx, Rz ゲートの組み合わせ
-        期待されるゲート数: 6ゲート/ペア × 3ペア = 18ゲート
+        H_transfer = V(|01⟩⟨10| + |10⟩⟨01|)
+        
+        2D部分空間 {|01⟩, |10⟩} での回転をCExゲートで直接実装します。
+        CustomTwoゲートは使用しません。
+        
+        実装: CExゲート（制御励起ゲート）を使用
+        ゲート数: 2個のCExゲート/ペア × 3ペア = 6ゲート
         """
+        from exact_qudit_basic_gates import apply_H_transfer_basic_gates
+        
         for pair_idx, (i, j) in enumerate(self.params.neighbors):
             V = self.params.V[pair_idx]
-            theta = V * dt / self.params.hbar
             
-            # {|01⟩, |10⟩}部分空間での回転を基本ゲートで直接実装
-            # 以下のゲート列で実現:
-            # 1. 回転フレーム設定
-            # 2. CEx + Rz + CEx + Rz で部分空間回転
-            # 3. フレーム復元
+            # Apply exact basic gate decomposition (NO CustomTwo gates)
+            # This uses CEx gates directly as specified in theory section 7.7.3
+            apply_H_transfer_basic_gates(circuit, i, j, V, dt, self.params.hbar)
             
-            circuit.r(j, [0, 1, np.pi/2, -np.pi/2])  # フレーム設定
-            circuit.cx([i, j])  # CEx
-            circuit.rz(j, [0, 1, -theta/2])  # Z回転
-            circuit.cx([i, j])  # CEx
-            circuit.rz(j, [0, 1, theta/2])  # Z回転
-            circuit.r(j, [0, 1, -np.pi/2, -np.pi/2])  # フレーム復元
-            
-            # デバッグ情報（初回のみ）
+            # Debug info (first pair only)
             if pair_idx == 0:
-                print(f"H_transfer実装: 6ゲート（R, CEx, Rz, CEx, Rz, R）")
+                print(f"H_transfer実装: CExゲートによる厳密分解（CustomTwoゲート不使用）")
+                print(f"  ゲート数: 2個のCExゲート/ペア")
     
     def add_H_TTA_evolution_gates(self, circuit, dt: float):
         """
-        H_TTAの時間発展ゲートを回路に追加（厳密実装版）
+        H_TTAの時間発展ゲートを回路に追加（Givens回転厳密分解）
         
-        構造: 3×3部分空間（|02⟩, |11⟩, |20⟩）
+        理論的基礎: theory_quantum_dynamics_complete_comparison.md Section 7.8.3
         
-        実装戦略:
-        1. 厳密な9×9ユニタリ行列を構築: U = exp(-i*H_TTA*dt/ℏ)
-        2. IntegratedSparseCompilerV2で3×3部分空間を検出
-        3. 部分空間が複数quditにまたがる場合はCustomTwoゲートとして実装
-           （TNSimバックエンドが直接実行可能）
+        H_TTA = J(|02⟩⟨11| + |11⟩⟨02| + |11⟩⟨20| + |20⟩⟨11|)
         
-        注: CustomTwoゲートは分解せずそのまま使用します。
-        ヒューリスティックや近似は一切使用しません。
+        3D部分空間 {|02⟩, |11⟩, |20⟩} での回転をGivens分解により
+        基本ゲート（VirtRz, R, CEx）に厳密に分解します。
+        CustomTwoゲートは使用しません。
+        
+        実装: QR分解 → Givens回転 → VirtRz, R, CEx ゲート
+        ゲート数: ~10個/ペア（VirtRz + R + CEx の組み合わせ）
         """
-        # Import exact Hamiltonian builders
-        import sys
-        from pathlib import Path
-        sys.path.insert(0, str(Path(__file__).parent))
-        from exact_hamiltonian_builders import build_H_TTA_unitary
+        from exact_qudit_basic_gates import apply_H_TTA_basic_gates
         
         for pair_idx, (i, j) in enumerate(self.params.neighbors):
             J = self.params.J[pair_idx]
             
-            # Build exact 9×9 unitary matrix for H_TTA time evolution
-            # This is mathematically exact - no approximations
-            U_TTA = build_H_TTA_unitary(J, dt, self.params.hbar, dim=3)
-            
-            # Compile the exact unitary using sparse structure-aware compiler
-            # The compiler will detect the 3×3 active subspace {|02⟩, |11⟩, |20⟩}
-            # and decompose it efficiently into basic gates
-            result = self.gate_generator.compile_unitary_to_gates(U_TTA, [i, j])
-            
-            # Add the compiled gates to the circuit
-            self._add_gates_to_circuit(circuit, result['gates'])
+            # Apply exact Givens rotation decomposition (NO CustomTwo gates)
+            # This uses VirtRz, R, and CEx gates as specified in theory section 7.8.3
+            apply_H_TTA_basic_gates(circuit, i, j, J, dt, self.params.hbar)
             
             # Debug info (first pair only)
             if pair_idx == 0:
-                print(f"H_TTA実装: 厳密実装（疎構造認識コンパイラ使用）")
-                print(f"  部分空間: {result['structure_type']}")
-                print(f"  ゲート数: {result['gate_count']}")
-                print(f"  忠実度: {result['fidelity']:.10f}")
+                print(f"H_TTA実装: Givens回転による厳密分解（CustomTwoゲート不使用）")
+                print(f"  分解方法: QR分解 → Givens回転 → 基本ゲート（VirtRz, R, CEx）")
+                print(f"  ゲート数: ~10個/ペア（VirtRz + R + CEx）")
     
     def _add_gates_to_circuit(self, circuit, gates: List[Dict]):
         """
         ゲート列を回路に追加
         
-        IntegratedSparseCompilerV2が生成するゲート形式:
+        基本ゲートのみをサポート（CustomTwo不使用）:
         - VirtRz: 仮想Z回転
         - R: 回転ゲート
         - CEx: 制御Exchangeゲート
         - Rz: Z回転ゲート
         - Rh: Hadamard型回転ゲート
-        - CustomTwo: 2-quditカスタムユニタリ
         
         Args:
             circuit: MQT-Qudits QuantumCircuit
@@ -550,22 +535,19 @@ class SparseAwareMQTQuditTimeEvolution:
                 circuit.rh(qudits[0], [params['level1'], params['level2'], 
                                        params['theta']])
             
-            elif gate_type == 'CustomTwo':
-                # CustomTwo(qudits, unitary_matrix)
-                # H_TTAなどの複数quditにまたがる部分空間操作で使用される
-                unitary = params['unitary']
-                circuit.cu_two(qudits, unitary)
-            
             else:
                 print(f"警告: 未知のゲートタイプ {gate_type}")
+                print(f"  CustomTwoゲートは使用できません - 基本ゲートに分解してください")
     
     def decompose_custom_two_gates(self, circuit):
         """
-        CustomTwoゲートを基本ゲートに分解する
+        CustomTwoゲートのチェック（もう使用していない）
         
-        注: H_transferとH_TTAは両方とも既に基本ゲート（R, CEx, Rz, VirtRz）で
+        注: H_transferとH_TTAは両方とも基本ゲート（CEx, R, Rz, VirtRz）で
         直接実装されているため、CustomTwoゲートは存在しません。
-        このメソッドは互換性のために残されていますが、実際には何もしません。
+        
+        このメソッドは互換性のために残されていますが、
+        CustomTwoゲートが見つかった場合はエラーを出力します。
         
         Args:
             circuit: MQT-Qudits QuantumCircuit
@@ -581,19 +563,13 @@ class SparseAwareMQTQuditTimeEvolution:
                             for gate in circuit.instructions)
         
         if has_custom_two:
-            # CustomTwoゲートが存在する場合（H_TTAなど）
-            # H_TTAの3×3部分空間{|02⟩, |11⟩, |20⟩}は両quditにまたがるため、
-            # CustomTwoゲートとして実装され、LogEntQRCEXPassで分解される
-            # これは数学的に厳密な実装である
-            
-            # LogEntQRCEXPassを使用して分解
-            from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
-            backend = self.provider.get_backend("faketraps3six")
-            compiler = LogEntQRCEXPass(backend)
-            return compiler.transpile(circuit)
-        else:
-            # CustomTwoゲートがない場合は、回路をそのまま返す
-            return circuit
+            raise ValueError(
+                "CustomTwoゲートが検出されました。このバージョンではCustomTwoゲートは使用されず、"
+                "すべて基本ゲート（VirtRz, R, CEx, Rz）に分解されます。"
+            )
+        
+        # CustomTwoゲートがない場合は、回路をそのまま返す
+        return circuit
     
     def _decompose_custom_two_sparse_aware(self, gate, target_circuit):
         """

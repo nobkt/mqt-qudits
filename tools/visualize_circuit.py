@@ -57,6 +57,7 @@ class CircuitVisualizer:
         self.min_gate_width_inches = 0.15  # Minimum gate width in inches for readability
         self.max_figure_width_inches = 30  # Maximum figure width before wrapping
         self.row_height_inches = 2.5  # Height per qudit in inches (for multi-row layouts)
+        self.max_gates_per_row = None  # Maximum gates per row (None = automatic)
         
         self.gate_colors = {
             'VirtRz': '#FFE5B4',      # Peach for single-qudit phase gates
@@ -77,6 +78,9 @@ class CircuitVisualizer:
         Determines whether to use single-row or multi-row layout,
         and calculates appropriate figure dimensions.
         
+        If max_gates_per_row is set (via fold parameter), it takes precedence
+        over automatic calculation, similar to Qiskit's fold parameter.
+        
         Returns:
             Dictionary with layout parameters:
             - 'num_rows': Number of rows needed
@@ -94,6 +98,50 @@ class CircuitVisualizer:
                 'circuit_width_units': 10
             }
         
+        # If max_gates_per_row is explicitly set (via fold parameter), use it
+        if self.max_gates_per_row is not None:
+            gates_per_row = self.max_gates_per_row
+            
+            # Check if we need multiple rows
+            if num_gates <= gates_per_row:
+                # Single row is sufficient
+                circuit_width_units = num_gates * self.gate_spacing + 2
+                required_width_inches = circuit_width_units * (self.min_gate_width_inches / self.gate_width)
+                figsize = (
+                    max(required_width_inches, 10),
+                    max(self.num_qudits * self.row_height_inches, 6)
+                )
+                return {
+                    'num_rows': 1,
+                    'gates_per_row': [num_gates],
+                    'figsize': figsize,
+                    'circuit_width_units': circuit_width_units
+                }
+            
+            # Multiple rows needed
+            num_rows = (num_gates + gates_per_row - 1) // gates_per_row
+            gates_per_row_list = []
+            remaining_gates = num_gates
+            for _ in range(num_rows):
+                gates_in_this_row = min(gates_per_row, remaining_gates)
+                gates_per_row_list.append(gates_in_this_row)
+                remaining_gates -= gates_in_this_row
+            
+            # Calculate figure size
+            max_gates_in_row = max(gates_per_row_list)
+            width_per_row = max_gates_in_row * self.gate_spacing + 2
+            figsize_width = width_per_row * (self.min_gate_width_inches / self.gate_width)
+            row_spacing = 1.5
+            figsize_height = num_rows * self.num_qudits * self.row_height_inches + (num_rows - 1) * row_spacing
+            
+            return {
+                'num_rows': num_rows,
+                'gates_per_row': gates_per_row_list,
+                'figsize': (figsize_width, figsize_height),
+                'circuit_width_units': width_per_row
+            }
+        
+        # Automatic calculation (original behavior)
         # Calculate required width in plot units for all gates
         circuit_width_units = num_gates * self.gate_spacing + 2
         
@@ -516,7 +564,8 @@ def visualize_circuit_with_decomposition(
     circuit_after: QuantumCircuit,
     title_before: str = "Circuit with CustomTwo Gates",
     title_after: str = "Circuit with Decomposed Basic Gates",
-    save_path: str | None = None
+    save_path: str | None = None,
+    fold: int | None = None
 ) -> tuple:
     """
     Visualize a circuit before and after CustomTwo gate decomposition.
@@ -530,12 +579,16 @@ def visualize_circuit_with_decomposition(
         title_before: Title for the first circuit
         title_after: Title for the second circuit
         save_path: Optional path to save the figure
+        fold: Optional maximum number of gates per row before wrapping.
+              If None, uses automatic calculation. Similar to Qiskit's fold parameter.
         
     Returns:
         Tuple of (fig1, ax1, fig2, ax2) for both visualizations
     """
     # Visualize circuit before decomposition
     viz_before = CircuitVisualizer(circuit_before)
+    if fold is not None:
+        viz_before.max_gates_per_row = fold
     print("\n" + "=" * 70)
     print("BEFORE DECOMPOSITION")
     viz_before.print_circuit_summary()
@@ -543,6 +596,8 @@ def visualize_circuit_with_decomposition(
     
     # Visualize circuit after decomposition
     viz_after = CircuitVisualizer(circuit_after)
+    if fold is not None:
+        viz_after.max_gates_per_row = fold
     print("\n" + "=" * 70)
     print("AFTER DECOMPOSITION")
     viz_after.print_circuit_summary()
@@ -571,23 +626,33 @@ def visualize_circuit_with_decomposition(
 def visualize_circuit(
     circuit: QuantumCircuit,
     title: str = "Quantum Circuit",
-    save_path: str | None = None
+    save_path: str | None = None,
+    fold: int | None = None
 ) -> tuple:
     """
     Visualize a single quantum circuit.
     
     Automatically adjusts layout based on circuit size, splitting into
-    multiple rows if needed for large circuits.
+    multiple rows if needed for large circuits. Similar to Qiskit's
+    circuit_drawer with fold parameter for controlling circuit wrapping.
     
     Args:
         circuit: The quantum circuit to visualize
         title: Title for the circuit diagram
         save_path: Optional path to save the figure
+        fold: Optional maximum number of gates per row before wrapping.
+              If None, uses automatic calculation based on figure width.
+              Similar to Qiskit's fold parameter for circuit_drawer.
         
     Returns:
         Tuple of (fig, ax) for the visualization
     """
     viz = CircuitVisualizer(circuit)
+    
+    # If fold parameter is specified, override the automatic calculation
+    if fold is not None:
+        viz.max_gates_per_row = fold
+    
     viz.print_circuit_summary()
     
     # Get layout info

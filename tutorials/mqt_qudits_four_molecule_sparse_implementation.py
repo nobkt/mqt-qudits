@@ -442,8 +442,9 @@ class SparseAwareMQTQuditTimeEvolution:
         2D部分空間 {|01⟩, |10⟩} での回転をCExゲートで直接実装します。
         CustomTwoゲートは使用しません。
         
-        実装: CExゲート（制御励起ゲート）を使用
-        ゲート数: 2個のCExゲート/ペア × 3ペア = 6ゲート
+        実装: CExゲート（制御励起ゲート） + VirtRzゲート（位相調整）
+        ゲート数: 2個のCExゲート + 4個のVirtRzゲート = 6個/ペア × 3ペア = 18ゲート
+        実効ゲート数: 2個のCExゲート/ペア（VirtRzは仮想ゲート）
         """
         from exact_qudit_basic_gates import apply_H_transfer_basic_gates
         
@@ -456,8 +457,9 @@ class SparseAwareMQTQuditTimeEvolution:
             
             # Debug info (first pair only)
             if pair_idx == 0:
-                print(f"H_transfer実装: CExゲートによる厳密分解（CustomTwoゲート不使用）")
-                print(f"  ゲート数: 2個のCExゲート/ペア")
+                print(f"H_transfer実装: CEx + VirtRzゲートによる厳密分解（CustomTwoゲート不使用）")
+                print(f"  ゲート数: 2個のCExゲート + 4個のVirtRzゲート = 6個/ペア")
+                print(f"  実効ゲート数: 2個のCExゲート/ペア（VirtRzは仮想ゲート）")
     
     def add_H_TTA_evolution_gates(self, circuit, dt: float):
         """
@@ -1083,10 +1085,10 @@ class SuzukiTrotterMQTQuditSimulator:
         reg = QuantumRegister("molecules", self.N, [3] * self.N)
         step_circuit.append(reg)
         self.add_single_trotter_step(step_circuit, dt)
-        # CustomTwo gates are kept as-is and executed directly by the backend
-        # No decomposition is performed - maintaining exact structure
+        # All gates are now basic gates (VirtRz, R, CEx, Rz) - NO CustomTwo gates
+        # H_transfer and H_TTA are decomposed into exact basic gates
         gates_per_step = len(step_circuit.instructions)
-        print(f"Circuit with CustomTwo gates: {gates_per_step} gates per step")
+        print(f"Circuit with basic gates only (NO CustomTwo): {gates_per_step} gates per step")
         print()
         
         # 結果の記録
@@ -1148,7 +1150,7 @@ class SuzukiTrotterMQTQuditSimulator:
             'N_steps': N_steps,
             'method': 'Qudit (MQT - Shot-based)',
             'shots': shots,
-            'step_circuit': step_circuit,  # Circuit with CustomTwo gates as-is
+            'step_circuit': step_circuit,  # Circuit with basic gates only (NO CustomTwo)
             'total_gates': total_gates,
             'gates_per_step': gates_per_step
         }

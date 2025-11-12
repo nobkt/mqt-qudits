@@ -22,7 +22,7 @@ def apply_H_transfer_basic_gates(circuit, qudit_i: int, qudit_j: int,
     H_transfer = V(|01⟩⟨10| + |10⟩⟨01|)
     
     This is a 2D subspace rotation in {|01⟩, |10⟩} that can be implemented
-    with a single CEx gate as described in theory section 7.7.3.
+    with CEx gates as described in theory section 7.7.3.
     
     Args:
         circuit: MQT-Qudits QuantumCircuit
@@ -35,19 +35,33 @@ def apply_H_transfer_basic_gates(circuit, qudit_i: int, qudit_j: int,
         U_transfer(t) = exp(-iVt/ℏ)|ψ+⟩⟨ψ+| + exp(iVt/ℏ)|ψ-⟩⟨ψ-|
         where |ψ±⟩ = (|01⟩ ± |10⟩)/√2
         
-        This is equivalent to:
-        CEx(qudit_i, qudit_j, control_level=0, target_level=0, theta=Vt/ℏ)
+        Implementation (from theory section 7.7.3):
+        1. Phase adjustment (VirtRz gates) to realize -i factor
+        2. CEx gates for the main rotation
+        3. Reverse CEx for symmetry (|10⟩ ↔ |01⟩)
+        4. Phase correction (VirtRz gates)
+        
+        Gate count: 2 CEx + 4 VirtRz = 6 gates/pair
+        (VirtRz are virtual gates, so effectively 2 gates/pair)
     """
     # Calculate rotation angle
     theta = V * dt / hbar
     
-    # Apply CEx gate
+    # Phase adjustment (virtual gates to realize -i factor)
+    circuit.virtrz(qudit_i, 1, -np.pi/2)      # |T_1⟩ に -π/2 位相
+    circuit.virtrz(qudit_j, 0, -np.pi/2)      # |S_0⟩ に -π/2 位相
+    
+    # Main rotation (CEx gates)
     # CEx(control, target, control_level, target_level, angle)
     # When control qudit is in |0⟩ (S0), rotate target qudit levels 0-1 (S0-T1)
     circuit.cex(qudit_i, qudit_j, 0, 0, theta)
     
-    # For symmetric coupling |01⟩ ↔ |10⟩, we also need the reverse direction
+    # Reverse control (for symmetry: |10⟩ ↔ |01⟩)
     circuit.cex(qudit_j, qudit_i, 0, 0, theta)
+    
+    # Phase correction (inverse of initial phase adjustment)
+    circuit.virtrz(qudit_i, 1, np.pi/2)
+    circuit.virtrz(qudit_j, 0, np.pi/2)
 
 
 def apply_H_TTA_basic_gates(circuit, qudit_i: int, qudit_j: int,

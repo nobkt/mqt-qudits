@@ -3023,14 +3023,79 @@ $$
 行列形式（$\omega = \sqrt{2}Jt/\hbar$ とする）：
 
 $$
-U_{\text{TTA}}^{\text{subspace}}(t) = \frac{1}{2}\begin{pmatrix}
-1 + \cos\omega & \sqrt{2}\sin\omega & 1 - \cos\omega \\
-\sqrt{2}\sin\omega & 2\cos\omega & \sqrt{2}\sin\omega \\
-1 - \cos\omega & \sqrt{2}\sin\omega & 1 + \cos\omega
+U_{\text{TTA}}^{\text{subspace}}(t) = \begin{pmatrix}
+\frac{1 + \cos\omega}{2} & -\frac{i\sin\omega}{\sqrt{2}} & -\frac{1 - \cos\omega}{2} \\
+-\frac{i\sin\omega}{\sqrt{2}} & \cos\omega & -\frac{i\sin\omega}{\sqrt{2}} \\
+-\frac{1 - \cos\omega}{2} & -\frac{i\sin\omega}{\sqrt{2}} & \frac{1 + \cos\omega}{2}
 \end{pmatrix}
 $$
 
-**ステップ3: ユニタリ行列のQR分解**
+**重要な注意**: この行列は以下の構造を持つ：
+- **対角要素**: 実数（$\frac{1+\cos\omega}{2}$と$\cos\omega$）
+- **オフ対角要素**: 純虚数（$-\frac{i\sin\omega}{\sqrt{2}}$）
+- **U[0,2]とU[2,0]**: 負の値（$-\frac{1-\cos\omega}{2}$、固有ベクトル構造から）
+
+これは $\exp(-iH_{\text{TTA}}t/\hbar)$ を厳密に計算した結果であり、scipy.linalg.expmで検証可能である。
+
+**注意**: 以前のバージョンの文書では、オフ対角要素を実数（$\frac{\sqrt{2}\sin\omega}{2}$）と誤って記載していたが、これは**非ユニタリ行列**となり誤りである。正しくは純虚数でなければならない。
+
+**検証コード**:
+```python
+from scipy.linalg import expm
+import numpy as np
+
+# パラメータ
+J = 0.05  # eV
+dt = 10.0  # fs
+hbar = 0.6582  # eV·fs
+
+# ハミルトニアン
+H_TTA = J * np.array([[0, 1, 0],
+                      [1, 0, 1],
+                      [0, 1, 0]])
+
+# 厳密なユニタリ行列
+U_exact = expm(-1j * H_TTA * dt / hbar)
+
+# ユニタリ性検証: ||U†U - I|| < 10^-15
+error = np.linalg.norm(U_exact @ U_exact.conj().T - np.eye(3))
+print(f"ユニタリ性誤差: {error:.2e}")  # ~10^-16
+```
+
+**ステップ3: 複素ユニタリ行列の分解**
+
+上記の正しいユニタリ行列 $U_{\text{TTA}}^{\text{subspace}}(t)$ は複素数要素を含むため、実QR分解ではなく、**複素ユニタリ分解**または**直接的な固有値分解に基づくゲート合成**を使用する必要がある。
+
+実装には2つのアプローチがある：
+
+**アプローチ1: scipy.linalg.expmを使用した直接計算**（推奨）
+
+```python
+# 厳密なユニタリ行列を計算
+H_TTA = J * np.array([[0, 1, 0],
+                      [1, 0, 1],
+                      [0, 1, 0]])
+U_exact = expm(-1j * H_TTA * dt / hbar)
+
+# この行列を基本ゲート列に分解
+# （詳細は実装セクションで説明）
+```
+
+**アプローチ2: 固有値分解に基づく解析的構成**
+
+固有ベクトル行列 $V$ と固有値対角行列 $\Lambda$ を用いて：
+
+$$
+U = V \cdot \text{diag}(e^{-iE_0t/\hbar}, e^{-iE_+t/\hbar}, e^{-iE_-t/\hbar}) \cdot V^\dagger
+$$
+
+ここで $V$ のユニタリ分解を行い、基本ゲートに変換する。
+
+**重要**: 従来の実QR分解（ステップ3-4）は、行列が実数の場合にのみ適用可能である。複素ユニタリ行列の場合は、複素Givens回転または他の分解手法を使用する必要がある。
+
+**ステップ3（従来版）: 実ユニタリ行列のQR分解**
+
+（注：この手順は、誤った実数行列を仮定していたため、参考として残すが、実際の実装では使用しない）
 
 ユニタリ行列 $U$ を以下のように分解：
 
@@ -3118,21 +3183,33 @@ circuit.virtrz(i+1, 1, phi_f2)
 
 パラメータ $\theta_{01}, \theta_{12}, \theta_{c1}, \theta_{c2}, \phi_k$ は、ユニタリ行列 $U_{\text{TTA}}^{\text{subspace}}(t)$ の分解から数値的に計算される。
 
-**パラメータの数値計算**（具体例）:
+**重要な注意**: 以下のパラメータ公式は、誤った実数行列を仮定して導出されたものであり、正しい複素ユニタリ行列では**無効**である。実装では、scipy.linalg.expmで計算した正しいユニタリ行列を基に、適切な分解を行う必要がある。
 
-$\omega = \sqrt{2}Jt/\hbar$ として、以下のパラメータが得られる（Givens分解による）：
+**パラメータの数値計算**（旧版・参考のみ）:
+
+（注：以下の公式は誤った実数行列に基づくため、実装では使用しないこと）
+
+$\omega = \sqrt{2}Jt/\hbar$ として、以下のパラメータが得られる（誤った実QR分解による）：
 
 $$
 \begin{align}
-\theta_{01} &= \arctan\left(\frac{\sqrt{2}\sin\omega}{1 + \cos\omega}\right) \\
-\theta_{12} &= \arctan\left(\sqrt{2}\tan(\omega/2)\right) \\
-\phi_0 &= 0 \\
-\phi_1 &= -\omega/2 \\
-\phi_2 &= 0
+\theta_{01} &= \arctan\left(\frac{\sqrt{2}\sin\omega}{1 + \cos\omega}\right) \quad \text{（無効）} \\
+\theta_{12} &= \arctan\left(\sqrt{2}\tan(\omega/2)\right) \quad \text{（無効）} \\
+\phi_0 &= 0 \quad \text{（無効）} \\
+\phi_1 &= -\omega/2 \quad \text{（無効）} \\
+\phi_2 &= 0 \quad \text{（無効）}
 \end{align}
 $$
 
-これらの公式は、固有値分解とGivens回転の理論から導出される。
+**正しい実装**:
+
+正しい複素ユニタリ行列を基本ゲートに分解するには、以下のアプローチを使用する：
+
+1. **scipy.linalg.expmで厳密なユニタリ行列を計算**
+2. **複素ユニタリ分解**（Cosine-Sine分解またはSchur分解）を適用
+3. **各ユニタリ要素を基本ゲート（VirtRz, R, CEx）に変換**
+
+実装の詳細は `tutorials/exact_qudit_basic_gates.py` の `apply_H_TTA_basic_gates()` 関数を参照。
 
 **ゲート数**: ペアあたり約6-8個の基本ゲート（VirtRz 3-4個、R 2個、CEx 1-2個）
 

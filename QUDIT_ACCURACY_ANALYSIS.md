@@ -68,9 +68,9 @@ H = J [[0, 1, 0],
 
 **正しいユニタリ行列:**
 ```
-U_correct = [[ 0.738+0j,      0-0.622j,  -0.262+0j  ],
+U_correct = [[ 0.738+0j,      0-0.622j,  -0.262+0j  ],  ← 注意: U[0,2]は負
              [ 0-0.622j,   0.476+0j,      0-0.622j  ],
-             [-0.262+0j,      0-0.622j,   0.738+0j  ]]
+             [-0.262+0j,      0-0.622j,   0.738+0j  ]]  ← 注意: U[2,0]は負
 ```
 
 **ユニタリ性誤差: 4.3×10^-16** ← 機械精度レベル（正常）
@@ -244,35 +244,65 @@ Quditの実装において、H_TTA（三重項-三重項消滅）ハミルトニ
 
 ### 1. 即座の修正（H_TTA行列の訂正）
 
-`exact_qudit_basic_gates.py`の94-107行目を修正：
+`exact_qudit_basic_gates.py`を以下のように修正しました：
 
+#### 修正前（誤り）:
 ```python
-# 現在（誤り）:
+# Lines 105-107: 誤った行列定義（非ユニタリ）
 U_TTA = 0.5 * np.array([
-    [1 + cos_omega, np.sqrt(2) * sin_omega, 1 - cos_omega],      # ← 実数
+    [1 + cos_omega, np.sqrt(2) * sin_omega, 1 - cos_omega],      # ← 全て実数（誤り）
     [np.sqrt(2) * sin_omega, 2 * cos_omega, np.sqrt(2) * sin_omega],
     [1 - cos_omega, np.sqrt(2) * sin_omega, 1 + cos_omega]
 ])
+# ユニタリ性誤差: 2.14 ← 許容範囲外！
+```
 
-# 修正後（正しい）:
+#### 修正後（正しい）:
+```python
+# scipy.linalg.expmを使用した厳密計算
 from scipy.linalg import expm
+
 H_TTA = J * np.array([[0, 1, 0],
                       [1, 0, 1],
                       [0, 1, 0]])
 U_TTA = expm(-1j * H_TTA * dt / hbar)
+# ユニタリ性誤差: < 1e-15 ← 機械精度レベル（正常）
+
 # または、解析的に:
+omega = np.sqrt(2) * J * dt / hbar
 U_TTA = np.array([
-    [0.5*(1+cos_omega),  -1j*sin_omega/np.sqrt(2),  0.5*(1-cos_omega)],   # ← 虚数
-    [-1j*sin_omega/np.sqrt(2),  cos_omega,  -1j*sin_omega/np.sqrt(2)],
-    [0.5*(1-cos_omega),  -1j*sin_omega/np.sqrt(2),  0.5*(1+cos_omega)]
+    [0.5*(1+cos(omega)),  -1j*sin(omega)/np.sqrt(2),  -0.5*(1-cos(omega))],  # ← 虚数部あり、符号注意
+    [-1j*sin(omega)/np.sqrt(2),  cos(omega),  -1j*sin(omega)/np.sqrt(2)],
+    [-0.5*(1-cos(omega)),  -1j*sin(omega)/np.sqrt(2),  0.5*(1+cos(omega))]
 ])
+# ユニタリ性誤差: < 1e-15 ← 正常
 ```
+
+**重要な変更点:**
+1. **scipy.linalg.expmを追加**: 数値的に厳密なユニタリ行列を計算
+2. **オフ対角要素を純虚数に修正**: `√2*sin(ω)/2` → `-i*sin(ω)/√2`
+3. **U[0,2], U[2,0]の符号を修正**: `+0.5*(1-cos(ω))` → `-0.5*(1-cos(ω))`
+4. **ユニタリ性検証を追加**: 実行時にエラーチェック
 
 ### 2. 検証強化
 
-- `verify_H_TTA_decomposition()`を修正し、実際に失敗時にエラーを返す
-- ユニタリ性チェックを厳密化
-- 各Givens回転角度の計算を検証
+`verify_H_TTA_decomposition()`を完全に書き直し:
+- scipy.linalg.expmによる厳密ユニタリと比較
+- ユニタリ性チェック (U†U = I)
+- 固有値チェック (λ = {-√2·J, 0, +√2·J})
+- 構造チェック (対角要素は実数、オフ対角要素は虚数)
+- 解析公式との一致確認
+
+テスト結果:
+```
+H_transfer decomposition verification:
+✓ H_transfer decomposition is mathematically exact
+
+H_TTA decomposition verification:
+✓ H_TTA decomposition is mathematically exact  ← 修正後は合格！
+
+All verifications passed!
+```
 
 ### 3. 理論文書の更新
 

@@ -643,7 +643,8 @@ class SparseAwareMQTQuditTimeEvolution:
         temp_circuit.cu_two([0, 1], U)
         
         # LogEntQRCEXPassで分解
-        pass_instance = LogEntQRCEXPass()
+        backend = self.provider.get_backend("faketraps3six")
+        pass_instance = LogEntQRCEXPass(backend)
         decomposed_temp = pass_instance.transpile(temp_circuit)
         
         # 分解されたゲートを取得し、元のquditインデックスに変換

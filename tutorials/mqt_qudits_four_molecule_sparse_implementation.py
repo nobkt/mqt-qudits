@@ -552,14 +552,18 @@ class SparseAwareMQTQuditTimeEvolution:
     
     def decompose_custom_two_gates(self, circuit):
         """
-        CustomTwoゲートを基本ゲートに分解（疎構造認識版）
+        CustomTwoゲートの基本ゲート数を推定（疎構造認識版）
         
-        IntegratedSparseCompilerV2を使用して、CustomTwoゲートを疎構造を認識しながら
-        基本ゲートに分解します。
+        IntegratedSparseCompilerV2を使用してCustomTwoゲートの疎構造を認識し、
+        基本ゲートへの分解に必要なゲート数を推定します。
+        
+        注: このメソッドは実際にゲートを分解するのではなく、ゲート数を推定するのみです。
+        実際のシミュレーションはbuild_trotter_step_unitary_direct()で
+        Hamiltonianから直接ユニタリ行列を構築するため、ゲート分解は不要です。
         
         分解は疎構造認識的に行われます:
         - 9×9ユニタリの活性部分空間（例: 3×3）を自動検出
-        - IntegratedSparseCompilerV2で疎構造を利用して効率的に分解
+        - IntegratedSparseCompilerV2で疎構造を利用したゲート数を推定
         - ゲート数: 約6個/CustomTwo（3×3部分空間の場合）
         
         従来のLogEntQRCEXPassとの比較:
@@ -571,24 +575,60 @@ class SparseAwareMQTQuditTimeEvolution:
             circuit: MQT-Qudits QuantumCircuit
             
         Returns:
-            分解後の回路（CustomTwoゲートが基本ゲートに置換済み）
+            推定ゲート数（CustomTwoゲートを疎構造認識でカウント）
         """
         if not self.mqt_available:
             raise ImportError("mqt.quditsがインストールされていません")
-        
-        from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
         
         # CustomTwoゲートを含むかチェック
         custom_two_gates = [(idx, gate) for idx, gate in enumerate(circuit.instructions) 
                             if gate.__class__.__name__ == 'CustomTwo']
         
         if not custom_two_gates:
-            # CustomTwoゲートがない場合は、回路をそのまま返す
-            print("  CustomTwoゲートが見つかりませんでした（分解不要）")
-            return circuit
+            # CustomTwoゲートがない場合は、元のゲート数を返す
+            print("  CustomTwoゲートが見つかりませんでした（推定不要）")
+            return len(circuit.instructions)
         
         print(f"  CustomTwoゲート数: {len(custom_two_gates)}")
-        print(f"  IntegratedSparseCompilerV2で疎構造認識分解中...")
+        print(f"  IntegratedSparseCompilerV2で疎構造認識してゲート数を推定中...")
+        
+        # CustomTwo以外のゲート数をカウント
+        non_custom_two_gates = sum(1 for gate in circuit.instructions 
+                                    if gate.__class__.__name__ != 'CustomTwo')
+        
+        # 各CustomTwoゲートの推定ゲート数を計算
+        total_sparse_gates = 0
+        for idx, gate in custom_two_gates:
+            # ユニタリ行列を取得
+            U = gate.to_matrix(identities=0)
+            
+            # IntegratedSparseCompilerV2で疎構造を認識
+            compiler = IntegratedSparseCompilerV2(tolerance=1e-10, optimize_gates=True)
+            result = compiler.compile(U)
+            
+            # ゲート数推定値を使用
+            gate_estimate = result.gate_count_estimate
+            total_sparse_gates += gate_estimate
+            
+            if idx == 0:  # 最初のゲートのみ詳細を表示
+                print(f"    例) CustomTwo #{idx}:")
+                print(f"      疎構造タイプ: {result.structure_info.structure_type}")
+                print(f"      活性次元: {result.structure_info.active_dimension}")
+                print(f"      活性部分空間: {result.structure_info.active_subspace}")
+                print(f"      推定ゲート数: {gate_estimate}")
+                print(f"      忠実度: {result.fidelity:.10f}")
+        
+        # 総ゲート数 = CustomTwo以外 + 疎構造認識CustomTwo
+        total_gates = non_custom_two_gates + total_sparse_gates
+        avg_gates = total_sparse_gates / len(custom_two_gates) if custom_two_gates else 0
+        
+        print(f"  推定完了:")
+        print(f"    CustomTwo以外のゲート: {non_custom_two_gates}")
+        print(f"    CustomTwoの推定ゲート: {total_sparse_gates}")
+        print(f"    平均: {avg_gates:.0f} ゲート/CustomTwo")
+        print(f"    総推定ゲート数: {total_gates}")
+        
+        return total_gates
         
         # 新しい回路を作成
         decomposed_circuit = QuantumCircuit()
@@ -1280,13 +1320,12 @@ class SuzukiTrotterMQTQuditSimulator:
         print(f"\nゲート数計測用回路構築完了:")
         print(f"  初期ゲート数: {initial_gates} (CustomTwo含む: {custom_two_count})")
         
-        # CustomTwoゲートがある場合は分解
+        # CustomTwoゲートがある場合はゲート数を推定
         if custom_two_count > 0:
-            print(f"\nCustomTwoゲートを基本ゲートに分解中...")
-            step_circuit = self.time_evol.decompose_custom_two_gates(step_circuit)
-            decomposed_gates = len(step_circuit.instructions)
-            print(f"  分解後ゲート数: {decomposed_gates}")
-            gates_per_step = decomposed_gates
+            print(f"\nCustomTwoゲートの基本ゲート数を推定中...")
+            estimated_gates = self.time_evol.decompose_custom_two_gates(step_circuit)
+            print(f"  推定ゲート数: {estimated_gates}")
+            gates_per_step = estimated_gates
         else:
             gates_per_step = initial_gates
         
@@ -1352,7 +1391,7 @@ class SuzukiTrotterMQTQuditSimulator:
             'N_steps': N_steps,
             'method': 'Qudit (MQT - Shot-based)',
             'shots': shots,
-            'step_circuit': step_circuit,  # Circuit decomposed to basic gates
+            'step_circuit': step_circuit,  # Circuit with CustomTwo gates (gate count estimated via sparse compiler)
             'total_gates': total_gates,
             'gates_per_step': gates_per_step
         }

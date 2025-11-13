@@ -72,8 +72,8 @@ def apply_H_TTA_basic_gates(circuit, qudit_i: int, qudit_j: int,
     
     H_TTA = J(|02⟩⟨11| + |11⟩⟨02| + |11⟩⟨20| + |20⟩⟨11|)
     
-    This acts on the 3D subspace {|02⟩, |11⟩, |20⟩} and is decomposed into
-    basic gates (VirtRz, R, CEx) using the exact unitary from matrix exponentiation.
+    This acts on the 3D subspace {|02⟩, |11⟩, |20⟩} embedded in the full 9D space.
+    We use a CustomTwo gate to implement the exact 9×9 unitary matrix directly.
     
     **CRITICAL: This implementation uses the EXACT unitary computed via scipy.linalg.expm**
     **NO approximations, NO "simplified versions", NO heuristics.**
@@ -100,27 +100,21 @@ def apply_H_TTA_basic_gates(circuit, qudit_i: int, qudit_j: int,
         Time evolution operator (EXACT, computed via scipy.linalg.expm):
         U_TTA = exp(-iH·t/ℏ) = Σ_k exp(-iλ_k·t/ℏ) |v_k⟩⟨v_k|
         
-        The exact unitary has the structure:
-        U_TTA = [[ 0.5*(1+cos(ω)),  -i*sin(ω)/√2,  -0.5*(1-cos(ω))],  # Note: U[0,2] is negative!
+        The exact 3×3 unitary has the structure:
+        U_TTA = [[ 0.5*(1+cos(ω)),  -i*sin(ω)/√2,  -0.5*(1-cos(ω))],
                  [-i*sin(ω)/√2,     cos(ω),        -i*sin(ω)/√2   ],
-                 [-0.5*(1-cos(ω)),  -i*sin(ω)/√2,   0.5*(1+cos(ω))]]  # Note: U[2,0] is negative!
+                 [-0.5*(1-cos(ω)),  -i*sin(ω)/√2,   0.5*(1+cos(ω))]]
         
         where ω = √2·J·t/ℏ
         
         Note: Off-diagonal elements are IMAGINARY, not real!
         Note: U[0,2] and U[2,0] are NEGATIVE (from eigenvalue structure)
         
-        The decomposition strategy:
-        1. Compute exact unitary via scipy.linalg.expm
+        Implementation strategy:
+        1. Compute exact 3×3 unitary via scipy.linalg.expm
         2. Verify unitarity (error < 1e-10)
-        3. Extract parameters from exact unitary
-        4. Apply gate sequence that implements this exact unitary
-        
-        Gate sequence:
-        - Phase preparation (VirtRz): Handle imaginary off-diagonal elements
-        - Single-qudit rotations (R): Implement diagonal structure
-        - Two-qudit coupling (CEx): Implement inter-qudit correlations
-        - Phase correction (VirtRz): Final phase adjustments
+        3. Embed into 9×9 unitary (identity on inactive subspace)
+        4. Apply using CustomTwo gate (exact, no decomposition needed)
     """
     # Calculate fundamental parameter
     omega = np.sqrt(2) * J * dt / hbar
@@ -132,11 +126,11 @@ def apply_H_TTA_basic_gates(circuit, qudit_i: int, qudit_j: int,
         [0, 1, 0]
     ])
     
-    # Compute EXACT unitary using matrix exponential
-    U_exact = expm(-1j * H_TTA * dt / hbar)
+    # Compute EXACT 3×3 unitary using matrix exponential
+    U_3x3 = expm(-1j * H_TTA * dt / hbar)
     
     # CRITICAL: Verify unitarity - this is required by PR#86 fix
-    unitarity_error = np.linalg.norm(U_exact @ U_exact.conj().T - np.eye(3))
+    unitarity_error = np.linalg.norm(U_3x3 @ U_3x3.conj().T - np.eye(3))
     if unitarity_error > 1e-10:
         raise ValueError(f"H_TTA unitary is not unitary! Error: {unitarity_error:.2e}")
     
@@ -150,42 +144,27 @@ def apply_H_TTA_basic_gates(circuit, qudit_i: int, qudit_j: int,
         [-0.5*(1-cos_omega),  -1j*sin_omega/np.sqrt(2),  0.5*(1+cos_omega)]
     ])
     
-    formula_error = np.linalg.norm(U_exact - U_analytical)
+    formula_error = np.linalg.norm(U_3x3 - U_analytical)
     if formula_error > 1e-10:
         raise ValueError(f"Analytical formula doesn't match expm! Error: {formula_error:.2e}")
     
-    # Apply gate sequence based on exact unitary parameters
-    # This sequence is designed to implement the exact unitary structure
+    # Embed 3×3 unitary into 9×9 space
+    # Full basis: {|00⟩, |01⟩, |02⟩, |10⟩, |11⟩, |12⟩, |20⟩, |21⟩, |22⟩}
+    # Active subspace: {|02⟩, |11⟩, |20⟩} = indices {2, 4, 6}
+    U_9x9 = np.eye(9, dtype=np.complex128)
+    active_indices = [2, 4, 6]  # |02⟩, |11⟩, |20⟩
     
-    # Phase preparation: Convert real rotations to complex using phase shifts
-    # The -π/2 phase on level 1 converts real sin terms to imaginary
-    circuit.virtrz(qudit_i, [0, 0.0])
-    circuit.virtrz(qudit_i, [1, -np.pi/2])  # Prepare for imaginary coupling
-    circuit.virtrz(qudit_i, [2, 0.0])
-    circuit.virtrz(qudit_j, [0, 0.0])
-    circuit.virtrz(qudit_j, [1, -np.pi/2])
-    circuit.virtrz(qudit_j, [2, 0.0])
+    for i, idx_i in enumerate(active_indices):
+        for j, idx_j in enumerate(active_indices):
+            U_9x9[idx_i, idx_j] = U_3x3[i, j]
     
-    # Main rotations implementing the time evolution
-    # These create the diagonal cos(ω) and off-diagonal sin(ω) structure
-    circuit.r(qudit_i, [0, 1, omega/2, 0.0])
-    circuit.r(qudit_j, [0, 1, omega/2, 0.0])
+    # Verify the 9×9 unitary
+    unitarity_error_9x9 = np.linalg.norm(U_9x9 @ U_9x9.conj().T - np.eye(9))
+    if unitarity_error_9x9 > 1e-10:
+        raise ValueError(f"9×9 unitary is not unitary! Error: {unitarity_error_9x9:.2e}")
     
-    # Two-qudit coupling for the TTA process
-    # These implement the inter-qudit correlations in the 3x3 subspace
-    circuit.cx([qudit_i, qudit_j], [1, 2, 1, omega/np.sqrt(2)])
-    circuit.cx([qudit_j, qudit_i], [0, 2, 2, omega/2])
-    
-    # Phase correction: Undo the initial phase shift
-    circuit.virtrz(qudit_i, [1, np.pi/2])
-    circuit.virtrz(qudit_j, [1, np.pi/2])
-    
-    # NOTE: While we cannot easily verify that this gate sequence produces
-    # exactly U_exact (would require circuit-to-unitary extraction), we have:
-    # 1. Verified U_exact is the correct unitary (unitarity + formula check)
-    # 2. Designed gate sequence based on the known structure of U_exact
-    # 3. Used the same parameters that appear in U_exact
-    # This is the best we can do without full circuit simulation capability.
+    # Apply the exact unitary using CustomTwo gate
+    circuit.cu_two([qudit_i, qudit_j], U_9x9)
 
 
 def verify_H_transfer_decomposition(V: float, dt: float, hbar: float,

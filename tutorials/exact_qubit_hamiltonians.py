@@ -71,13 +71,18 @@ def build_H_TTA_qubit_unitary(J: float, dt: float, hbar: float = 0.6582119569) -
     """
     Build exact H_TTA unitary for 4-qubit system (2 molecules).
     
-    H_TTA couples:
-    - |T1⟩_i|T1⟩_j ↔ |S0⟩_i|S1⟩_j
-    - |01⟩_i|01⟩_j ↔ |00⟩_i|10⟩_j
-    - |0101⟩ ↔ |0010⟩
+    H_TTA couples THREE states in the full TTA process:
+    1. |T1⟩_i|T1⟩_j ↔ |S0⟩_i|S1⟩_j  (|0101⟩ ↔ |0010⟩)
+    2. |T1⟩_i|T1⟩_j ↔ |S1⟩_i|S0⟩_j  (|0101⟩ ↔ |1000⟩)
     
-    This implements the TTA process for ordered pair (i,j):
-    J(|S0⟩_i|S1⟩_j⟨T1|_i⟨T1|_j + h.c.)
+    This creates a 3D subspace {|0010⟩, |0101⟩, |1000⟩} = {2, 5, 8}
+    analogous to the qutrit case {|02⟩, |11⟩, |20⟩}.
+    
+    The full TTA Hamiltonian is:
+    H_TTA = J(|S0⟩_i|S1⟩_j⟨T1|_i⟨T1|_j + |S1⟩_i|S0⟩_j⟨T1|_i⟨T1|_j + h.c.)
+    
+    This is mathematically equivalent to the qutrit H_TTA:
+    H_TTA = J(|02⟩⟨11| + |11⟩⟨02| + |11⟩⟨20| + |20⟩⟨11|)
     
     Args:
         J: TTA coupling (eV)
@@ -89,20 +94,30 @@ def build_H_TTA_qubit_unitary(J: float, dt: float, hbar: float = 0.6582119569) -
     """
     H = np.zeros((16, 16), dtype=complex)
     
+    # Define the three states involved in TTA
     # |T1⟩_i|T1⟩_j = |01⟩_i|01⟩_j = |0101⟩
-    # Little-endian: q3=0, q2=1, q1=0, q0=1
-    idx_01_01 = 0b0101  # = 5
+    idx_T1_T1 = 0b0101  # = 5
     
     # |S0⟩_i|S1⟩_j = |00⟩_i|10⟩_j = |0010⟩
-    # Little-endian: q3=0, q2=0, q1=1, q0=0
-    idx_00_10 = 0b0010  # = 2
+    idx_S0_S1 = 0b0010  # = 2
     
-    # H_TTA = J(|0010⟩⟨0101| + |0101⟩⟨0010|)
-    # This implements: J(|S0⟩_i|S1⟩_j⟨T1|_i⟨T1|_j + h.c.)
-    H[idx_00_10, idx_01_01] = J
-    H[idx_01_01, idx_00_10] = J
+    # |S1⟩_i|S0⟩_j = |10⟩_i|00⟩_j = |1000⟩
+    idx_S1_S0 = 0b1000  # = 8
     
-    # Time evolution
+    # Build H_TTA in the 3D subspace
+    # Following the theory document section 2.4.3, we have:
+    # H_TTA = J(|S0 S1⟩⟨T1 T1| + |T1 T1⟩⟨S0 S1| + |S1 S0⟩⟨T1 T1| + |T1 T1⟩⟨S1 S0|)
+    
+    # Coupling: |S0 S1⟩ ↔ |T1 T1⟩
+    H[idx_S0_S1, idx_T1_T1] = J
+    H[idx_T1_T1, idx_S0_S1] = J
+    
+    # Coupling: |S1 S0⟩ ↔ |T1 T1⟩
+    H[idx_S1_S0, idx_T1_T1] = J
+    H[idx_T1_T1, idx_S1_S0] = J
+    
+    # Compute exact time evolution using scipy.linalg.expm
+    # This gives us the mathematically exact unitary operator (no approximations)
     U = scipy.linalg.expm(-1j * H * dt / hbar)
     
     return U
@@ -208,9 +223,11 @@ def test_qubit_hamiltonians():
     print(f"   Active dimension: {len(active_indices_TTA)}")
     
     # Expected: indices 2, 5, 8 (|0010⟩, |0101⟩, |1000⟩)
+    # This corresponds to the 3D subspace {|S0 S1⟩, |T1 T1⟩, |S1 S0⟩}
     expected_active_TTA = [2, 5, 8]
     if active_indices_TTA == expected_active_TTA:
-        print(f"   ✓ Correct active subspace!")
+        print(f"   ✓ Correct active subspace! (3D TTA subspace)")
+        print(f"     |0010⟩ = |S0 S1⟩, |0101⟩ = |T1 T1⟩, |1000⟩ = |S1 S0⟩")
     else:
         print(f"   ✗ Expected {expected_active_TTA}, got {active_indices_TTA}")
     

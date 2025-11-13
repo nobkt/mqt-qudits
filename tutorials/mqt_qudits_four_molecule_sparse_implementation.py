@@ -1188,7 +1188,7 @@ class SuzukiTrotterMQTQuditSimulator:
         # CustomTwoゲートがある場合は分解
         if custom_two_count > 0:
             print(f"\nCustomTwoゲートを基本ゲートに分解中...")
-            step_circuit = self.decompose_custom_two_gates(step_circuit)
+            step_circuit = self.time_evol.decompose_custom_two_gates(step_circuit)
             decomposed_gates = len(step_circuit.instructions)
             print(f"  分解後ゲート数: {decomposed_gates}")
             gates_per_step = decomposed_gates

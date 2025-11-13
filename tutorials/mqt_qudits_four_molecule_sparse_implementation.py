@@ -654,11 +654,25 @@ class SparseAwareMQTQuditTimeEvolution:
             new_gate = dec_gate.__class__.__new__(dec_gate.__class__)
             new_gate.__dict__ = dec_gate.__dict__.copy()
             
-            # reference_linesを更新
-            if hasattr(dec_gate, 'reference_lines'):
-                new_ref_lines = [qudit_indices[i] if i < len(qudit_indices) else i 
-                                 for i in dec_gate.reference_lines]
-                new_gate.reference_lines = new_ref_lines
+            # reference_linesを更新するため、target_quditsとcontrol dataを更新
+            # reference_lines = control_lines + target_qudits なので、
+            # 両方を適切にマッピングする必要がある
+            if hasattr(dec_gate, '_target_qudits'):
+                # target_quditsをマッピング (0,1 → 実際のquditインデックス)
+                old_targets = dec_gate._target_qudits
+                if isinstance(old_targets, int):
+                    new_gate._target_qudits = qudit_indices[old_targets] if old_targets < len(qudit_indices) else old_targets
+                elif isinstance(old_targets, list):
+                    new_gate._target_qudits = [qudit_indices[i] if i < len(qudit_indices) else i 
+                                               for i in old_targets]
+            
+            # control dataもマッピング
+            if hasattr(dec_gate, '_controls_data') and dec_gate._controls_data is not None:
+                from mqt.qudits.quantum_circuit.components.extensions.controls import ControlData
+                old_ctrl_indices = dec_gate._controls_data.indices
+                new_ctrl_indices = [qudit_indices[i] if i < len(qudit_indices) else i 
+                                   for i in old_ctrl_indices]
+                new_gate._controls_data = ControlData(new_ctrl_indices, dec_gate._controls_data.ctrl_states)
             
             decomposed_gates.append(new_gate)
         

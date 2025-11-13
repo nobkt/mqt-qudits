@@ -752,12 +752,12 @@ $9 \times 9$ 行列表現：
 $$
 \mathbf{H}_{\text{TTA}}^{(i,i+1)} = J \begin{pmatrix}
 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
-0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\
 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 1 & 0 & 0 & 0 & 1 & 0 & 0 \\
+0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0
 \end{pmatrix}
@@ -765,34 +765,43 @@ $$
 
 非ゼロ要素の位置（0-indexedで行・列を記述）：
 
-- $[1][2] = J$: $\langle 01 | \hat{H}_{\text{TTA}}^{(i,i+1)} | 02 \rangle = J$ （$|T_1 S_0\rangle \rightarrow |T_1 S_1\rangle$）
-- $[2][1] = J$: $\langle 02 | \hat{H}_{\text{TTA}}^{(i,i+1)} | 01 \rangle = J$ （$|T_1 S_1\rangle \rightarrow |T_1 S_0\rangle$）
-- $[3][6] = J$: $\langle 10 | \hat{H}_{\text{TTA}}^{(i,i+1)} | 21 \rangle = J$ （$|S_0 T_1\rangle \rightarrow |S_1 T_1\rangle$）
-- $[6][3] = J$: $\langle 21 | \hat{H}_{\text{TTA}}^{(i,i+1)} | 10 \rangle = J$ （$|S_1 T_1\rangle \rightarrow |S_0 T_1\rangle$）
+- $[2][4] = J$: $\langle 02 | \hat{H}_{\text{TTA}}^{(i,i+1)} | 11 \rangle = J$ （$|S_0 S_1\rangle \leftrightarrow |T_1 T_1\rangle$）
+- $[4][2] = J$: $\langle 11 | \hat{H}_{\text{TTA}}^{(i,i+1)} | 02 \rangle = J$ （$|T_1 T_1\rangle \leftrightarrow |S_0 S_1\rangle$）
+- $[4][6] = J$: $\langle 11 | \hat{H}_{\text{TTA}}^{(i,i+1)} | 20 \rangle = J$ （$|T_1 T_1\rangle \leftrightarrow |S_1 S_0\rangle$）
+- $[6][4] = J$: $\langle 20 | \hat{H}_{\text{TTA}}^{(i,i+1)} | 11 \rangle = J$ （$|S_1 S_0\rangle \leftrightarrow |T_1 T_1\rangle$）
 
-この行列も実対称かつ疎である。
+この行列は実対称かつ疎である。物理的なTTA過程 $|T_1 T_1\rangle \rightarrow |S_0 S_1\rangle + |S_1 S_0\rangle$ を正確に表現している。
 
 **固有値分解**:
 
-$\hat{H}_{\text{TTA}}^{(i,i+1)}$ は2つの独立な2次元部分空間で作用する：
-
-1. **部分空間1**: $\text{span}\{|01\rangle, |02\rangle\}$ （状態：$|T_1 S_0\rangle$, $|T_1 S_1\rangle$）
-2. **部分空間2**: $\text{span}\{|10\rangle, |21\rangle\}$ （状態：$|S_0 T_1\rangle$, $|S_1 T_1\rangle$）
-
-各部分空間での行列表現は同じ：
+$\hat{H}_{\text{TTA}}^{(i,i+1)}$ は3次元部分空間 $\text{span}\{|02\rangle, |11\rangle, |20\rangle\}$ で作用する。この部分空間での行列表現：
 
 $$
-\mathbf{H}_{\text{subspace}} = J \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}
+\mathbf{H}_{\text{3D}} = J \begin{pmatrix} 
+0 & 1 & 0 \\ 
+1 & 0 & 1 \\ 
+0 & 1 & 0 
+\end{pmatrix}
 $$
 
-固有値と固有ベクトル：
+固有値：
 
 $$
-\lambda_+ = J, \quad |\psi_+\rangle = \frac{1}{\sqrt{2}}(|\text{state}_1\rangle + |\text{state}_2\rangle)
+\lambda_0 = 0, \quad \lambda_{\pm} = \pm\sqrt{2}J
+$$
+
+固有ベクトル：
+
+$$
+|\psi_0\rangle = \frac{1}{\sqrt{2}}(|02\rangle - |20\rangle)
 $$
 
 $$
-\lambda_- = -J, \quad |\psi_-\rangle = \frac{1}{\sqrt{2}}(|\text{state}_1\rangle - |\text{state}_2\rangle)
+|\psi_+\rangle = \frac{1}{2}(|02\rangle + \sqrt{2}|11\rangle + |20\rangle)
+$$
+
+$$
+|\psi_-\rangle = \frac{1}{2}(|02\rangle - \sqrt{2}|11\rangle + |20\rangle)
 $$
 
 **時間発展演算子の明示的形式**:
@@ -801,30 +810,33 @@ $$
 \hat{U}_{\text{TTA}}^{(i,i+1)}(t) = \exp\left(-\frac{i}{\hbar}\hat{H}_{\text{TTA}}^{(i,i+1)} t\right)
 $$
 
-各部分空間で同じ形式の時間発展を持つ：
+時間発展は3次元部分空間 $\text{span}\{|02\rangle, |11\rangle, |20\rangle\}$ でのみ非自明である。$\theta = \sqrt{2}Jt/\hbar$ とすると、この部分空間での $3 \times 3$ 時間発展行列は：
 
 $$
-\begin{align}
-\hat{U}_{\text{subspace}}(t) = &\cos\left(\frac{Jt}{\hbar}\right)(|\text{state}_1\rangle \langle \text{state}_1| + |\text{state}_2\rangle \langle \text{state}_2|) \\
-&- i\sin\left(\frac{Jt}{\hbar}\right)(|\text{state}_1\rangle \langle \text{state}_2| + |\text{state}_2\rangle \langle \text{state}_1|)
-\end{align}
+\mathbf{U}_{\text{3D}}(t) = \begin{pmatrix}
+\frac{1+\cos\theta}{2} & -\frac{i}{\sqrt{2}}\sin\theta & \frac{\cos\theta-1}{2} \\
+-\frac{i}{\sqrt{2}}\sin\theta & \cos\theta & -\frac{i}{\sqrt{2}}\sin\theta \\
+\frac{\cos\theta-1}{2} & -\frac{i}{\sqrt{2}}\sin\theta & \frac{1+\cos\theta}{2}
+\end{pmatrix}
 $$
 
-$9 \times 9$ 行列表現（$\phi = Jt/\hbar$ とする）：
+全空間 $9 \times 9$ での行列表現：
 
 $$
 \mathbf{U}_{\text{TTA}}^{(i,i+1)}(t) = \begin{pmatrix}
 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-0 & \cos\phi & -i\sin\phi & 0 & 0 & 0 & 0 & 0 & 0 \\
-0 & -i\sin\phi & \cos\phi & 0 & 0 & 0 & 0 & 0 & 0 \\
-0 & 0 & 0 & \cos\phi & 0 & 0 & -i\sin\phi & 0 & 0 \\
-0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
+0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & \frac{1+\cos\theta}{2} & 0 & -\frac{i}{\sqrt{2}}\sin\theta & 0 & \frac{\cos\theta-1}{2} & 0 & 0 \\
+0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+0 & 0 & -\frac{i}{\sqrt{2}}\sin\theta & 0 & \cos\theta & 0 & -\frac{i}{\sqrt{2}}\sin\theta & 0 & 0 \\
 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
-0 & 0 & 0 & -i\sin\phi & 0 & 0 & \cos\phi & 0 & 0 \\
+0 & 0 & \frac{\cos\theta-1}{2} & 0 & -\frac{i}{\sqrt{2}}\sin\theta & 0 & \frac{1+\cos\theta}{2} & 0 & 0 \\
 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1
 \end{pmatrix}
 $$
+
+ここで、$\theta = \sqrt{2}Jt/\hbar$ である。
 
 #### 3.9.3 4分子系への拡張
 

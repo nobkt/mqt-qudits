@@ -71,13 +71,16 @@ def build_H_TTA_qubit_unitary(J: float, dt: float, hbar: float = 0.6582119569) -
     """
     Build exact H_TTA unitary for 4-qubit system (2 molecules).
     
-    H_TTA couples:
+    H_TTA implements the complete TTA process with BOTH terms:
     - |T1⟩_i|T1⟩_j ↔ |S0⟩_i|S1⟩_j
-    - |01⟩_i|01⟩_j ↔ |00⟩_i|10⟩_j
-    - |0101⟩ ↔ |0010⟩
+    - |T1⟩_i|T1⟩_j ↔ |S1⟩_i|S0⟩_j
     
-    This implements the TTA process for ordered pair (i,j):
-    J(|S0⟩_i|S1⟩_j⟨T1|_i⟨T1|_j + h.c.)
+    In qubit encoding (|S0⟩=|00⟩, |T1⟩=|01⟩, |S1⟩=|10⟩):
+    - |0101⟩ ↔ |0010⟩  (|T1,T1⟩ ↔ |S0,S1⟩)
+    - |0101⟩ ↔ |1000⟩  (|T1,T1⟩ ↔ |S1,S0⟩)
+    
+    Full Hamiltonian:
+    Ĥ_TTA = J [|S0⟩_i⟨T1|_i ⊗ |S1⟩_j⟨T1|_j + |S1⟩_i⟨T1|_i ⊗ |S0⟩_j⟨T1|_j + h.c.]
     
     Args:
         J: TTA coupling (eV)
@@ -91,16 +94,25 @@ def build_H_TTA_qubit_unitary(J: float, dt: float, hbar: float = 0.6582119569) -
     
     # |T1⟩_i|T1⟩_j = |01⟩_i|01⟩_j = |0101⟩
     # Little-endian: q3=0, q2=1, q1=0, q0=1
-    idx_01_01 = 0b0101  # = 5
+    idx_T1_T1 = 0b0101  # = 5
     
     # |S0⟩_i|S1⟩_j = |00⟩_i|10⟩_j = |0010⟩
     # Little-endian: q3=0, q2=0, q1=1, q0=0
-    idx_00_10 = 0b0010  # = 2
+    idx_S0_S1 = 0b0010  # = 2
     
-    # H_TTA = J(|0010⟩⟨0101| + |0101⟩⟨0010|)
-    # This implements: J(|S0⟩_i|S1⟩_j⟨T1|_i⟨T1|_j + h.c.)
-    H[idx_00_10, idx_01_01] = J
-    H[idx_01_01, idx_00_10] = J
+    # |S1⟩_i|S0⟩_j = |10⟩_i|00⟩_j = |1000⟩
+    # Little-endian: q3=1, q2=0, q1=0, q0=0
+    idx_S1_S0 = 0b1000  # = 8
+    
+    # Term 1: |T1,T1⟩ ↔ |S0,S1⟩
+    # J(|S0⟩_i|S1⟩_j⟨T1|_i⟨T1|_j + h.c.)
+    H[idx_S0_S1, idx_T1_T1] = J
+    H[idx_T1_T1, idx_S0_S1] = J
+    
+    # Term 2: |T1,T1⟩ ↔ |S1,S0⟩ (THIS WAS MISSING!)
+    # J(|S1⟩_i|S0⟩_j⟨T1|_i⟨T1|_j + h.c.)
+    H[idx_S1_S0, idx_T1_T1] = J
+    H[idx_T1_T1, idx_S1_S0] = J
     
     # Time evolution
     U = scipy.linalg.expm(-1j * H * dt / hbar)

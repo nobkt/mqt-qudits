@@ -1147,6 +1147,40 @@ class SuzukiTrotterMQTQuditSimulator:
         
         return {'N_S0': N_S0, 'N_T1': N_T1, 'N_S1': N_S1}
     
+    def calculate_per_molecule_populations(self, state_vector: np.ndarray) -> Dict[str, np.ndarray]:
+        """
+        状態ベクトルから各分子ごとの個体数を計算
+        
+        Args:
+            state_vector: 状態ベクトル
+            
+        Returns:
+            Dictionary with keys 'S0_per_mol', 'T1_per_mol', 'S1_per_mol'
+            Each is a numpy array of length N_molecules
+        """
+        state = state_vector.flatten()
+        S0_per_mol = np.zeros(self.N)
+        T1_per_mol = np.zeros(self.N)
+        S1_per_mol = np.zeros(self.N)
+        
+        for idx in range(self.dim):
+            prob = np.abs(state[idx])**2
+            config = index_to_config(idx, self.N, 3)
+            
+            for mol_idx, level in enumerate(config):
+                if level == 0:
+                    S0_per_mol[mol_idx] += prob
+                elif level == 1:
+                    T1_per_mol[mol_idx] += prob
+                elif level == 2:
+                    S1_per_mol[mol_idx] += prob
+        
+        return {
+            'S0_per_mol': S0_per_mol,
+            'T1_per_mol': T1_per_mol,
+            'S1_per_mol': S1_per_mol
+        }
+    
     def simulate(self, T_total: float, N_steps: int,
                  initial_state_type: str = 'all_triplet',
                  track_dynamics: bool = True) -> Dict:
@@ -1266,6 +1300,43 @@ class SuzukiTrotterMQTQuditSimulator:
         
         return {'N_S0': N_S0, 'N_T1': N_T1, 'N_S1': N_S1}
     
+    def calculate_per_molecule_populations_from_samples(self, samples: List[int], shots: int) -> Dict[str, np.ndarray]:
+        """
+        サンプルから各分子ごとの個体数を計算
+        
+        Args:
+            samples: 状態インデックスのリスト
+            shots: 総ショット数
+            
+        Returns:
+            Dictionary with keys 'S0_per_mol', 'T1_per_mol', 'S1_per_mol'
+            Each is a numpy array of length N_molecules
+        """
+        S0_per_mol = np.zeros(self.N)
+        T1_per_mol = np.zeros(self.N)
+        S1_per_mol = np.zeros(self.N)
+        
+        for state_idx in samples:
+            config = index_to_config(state_idx, self.N, 3)
+            for mol_idx, level in enumerate(config):
+                if level == 0:
+                    S0_per_mol[mol_idx] += 1.0
+                elif level == 1:
+                    T1_per_mol[mol_idx] += 1.0
+                elif level == 2:
+                    S1_per_mol[mol_idx] += 1.0
+        
+        # 正規化
+        S0_per_mol /= shots
+        T1_per_mol /= shots
+        S1_per_mol /= shots
+        
+        return {
+            'S0_per_mol': S0_per_mol,
+            'T1_per_mol': T1_per_mol,
+            'S1_per_mol': S1_per_mol
+        }
+    
     def simulate_shot_based(self, T_total: float, N_steps: int,
                            initial_state_type: str = 'all_triplet',
                            track_dynamics: bool = True,
@@ -1335,6 +1406,7 @@ class SuzukiTrotterMQTQuditSimulator:
         # 結果の記録
         times = [0.0]
         populations_history = []
+        per_molecule_populations_history = []
         
         # 初期状態の準備と評価
         init_circuit = self.build_initial_state_circuit(initial_state_type)
@@ -1346,6 +1418,7 @@ class SuzukiTrotterMQTQuditSimulator:
         probabilities = np.abs(current_state)**2
         samples_0 = np.random.choice(self.dim, size=shots, p=probabilities)
         populations_history.append(self.calculate_populations_from_samples(samples_0, shots))
+        per_molecule_populations_history.append(self.calculate_per_molecule_populations_from_samples(samples_0, shots))
         
         # 時間発展ループ（O(N)複雑度）
         start_time = time.time()
@@ -1368,6 +1441,7 @@ class SuzukiTrotterMQTQuditSimulator:
                 t = (step + 1) * dt
                 times.append(t)
                 populations_history.append(self.calculate_populations_from_samples(samples, shots))
+                per_molecule_populations_history.append(self.calculate_per_molecule_populations_from_samples(samples, shots))
             
             # 進捗表示
             if (step + 1) % max(1, N_steps // 10) == 0 or step == N_steps - 1:
@@ -1385,6 +1459,7 @@ class SuzukiTrotterMQTQuditSimulator:
         return {
             'times': np.array(times),
             'populations': populations_history,
+            'per_molecule_populations': per_molecule_populations_history,
             'final_state': current_state,
             'elapsed_time': elapsed_time,
             'dt': dt,

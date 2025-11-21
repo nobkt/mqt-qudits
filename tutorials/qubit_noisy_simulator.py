@@ -45,8 +45,8 @@ class QubitMolecularDynamicsSimulatorNoisy:
     def create_noise_model(self, 
                           depol_1q: float = 0.001,
                           depol_2q: float = 0.01,
-                          t1: float = 50000.0,  # 50 μs in fs
-                          t2: float = 70000.0,  # 70 μs in fs
+                          t1: float = None,
+                          t2: float = None,
                           gate_time_1q: float = 50.0,  # 50 fs
                           gate_time_2q: float = 300.0) -> NoiseModel:
         """
@@ -58,10 +58,10 @@ class QubitMolecularDynamicsSimulatorNoisy:
             Depolarizing error probability for single-qubit gates (default: 0.001 = 0.1%)
         depol_2q : float
             Depolarizing error probability for two-qubit gates (default: 0.01 = 1%)
-        t1 : float
-            Energy relaxation time (T1) in fs (default: 50000 fs = 50 μs)
-        t2 : float
-            Dephasing time (T2) in fs (default: 70000 fs = 70 μs)
+        t1 : float or None
+            Energy relaxation time (T1) in fs. If None, thermal relaxation is not applied.
+        t2 : float or None
+            Dephasing time (T2) in fs. If None, thermal relaxation is not applied.
         gate_time_1q : float
             Single-qubit gate time in fs (default: 50 fs)
         gate_time_2q : float
@@ -81,8 +81,8 @@ class QubitMolecularDynamicsSimulatorNoisy:
         error_2q = depolarizing_error(depol_2q, 2)
         noise_model.add_all_qubit_quantum_error(error_2q, ['cx', 'cz'])
         
-        # Thermal relaxation for single-qubit gates
-        if t1 > 0 and t2 > 0:
+        # Thermal relaxation for single-qubit gates (optional)
+        if t1 is not None and t2 is not None and t1 > 0 and t2 > 0:
             error_thermal_1q = thermal_relaxation_error(t1, t2, gate_time_1q)
             noise_model.add_all_qubit_quantum_error(error_thermal_1q, ['u1', 'u2', 'u3'])
             
@@ -237,12 +237,15 @@ class QubitMolecularDynamicsSimulatorNoisy:
         print("\nノイズモデルパラメータ:")
         depol_1q = noise_params.get('depol_1q', 0.001)
         depol_2q = noise_params.get('depol_2q', 0.01)
-        t1 = noise_params.get('t1', 50000.0)
-        t2 = noise_params.get('t2', 70000.0)
+        t1 = noise_params.get('t1', None)
+        t2 = noise_params.get('t2', None)
         print(f"  1量子ビットゲート脱分極エラー: {depol_1q*100:.3f}%")
         print(f"  2量子ビットゲート脱分極エラー: {depol_2q*100:.3f}%")
-        print(f"  T1 (エネルギー緩和時間): {t1:.1f} fs")
-        print(f"  T2 (位相緩和時間): {t2:.1f} fs")
+        if t1 is not None and t2 is not None:
+            print(f"  T1 (エネルギー緩和時間): {t1:.1f} fs")
+            print(f"  T2 (位相緩和時間): {t2:.1f} fs")
+        else:
+            print(f"  熱緩和: 無効")
         
         start_time = time.time()
         dt = T_total / N_steps

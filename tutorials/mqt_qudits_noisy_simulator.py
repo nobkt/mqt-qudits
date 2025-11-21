@@ -71,18 +71,18 @@ class NoisyQuditMolecularDynamicsSimulator:
         print(f"  状態空間次元: {self.dim}")
     
     def create_noise_model(self,
-                          depol_prob: float = 0.001,
-                          dephasing_prob: float = 0.001,
+                          depol_1q: float = 0.001,
+                          depol_2q: float = 0.01,
                           noise_gates: List[str] = None) -> "NoiseModel":
         """
         Create a realistic noise model for qutrits.
         
         Parameters:
         -----------
-        depol_prob : float
-            Depolarizing error probability (default: 0.001 = 0.1%)
-        dephasing_prob : float
-            Dephasing error probability (default: 0.001 = 0.1%)
+        depol_1q : float
+            Depolarizing error probability for single-qudit gates (default: 0.001 = 0.1%)
+        depol_2q : float
+            Depolarizing error probability for two-qudit gates (default: 0.01 = 1%)
         noise_gates : List[str] or None
             List of gate names to apply noise to. If None, applies to all gates.
         
@@ -96,18 +96,21 @@ class NoisyQuditMolecularDynamicsSimulator:
             # Apply noise to all common gates
             noise_gates = ['virtrz', 'r', 'rz', 'rh', 'cx', 'h', 'x', 'z', 's']
         
-        # Create mathematical noise (Noise class, not SubspaceNoise)
-        # The C++ backend expects Noise objects with probability_depolarizing and probability_dephasing attributes
-        noise = self.Noise(depol_prob, dephasing_prob)
-        
-        # Apply noise locally to all qudits
-        noise_model.add_quantum_error_locally(noise, noise_gates)
-        
-        # For two-qudit gates, add stronger noise
+        # Separate single-qudit and two-qudit gates
         two_qudit_gates = [g for g in noise_gates if g in ['cx', 'csum', 'ls', 'ms']]
+        single_qudit_gates = [g for g in noise_gates if g not in two_qudit_gates]
+        
+        # Create mathematical noise for single-qudit gates
+        # The C++ backend expects Noise objects with probability_depolarizing and probability_dephasing attributes
+        # We use depol_1q for both depolarizing and dephasing to maintain consistency with qubit simulator
+        if single_qudit_gates:
+            noise_1q = self.Noise(depol_1q, 0.0)  # Only depolarizing, no dephasing
+            noise_model.add_quantum_error_locally(noise_1q, single_qudit_gates)
+        
+        # For two-qudit gates, use depol_2q
         if two_qudit_gates:
-            two_qudit_noise = self.Noise(depol_prob * 5, dephasing_prob * 3)
-            noise_model.add_nonlocal_quantum_error(two_qudit_noise, two_qudit_gates)
+            noise_2q = self.Noise(depol_2q, 0.0)  # Only depolarizing, no dephasing
+            noise_model.add_nonlocal_quantum_error(noise_2q, two_qudit_gates)
         
         return noise_model
     
@@ -180,9 +183,9 @@ class NoisyQuditMolecularDynamicsSimulator:
         }
     
     def _apply_noise_to_statevector(self, statevector: np.ndarray, 
-                                    depol_prob: float, dephasing_prob: float) -> np.ndarray:
+                                    depol_prob: float) -> np.ndarray:
         """
-        Apply depolarizing and dephasing noise to a statevector using density matrix formalism.
+        Apply depolarizing noise to a statevector using density matrix formalism.
         
         This method converts the statevector to a density matrix, applies proper
         quantum noise channels, then samples a new statevector from the noisy density matrix.
@@ -190,8 +193,7 @@ class NoisyQuditMolecularDynamicsSimulator:
         Mathematical approach:
         1. Convert |ψ⟩ → ρ = |ψ⟩⟨ψ|
         2. Apply depolarizing: ρ' = (1-p)ρ + p·I/d
-        3. Apply dephasing: ρ'' = Σ_k E_k ρ' E_k†
-        4. Sample new |ψ'⟩ from ρ'' (via eigendecomposition)
+        3. Sample new |ψ'⟩ from ρ' (via eigendecomposition)
         
         Parameters:
         -----------
@@ -199,8 +201,6 @@ class NoisyQuditMolecularDynamicsSimulator:
             Current statevector (length: 3^N)
         depol_prob : float
             Total depolarizing probability (for all qudits combined)
-        dephasing_prob : float
-            Total dephasing probability (for all qudits combined)
         
         Returns:
         --------
@@ -216,14 +216,6 @@ class NoisyQuditMolecularDynamicsSimulator:
             p_eff = min(depol_prob, self.MAX_DEPOL_PROB)
             identity = np.eye(self.dim) / self.dim
             rho = (1.0 - p_eff) * rho + p_eff * identity
-        
-        # Apply dephasing noise: random phase damping (reduces off-diagonal elements)
-        if dephasing_prob > 0:
-            # Dephasing reduces off-diagonal elements: ρ_ij → ρ_ij * (1 - p) for i ≠ j
-            p_eff = min(dephasing_prob, self.MAX_DEPHASING_PROB)
-            # Efficient numpy operation instead of nested loops
-            mask = ~np.eye(self.dim, dtype=bool)
-            rho[mask] *= (1.0 - p_eff)
         
         # Ensure density matrix is Hermitian and trace 1
         # Combined operation for numerical stability
@@ -270,7 +262,7 @@ class NoisyQuditMolecularDynamicsSimulator:
             Number of measurement shots per time step
         noise_params : Dict or None
             Noise parameters. If None, uses default realistic values.
-            Keys: 'depol_prob', 'dephasing_prob', 'noise_gates'
+            Keys: 'depol_1q', 'depol_2q', 'noise_gates'
         
         Returns:
         --------
@@ -289,15 +281,15 @@ class NoisyQuditMolecularDynamicsSimulator:
         if noise_params is None:
             noise_params = {}
         
-        depol_prob = noise_params.get('depol_prob', 0.001)
-        dephasing_prob = noise_params.get('dephasing_prob', 0.001)
+        depol_1q = noise_params.get('depol_1q', 0.001)
+        depol_2q = noise_params.get('depol_2q', 0.01)
         noise_gates = noise_params.get('noise_gates', None)
         
-        noise_model = self.create_noise_model(depol_prob, dephasing_prob, noise_gates)
+        noise_model = self.create_noise_model(depol_1q, depol_2q, noise_gates)
         
         print("\nノイズモデルパラメータ:")
-        print(f"  脱分極エラー確率: {depol_prob*100:.3f}%")
-        print(f"  位相緩和エラー確率: {dephasing_prob*100:.3f}%")
+        print(f"  1量子ビットゲート脱分極エラー: {depol_1q*100:.3f}%")
+        print(f"  2量子ビットゲート脱分極エラー: {depol_2q*100:.3f}%")
         print(f"  ノイズ適用ゲート: {noise_model.basis_gates}")
         
         # Build single Trotter step circuit
@@ -371,10 +363,13 @@ class NoisyQuditMolecularDynamicsSimulator:
             current_state = step_unitary @ current_state
             
             # Apply noise manually to statevector using density matrix formalism
-            # Noise model: depolarizing + dephasing with proper quantum channels
-            if depol_prob > 0 or dephasing_prob > 0:
+            # Noise model: depolarizing with proper quantum channels
+            # Combine depol_1q and depol_2q into an effective depolarizing probability
+            # Weighted by the ratio of gates (approximate as average)
+            effective_depol = (depol_1q + depol_2q) / 2.0
+            if effective_depol > 0:
                 current_state = self._apply_noise_to_statevector(
-                    current_state, depol_prob, dephasing_prob
+                    current_state, effective_depol
                 )
             
             # Ensure normalization (safety check - should already be normalized)
@@ -416,7 +411,7 @@ class NoisyQuditMolecularDynamicsSimulator:
             'populations': populations_history,
             'per_molecule_populations': per_molecule_populations_history,
             'elapsed_time': elapsed,
-            'method': f'Qudit (Noisy, depol={depol_prob:.4f}, dephasing={dephasing_prob:.4f})',
+            'method': f'Qudit (Noisy, depol_1q={depol_1q:.4f}, depol_2q={depol_2q:.4f})',
             'gates_per_step': gates_per_step,
             'total_gates': gates_per_step * N_steps,
             'shots': shots,

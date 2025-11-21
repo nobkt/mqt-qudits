@@ -38,6 +38,10 @@ class NoisyQuditMolecularDynamicsSimulator:
     realistic noise to each gate operation using MQT-qudits NoiseModel.
     """
     
+    # Noise model parameters
+    MAX_DEPOL_PROB = 0.1  # Maximum effective depolarizing probability (10%)
+    MAX_DEPHASING_PROB = 0.1  # Maximum effective dephasing probability (10%)
+    
     def __init__(self, params: PhysicalParameters):
         self.params = params
         self.N = params.N_molecules
@@ -209,19 +213,17 @@ class NoisyQuditMolecularDynamicsSimulator:
         # Apply depolarizing noise: ρ → (1-p)ρ + p·I/d
         if depol_prob > 0:
             # Use small depolarizing probability to avoid complete randomization
-            p_eff = min(depol_prob, 0.1)  # Cap at 10% to maintain coherence
+            p_eff = min(depol_prob, self.MAX_DEPOL_PROB)
             identity = np.eye(self.dim) / self.dim
             rho = (1.0 - p_eff) * rho + p_eff * identity
         
-        # Apply dephasing noise: random phase damping
+        # Apply dephasing noise: random phase damping (reduces off-diagonal elements)
         if dephasing_prob > 0:
-            # Dephasing reduces off-diagonal elements
-            # ρ_ij → ρ_ij * (1 - p) for i ≠ j
-            p_eff = min(dephasing_prob, 0.1)  # Cap at 10%
-            for i in range(self.dim):
-                for j in range(self.dim):
-                    if i != j:
-                        rho[i, j] *= (1.0 - p_eff)
+            # Dephasing reduces off-diagonal elements: ρ_ij → ρ_ij * (1 - p) for i ≠ j
+            p_eff = min(dephasing_prob, self.MAX_DEPHASING_PROB)
+            # Efficient numpy operation instead of nested loops
+            mask = ~np.eye(self.dim, dtype=bool)
+            rho[mask] *= (1.0 - p_eff)
         
         # Ensure density matrix is Hermitian and trace 1
         rho = (rho + rho.conj().T) / 2.0
@@ -236,7 +238,7 @@ class NoisyQuditMolecularDynamicsSimulator:
         eigenvalues = eigenvalues / np.sum(eigenvalues)  # Renormalize
         
         # Sample an eigenstate based on eigenvalue probabilities
-        idx = np.random.choice(self.dim, p=eigenvalues)
+        idx = np.random.choice(self.dim, p=eigenvalues, size=1)[0]
         noisy_state = eigenvectors[:, idx]
         
         # Ensure normalized

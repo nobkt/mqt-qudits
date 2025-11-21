@@ -268,14 +268,38 @@ NoiseModel parse_noise_model(const py::dict& noise_model) {
         noiseSpread = noiseSpreadTuple;
       }
 
-      if (py::isinstance<py::dict>(noiseTypesPair.second)) {
-        throw std::invalid_argument("Physical noise is not supported yet.");
+      double depo = 0.0;
+      double deph = 0.0;
+
+      // Check if this is a SubspaceNoise object
+      if (py::hasattr(noiseTypesPair.second, "subspace_w_probs")) {
+        // SubspaceNoise: extract average noise values from all subspaces
+        py::dict subspace_w_probs = noiseTypesPair.second.attr("subspace_w_probs").cast<py::dict>();
+        
+        if (subspace_w_probs.size() == 0) {
+          throw std::invalid_argument("SubspaceNoise has no subspace probability entries.");
+        }
+        
+        // Calculate average depolarizing and dephasing probabilities across all subspaces
+        double total_depo = 0.0;
+        double total_deph = 0.0;
+        int count = 0;
+        
+        for (const auto& subspace_pair : subspace_w_probs) {
+          auto noise_obj = subspace_pair.second;
+          total_depo += noise_obj.attr("probability_depolarizing").cast<double>();
+          total_deph += noise_obj.attr("probability_dephasing").cast<double>();
+          count++;
+        }
+        
+        depo = total_depo / count;
+        deph = total_deph / count;
+      } else {
+        // Regular Noise object: extract probabilities directly
+        depo = noiseTypesPair.second.attr("probability_depolarizing").cast<double>();
+        deph = noiseTypesPair.second.attr("probability_dephasing").cast<double>();
       }
 
-      double depo =
-          noiseTypesPair.second.attr("probability_depolarizing").cast<double>();
-      double deph =
-          noiseTypesPair.second.attr("probability_dephasing").cast<double>();
       std::tuple<double, double> noiseProb = std::make_tuple(depo, deph);
 
       newNoiseType[noiseSpread] = noiseProb;

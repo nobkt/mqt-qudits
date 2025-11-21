@@ -876,8 +876,11 @@ class SparseAwareMQTQuditTimeEvolution:
                 × e^{-iH_TTA Δt/2ℏ} e^{-iH_tr Δt/2ℏ} e^{-iH0Δt/2ℏ}
         
         Args:
-            circuit: QuantumCircuit
-            dt: 時間刻み
+            circuit: QuantumCircuit - The circuit to which gates will be added (modified in-place)
+            dt: 時間刻み (float) - Time step for evolution
+        
+        Returns:
+            None - The circuit is modified in-place
         """
         # 前半の対称分解
         self.add_H0_evolution_gates(circuit, dt/2)

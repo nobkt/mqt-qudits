@@ -268,7 +268,8 @@ class NoisyQuditMolecularDynamicsSimulator:
             circuit = self.build_initial_state_circuit(initial_state_type)
             
             for _ in range(step):
-                circuit.compose(step_circuit, inplace=True)
+                # Append step_circuit instructions to circuit
+                circuit.instructions.extend(step_circuit.instructions)
             
             # Run with noise model on backend
             # Note: The backend automatically applies noise through stochastic simulation

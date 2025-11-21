@@ -30,7 +30,8 @@ def _convert_subspace_noise_to_noise(noise_model: NoiseModel) -> NoiseModel:
         noise_model: The input noise model that may contain SubspaceNoise objects
         
     Returns:
-        A new noise model with all SubspaceNoise objects converted to Noise objects
+        A new noise model with all SubspaceNoise objects converted to Noise objects.
+        Regular Noise objects are preserved unchanged in the output.
     """
     converted_model = NoiseModel()
     
@@ -38,13 +39,13 @@ def _convert_subspace_noise_to_noise(noise_model: NoiseModel) -> NoiseModel:
         for mode, noise in modes.items():
             if isinstance(noise, SubspaceNoise):
                 # Average the probabilities across all subspaces
-                if len(noise.subspace_w_probs) == 0:
+                count = len(noise.subspace_w_probs)
+                if count == 0:
                     # Empty SubspaceNoise, use default zero probabilities
                     avg_noise = Noise(0.0, 0.0)
                 else:
                     total_depol = sum(n.probability_depolarizing for n in noise.subspace_w_probs.values())
                     total_deph = sum(n.probability_dephasing for n in noise.subspace_w_probs.values())
-                    count = len(noise.subspace_w_probs)
                     avg_noise = Noise(total_depol / count, total_deph / count)
                 
                 # Add the averaged noise to the converted model

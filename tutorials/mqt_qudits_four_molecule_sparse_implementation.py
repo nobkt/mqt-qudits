@@ -867,6 +867,27 @@ class SparseAwareMQTQuditTimeEvolution:
     def get_compilation_report(self) -> str:
         """コンパイル統計レポートを取得"""
         return self.gate_generator.get_compilation_report()
+    
+    def add_single_trotter_step(self, circuit, dt: float):
+        """
+        2次対称鈴木トロッター分解の1ステップを回路に追加
+        
+        U(Δt) ≈ e^{-iH0Δt/2ℏ} e^{-iH_tr Δt/2ℏ} e^{-iH_TTA Δt/2ℏ}
+                × e^{-iH_TTA Δt/2ℏ} e^{-iH_tr Δt/2ℏ} e^{-iH0Δt/2ℏ}
+        
+        Args:
+            circuit: QuantumCircuit
+            dt: 時間刻み
+        """
+        # 前半の対称分解
+        self.add_H0_evolution_gates(circuit, dt/2)
+        self.add_H_transfer_evolution_gates(circuit, dt/2)
+        self.add_H_TTA_evolution_gates(circuit, dt/2)
+        
+        # 後半の対称分解（逆順）
+        self.add_H_TTA_evolution_gates(circuit, dt/2)
+        self.add_H_transfer_evolution_gates(circuit, dt/2)
+        self.add_H0_evolution_gates(circuit, dt/2)
 
 
 # ===================================================================

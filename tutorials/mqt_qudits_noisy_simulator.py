@@ -201,7 +201,6 @@ class NoisyQuditMolecularDynamicsSimulator:
         Dict : Simulation results
         """
         from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
-        from mqt.qudits.simulation.noise_tools import NoisyCircuitFactory
         
         print("\n" + "="*70)
         print("Quditベースシミュレーション開始（ノイズモデル付き）")
@@ -274,24 +273,16 @@ class NoisyQuditMolecularDynamicsSimulator:
             for _ in range(step):
                 circuit.compose(step_circuit, inplace=True)
             
-            # Add noise to the circuit
-            noisy_factory = NoisyCircuitFactory(noise_model, circuit)
-            noisy_circuit = noisy_factory.generate_circuit()
-            
             # Run with noise model on backend
-            job = backend.run(noisy_circuit, noise_model=noise_model, shots=shots)
+            # Note: The backend automatically applies noise through stochastic simulation
+            job = backend.run(circuit, noise_model=noise_model, shots=shots)
             result = job.result()
             
             # Get measurement counts
             counts = result.get_counts()
             
-            # Convert counts to samples
-            samples = []
-            for measurement, count in counts:
-                # measurement is the state index
-                samples.extend([measurement] * count)
-            
-            samples = np.array(samples)
+            # counts is a list of measurement outcomes (state indices)
+            samples = np.array(counts)
             
             # Calculate populations from samples
             pop = self.calculate_populations_from_samples(samples, shots)

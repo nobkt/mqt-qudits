@@ -59,9 +59,9 @@ class QubitMolecularDynamicsSimulatorNoisy:
         depol_2q : float
             Depolarizing error probability for two-qubit gates (default: 0.01 = 1%)
         t1 : float
-            Energy relaxation time in fs (default: 50 μs = 50000 fs)
+            Energy relaxation time (T1) in fs (default: 50000 fs = 50 μs)
         t2 : float
-            Dephasing time in fs (default: 70 μs = 70000 fs)
+            Dephasing time (T2) in fs (default: 70000 fs = 70 μs)
         gate_time_1q : float
             Single-qubit gate time in fs (default: 50 fs)
         gate_time_2q : float

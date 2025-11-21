@@ -226,8 +226,13 @@ class NoisyQuditMolecularDynamicsSimulator:
             rho[mask] *= (1.0 - p_eff)
         
         # Ensure density matrix is Hermitian and trace 1
-        rho = (rho + rho.conj().T) / 2.0
-        rho = rho / np.trace(rho)
+        # Combined operation for numerical stability
+        trace_val = np.trace(rho)
+        if abs(trace_val) < 1e-15:
+            # Degenerate case: reset to maximally mixed state
+            rho = np.eye(self.dim) / self.dim
+        else:
+            rho = (rho + rho.conj().T) / (2.0 * trace_val)
         
         # Sample a new statevector from the density matrix
         # Method: Use eigendecomposition and sample based on eigenvalues

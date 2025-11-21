@@ -276,20 +276,20 @@ NoiseModel parse_noise_model(const py::dict& noise_model) {
         // SubspaceNoise: extract average noise values from all subspaces
         py::dict subspace_w_probs = noiseTypesPair.second.attr("subspace_w_probs").cast<py::dict>();
         
-        if (subspace_w_probs.size() == 0) {
-          throw std::invalid_argument("SubspaceNoise has no subspace probability entries.");
-        }
-        
         // Calculate average depolarizing and dephasing probabilities across all subspaces
         double total_depo = 0.0;
         double total_deph = 0.0;
-        int count = 0;
+        double count = 0.0;
         
         for (const auto& subspace_pair : subspace_w_probs) {
           auto noise_obj = subspace_pair.second;
           total_depo += noise_obj.attr("probability_depolarizing").cast<double>();
           total_deph += noise_obj.attr("probability_dephasing").cast<double>();
-          count++;
+          count += 1.0;
+        }
+        
+        if (count == 0.0) {
+          throw std::invalid_argument("SubspaceNoise has no subspace probability entries.");
         }
         
         depo = total_depo / count;

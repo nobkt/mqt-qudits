@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmqt-core-na.a "CMakeFiles/mqt-core-na.dir/NAComputation.cpp.o" "CMakeFiles/mqt-core-na.dir/operations/NAGlobalOperation.cpp.o" "CMakeFiles/mqt-core-na.dir/operations/NALocalOperation.cpp.o" "CMakeFiles/mqt-core-na.dir/operations/NAShuttlingOperation.cpp.o"
+/usr/bin/ranlib libmqt-core-na.a

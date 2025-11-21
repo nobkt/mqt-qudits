@@ -1,0 +1,5 @@
+if(EXISTS "/home/runner/work/mqt-qudits/mqt-qudits/_codeql_build_dir/test/mqt-qudits-test[1]_tests.cmake")
+  include("/home/runner/work/mqt-qudits/mqt-qudits/_codeql_build_dir/test/mqt-qudits-test[1]_tests.cmake")
+else()
+  add_test(mqt-qudits-test_NOT_BUILT mqt-qudits-test_NOT_BUILT)
+endif()

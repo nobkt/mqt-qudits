@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmqt-core-ds.a "CMakeFiles/mqt-core-ds.dir/Layer.cpp.o"
+/usr/bin/ranlib libmqt-core-ds.a

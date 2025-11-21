@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmqt-core-algorithms.a "CMakeFiles/mqt-core-algorithms.dir/BernsteinVazirani.cpp.o" "CMakeFiles/mqt-core-algorithms.dir/Entanglement.cpp.o" "CMakeFiles/mqt-core-algorithms.dir/Grover.cpp.o" "CMakeFiles/mqt-core-algorithms.dir/QFT.cpp.o" "CMakeFiles/mqt-core-algorithms.dir/QPE.cpp.o" "CMakeFiles/mqt-core-algorithms.dir/RandomCliffordCircuit.cpp.o" "CMakeFiles/mqt-core-algorithms.dir/WState.cpp.o"
+/usr/bin/ranlib libmqt-core-algorithms.a

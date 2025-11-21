@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmqt-core-zx.a "CMakeFiles/mqt-core-zx.dir/FunctionalityConstruction.cpp.o" "CMakeFiles/mqt-core-zx.dir/Rational.cpp.o" "CMakeFiles/mqt-core-zx.dir/Rules.cpp.o" "CMakeFiles/mqt-core-zx.dir/Simplify.cpp.o" "CMakeFiles/mqt-core-zx.dir/Utils.cpp.o" "CMakeFiles/mqt-core-zx.dir/ZXDiagram.cpp.o"
+/usr/bin/ranlib libmqt-core-zx.a

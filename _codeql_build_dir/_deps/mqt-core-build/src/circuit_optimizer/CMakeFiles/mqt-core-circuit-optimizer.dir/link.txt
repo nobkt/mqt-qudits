@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmqt-core-circuit-optimizer.a "CMakeFiles/mqt-core-circuit-optimizer.dir/CircuitOptimizer.cpp.o"
+/usr/bin/ranlib libmqt-core-circuit-optimizer.a

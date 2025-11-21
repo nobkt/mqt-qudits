@@ -36,24 +36,20 @@ def create_realistic_noise_model():
     
     # Single-qubit gate errors
     single_error = depolarizing_error(single_qubit_depol, 1)
-    noise_model.add_all_qubit_quantum_error(
-        single_error, 
-        ['rx', 'ry', 'rz', 'x', 'h', 'id', 's', 'sdg', 't', 'tdg']
-    )
+    single_gates = ['rx', 'ry', 'rz', 'x', 'h', 'id', 's', 'sdg', 't', 'tdg']
+    for gate in single_gates:
+        noise_model.add_all_qubit_quantum_error(single_error, gate)
     
     # Two-qubit gate errors (higher error rate)
     two_error = depolarizing_error(two_qubit_depol, 2)
-    noise_model.add_all_qubit_quantum_error(
-        two_error,
-        ['cx', 'cz', 'cy', 'swap', 'unitary']
-    )
+    two_gates = ['cx', 'cz', 'cy', 'swap', 'unitary']
+    for gate in two_gates:
+        noise_model.add_all_qubit_quantum_error(two_error, gate)
     
-    # Phase damping (applied to all gates)
+    # Phase damping (single-qubit errors only - cannot apply 1-qubit error to 2-qubit gates)
     phase_error = phase_damping_error(phase_damping)
-    noise_model.add_all_qubit_quantum_error(
-        phase_error,
-        ['rx', 'ry', 'rz', 'x', 'h', 'cx', 'cz', 'unitary', 'id']
-    )
+    for gate in single_gates:
+        noise_model.add_all_qubit_quantum_error(phase_error, gate)
     
     return noise_model, {
         'single_qubit_depol': single_qubit_depol,

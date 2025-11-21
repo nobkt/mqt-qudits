@@ -32,37 +32,36 @@ def create_qudit_noise_model():
     depol_02 = 0.002   # 0.2% for S₀↔S₁ (direct transition, higher error)
     dephase = 0.002    # 0.2% dephasing for all transitions
     
-    # Define subspace noise for each level transition
-    # (0,1): Ground singlet ↔ Triplet
-    subspace_01 = SubspaceNoise(depol_01, dephase, (0, 1))
+    # Define subspace noise for all level transitions in one object
+    # We need to create a single SubspaceNoise with all transitions
+    # to avoid "same level defined multiple times" error
     
-    # (1,2): Triplet ↔ Excited singlet
-    subspace_12 = SubspaceNoise(depol_12, dephase, (1, 2))
-    
-    # (0,2): Ground singlet ↔ Excited singlet (direct)
-    subspace_02 = SubspaceNoise(depol_02, dephase, (0, 2))
+    # Create combined subspace noise for local gates
+    local_subspace = SubspaceNoise(0.0, 0.0, (0, 1))  # Initialize with one transition
+    # Manually add all transitions with different parameters
+    local_subspace.subspace_w_probs[(0, 1)] = Noise(depol_01, dephase)
+    local_subspace.subspace_w_probs[(1, 2)] = Noise(depol_12, dephase)
+    local_subspace.subspace_w_probs[(0, 2)] = Noise(depol_02, dephase)
     
     # Apply to local (single-qudit) gates
     local_gates = ['x', 'z', 'h', 'rz', 'r', 'virtrz', 's', 'rh']
-    noise_model.add_quantum_error_locally(subspace_01, local_gates)
-    noise_model.add_quantum_error_locally(subspace_12, local_gates)
-    noise_model.add_quantum_error_locally(subspace_02, local_gates)
+    noise_model.add_quantum_error_locally(local_subspace, local_gates)
     
     # Apply to nonlocal (two-qudit) gates
     # These gates typically have higher error rates in real hardware
     nonlocal_gates = ['cx', 'cex', 'csum', 'ls', 'ms']
     
     # Target qudit noise (higher error for 2-qudit gates)
-    target_noise_01 = SubspaceNoise(depol_01 * 10, dephase * 2, (0, 1))
-    target_noise_12 = SubspaceNoise(depol_12 * 10, dephase * 2, (1, 2))
-    noise_model.add_nonlocal_quantum_error_on_target(target_noise_01, nonlocal_gates)
-    noise_model.add_nonlocal_quantum_error_on_target(target_noise_12, nonlocal_gates)
+    target_subspace = SubspaceNoise(0.0, 0.0, (0, 1))
+    target_subspace.subspace_w_probs[(0, 1)] = Noise(depol_01 * 10, dephase * 2)
+    target_subspace.subspace_w_probs[(1, 2)] = Noise(depol_12 * 10, dephase * 2)
+    noise_model.add_nonlocal_quantum_error_on_target(target_subspace, nonlocal_gates)
     
     # Control qudit noise
-    control_noise_01 = SubspaceNoise(depol_01 * 5, dephase, (0, 1))
-    control_noise_12 = SubspaceNoise(depol_12 * 5, dephase, (1, 2))
-    noise_model.add_nonlocal_quantum_error_on_control(control_noise_01, nonlocal_gates)
-    noise_model.add_nonlocal_quantum_error_on_control(control_noise_12, nonlocal_gates)
+    control_subspace = SubspaceNoise(0.0, 0.0, (0, 1))
+    control_subspace.subspace_w_probs[(0, 1)] = Noise(depol_01 * 5, dephase)
+    control_subspace.subspace_w_probs[(1, 2)] = Noise(depol_12 * 5, dephase)
+    noise_model.add_nonlocal_quantum_error_on_control(control_subspace, nonlocal_gates)
     
     params = {
         'depol_01': depol_01,

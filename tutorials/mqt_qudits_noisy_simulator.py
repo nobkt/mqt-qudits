@@ -8,7 +8,7 @@ using MQT-qudits' noise capabilities.
 Noise models supported:
 - Depolarizing error: Random errors on qudits
 - Dephasing error: Phase damping
-- SubspaceNoise: Physical noise on specific level transitions
+- Mathematical Noise: Global noise applied to all qudit levels
 
 All noise parameters are physically motivated and use realistic values
 for trapped-ion or superconducting qutrits.
@@ -46,10 +46,9 @@ class NoisyQuditMolecularDynamicsSimulator:
         # MQT-Quditsのインポート
         try:
             from mqt.qudits.simulation import MQTQuditProvider
-            from mqt.qudits.simulation.noise_tools import NoiseModel, SubspaceNoise, Noise
+            from mqt.qudits.simulation.noise_tools import NoiseModel, Noise
             self.provider = MQTQuditProvider()
             self.NoiseModel = NoiseModel
-            self.SubspaceNoise = SubspaceNoise
             self.Noise = Noise
             self.mqt_available = True
         except ImportError as e:
@@ -90,19 +89,17 @@ class NoisyQuditMolecularDynamicsSimulator:
             # Apply noise to all common gates
             noise_gates = ['virtrz', 'r', 'rz', 'rh', 'cx', 'h', 'x', 'z', 's']
         
-        # Create noise for all level transitions in a qutrit (0-1, 0-2, 1-2)
-        # Use SubspaceNoise to specify noise for each transition
-        subspace_noise = self.SubspaceNoise(depol_prob, dephasing_prob, 
-                                           [(0, 1), (0, 2), (1, 2)])
+        # Create mathematical noise (Noise class, not SubspaceNoise)
+        # The C++ backend expects Noise objects with probability_depolarizing and probability_dephasing attributes
+        noise = self.Noise(depol_prob, dephasing_prob)
         
         # Apply noise locally to all qudits
-        noise_model.add_quantum_error_locally(subspace_noise, noise_gates)
+        noise_model.add_quantum_error_locally(noise, noise_gates)
         
         # For two-qudit gates, add stronger noise
         two_qudit_gates = [g for g in noise_gates if g in ['cx', 'csum', 'ls', 'ms']]
         if two_qudit_gates:
-            two_qudit_noise = self.SubspaceNoise(depol_prob * 5, dephasing_prob * 3,
-                                                [(0, 1), (0, 2), (1, 2)])
+            two_qudit_noise = self.Noise(depol_prob * 5, dephasing_prob * 3)
             noise_model.add_nonlocal_quantum_error(two_qudit_noise, two_qudit_gates)
         
         return noise_model

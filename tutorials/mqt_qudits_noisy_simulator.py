@@ -238,7 +238,7 @@ class NoisyQuditMolecularDynamicsSimulator:
         eigenvalues = eigenvalues / np.sum(eigenvalues)  # Renormalize
         
         # Sample an eigenstate based on eigenvalue probabilities
-        idx = np.random.choice(self.dim, p=eigenvalues, size=1)[0]
+        idx = np.random.choice(self.dim, p=eigenvalues)
         noisy_state = eigenvectors[:, idx]
         
         # Ensure normalized
@@ -377,7 +377,6 @@ class NoisyQuditMolecularDynamicsSimulator:
             
             # Sample from statevector to get populations
             probabilities = np.abs(current_state)**2
-            probabilities = probabilities / np.sum(probabilities)  # safety: ensure exact normalization
             samples = np.random.choice(self.dim, size=shots, p=probabilities)
             
             # Calculate populations from samples

@@ -47,6 +47,9 @@ class NoisyQuditMolecularDynamicsSimulator:
         try:
             from mqt.qudits.simulation import MQTQuditProvider
             from mqt.qudits.simulation.noise_tools import NoiseModel, Noise
+            # Note: SubspaceNoise is not imported because the C++ backend (bindings.cpp)
+            # expects Noise objects with direct probability_depolarizing and probability_dephasing
+            # attributes. SubspaceNoise stores these in a dictionary and causes AttributeError.
             self.provider = MQTQuditProvider()
             self.NoiseModel = NoiseModel
             self.Noise = Noise
@@ -269,6 +272,9 @@ class NoisyQuditMolecularDynamicsSimulator:
             
             for _ in range(step):
                 # Append step_circuit instructions to circuit
+                # Note: MQT-Qudits QuantumCircuit doesn't have a compose() method,
+                # so we directly extend the instructions list, which is the standard
+                # approach used throughout the MQT-Qudits codebase
                 circuit.instructions.extend(step_circuit.instructions)
             
             # Run with noise model on backend

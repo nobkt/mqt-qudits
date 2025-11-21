@@ -9,7 +9,7 @@ from typing_extensions import Unpack
 
 from ..._qudits.misim import state_vector_simulation
 from ..jobs import Job, JobResult
-from ..noise_tools import NoiseModel
+from ..noise_tools import Noise, NoiseModel, SubspaceNoise
 from .backendv2 import Backend
 from .stochastic_sim import stochastic_simulation
 
@@ -18,6 +18,46 @@ if TYPE_CHECKING:
 
     from ...quantum_circuit import QuantumCircuit
     from .. import MQTQuditProvider
+
+
+def _convert_subspace_noise_to_noise(noise_model: NoiseModel) -> NoiseModel:
+    """Convert SubspaceNoise objects to Noise objects for C++ backend compatibility.
+    
+    The C++ backend currently only supports simple Noise objects, not SubspaceNoise.
+    This function converts SubspaceNoise by averaging the probabilities across all subspaces.
+    
+    Args:
+        noise_model: The input noise model that may contain SubspaceNoise objects
+        
+    Returns:
+        A new noise model with all SubspaceNoise objects converted to Noise objects
+    """
+    converted_model = NoiseModel()
+    
+    for gate, modes in noise_model.quantum_errors.items():
+        for mode, noise in modes.items():
+            if isinstance(noise, SubspaceNoise):
+                # Average the probabilities across all subspaces
+                if len(noise.subspace_w_probs) == 0:
+                    # Empty SubspaceNoise, use default zero probabilities
+                    avg_noise = Noise(0.0, 0.0)
+                else:
+                    total_depol = sum(n.probability_depolarizing for n in noise.subspace_w_probs.values())
+                    total_deph = sum(n.probability_dephasing for n in noise.subspace_w_probs.values())
+                    count = len(noise.subspace_w_probs)
+                    avg_noise = Noise(total_depol / count, total_deph / count)
+                
+                # Add the averaged noise to the converted model
+                if gate not in converted_model.quantum_errors:
+                    converted_model.quantum_errors[gate] = {}
+                converted_model.quantum_errors[gate][mode] = avg_noise
+            else:
+                # Keep Noise objects as-is
+                if gate not in converted_model.quantum_errors:
+                    converted_model.quantum_errors[gate] = {}
+                converted_model.quantum_errors[gate][mode] = noise
+    
+    return converted_model
 
 
 class MISim(Backend):
@@ -57,7 +97,9 @@ class MISim(Backend):
         self.circ_operations = circuit.instructions
         if noise_model is None:
             noise_model = NoiseModel()
-        result = state_vector_simulation(circuit, noise_model)
+        # Convert SubspaceNoise to Noise for C++ backend compatibility
+        converted_noise_model = _convert_subspace_noise_to_noise(noise_model)
+        result = state_vector_simulation(circuit, converted_noise_model)
         state = np.array(result)
         state_size = reduce(operator.mul, self.system_sizes, 1)
         # Reverse the dimensions of the circuit and reshape the state array

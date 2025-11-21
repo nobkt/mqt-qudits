@@ -34,21 +34,23 @@ def create_realistic_noise_model():
     two_qubit_depol = 0.01       # 1.0%
     phase_damping = 0.002        # 0.2%
     
+    # Gate lists
+    single_gates = ['rx', 'ry', 'rz', 'x', 'h', 'id', 's', 'sdg', 't', 'tdg']
+    two_gates = ['cx', 'cz', 'cy', 'swap', 'unitary']
+    
     # Single-qubit gate errors
     single_error = depolarizing_error(single_qubit_depol, 1)
-    single_gates = ['rx', 'ry', 'rz', 'x', 'h', 'id', 's', 'sdg', 't', 'tdg']
     for gate in single_gates:
         noise_model.add_all_qubit_quantum_error(single_error, gate)
     
     # Two-qubit gate errors (higher error rate)
     two_error = depolarizing_error(two_qubit_depol, 2)
-    two_gates = ['cx', 'cz', 'cy', 'swap', 'unitary']
     for gate in two_gates:
         noise_model.add_all_qubit_quantum_error(two_error, gate)
     
-    # Phase damping (single-qubit errors only - cannot apply 1-qubit error to 2-qubit gates)
+    # Phase damping (single-qubit gates only - cannot apply 1-qubit error to 2-qubit gates)
     phase_error = phase_damping_error(phase_damping)
-    for gate in single_gates:
+    for gate in single_gates:  # Reuse single_gates list
         noise_model.add_all_qubit_quantum_error(phase_error, gate)
     
     return noise_model, {
@@ -215,11 +217,18 @@ class QubitNoiseSimulator:
         
         # Get probabilities
         if hasattr(state, 'probabilities_dict'):
+            # Standard statevector
             probabilities = state.probabilities_dict()
+        elif hasattr(state, 'data') and state.data.ndim == 2:
+            # Density matrix - get diagonal elements
+            diag = np.diag(state.data)
+            probabilities = {format(i, f'0{self.n_qubits}b'): abs(diag[i]) 
+                           for i in range(len(diag)) if abs(diag[i]) > 1e-15}
         else:
-            # For density matrix, get diagonal
-            probabilities = {format(i, f'0{self.n_qubits}b'): abs(state[i, i]) 
-                           for i in range(len(state)) if abs(state[i, i]) > 1e-15}
+            # Fallback: treat as array and compute probabilities
+            probs = np.abs(np.array(state))**2
+            probabilities = {format(i, f'0{self.n_qubits}b'): probs[i]
+                           for i in range(len(probs)) if probs[i] > 1e-15}
         
         for bitstring, prob in probabilities.items():
             if prob < 1e-15:
@@ -270,10 +279,18 @@ class QubitNoiseSimulator:
         
         # Get probabilities
         if hasattr(state, 'probabilities_dict'):
+            # Standard statevector
             probabilities = state.probabilities_dict()
+        elif hasattr(state, 'data') and state.data.ndim == 2:
+            # Density matrix - get diagonal elements
+            diag = np.diag(state.data)
+            probabilities = {format(i, f'0{self.n_qubits}b'): abs(diag[i])
+                           for i in range(len(diag)) if abs(diag[i]) > 1e-15}
         else:
-            probabilities = {format(i, f'0{self.n_qubits}b'): abs(state[i, i]) 
-                           for i in range(len(state)) if abs(state[i, i]) > 1e-15}
+            # Fallback: treat as array and compute probabilities
+            probs = np.abs(np.array(state))**2
+            probabilities = {format(i, f'0{self.n_qubits}b'): probs[i]
+                           for i in range(len(probs)) if probs[i] > 1e-15}
         
         for bitstring, prob in probabilities.items():
             bits = bitstring[::-1]

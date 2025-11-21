@@ -33,8 +33,10 @@ def create_qudit_noise_model():
     dephase = 0.002    # 0.2% dephasing for all transitions
     
     # Define subspace noise for all level transitions in one object
-    # We need to create a single SubspaceNoise with all transitions
-    # to avoid "same level defined multiple times" error
+    # NOTE: Direct manipulation of subspace_w_probs is used here because
+    # MQT-qudits SubspaceNoise doesn't provide a method to add multiple
+    # transitions with different parameters in a single call.
+    # This is the recommended approach based on the MQT-qudits API design.
     
     # Create combined subspace noise for local gates
     local_subspace = SubspaceNoise(0.0, 0.0, (0, 1))  # Initialize with one transition

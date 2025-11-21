@@ -452,7 +452,8 @@ class SparseAwareMQTQuditTimeEvolution:
         from exact_qudit_basic_gates import apply_H_transfer_basic_gates
         
         for pair_idx, (i, j) in enumerate(self.params.neighbors):
-            V = self.params.V[pair_idx]
+            # Handle both scalar V and array V (for notebook compatibility)
+            V = self.params.V[pair_idx] if hasattr(self.params.V, '__getitem__') else self.params.V
             
             # Apply exact basic gate decomposition
             # H_transfer uses CEx gates directly (no CustomTwo)
@@ -485,7 +486,8 @@ class SparseAwareMQTQuditTimeEvolution:
         from exact_qudit_basic_gates import apply_H_TTA_basic_gates
         
         for pair_idx, (i, j) in enumerate(self.params.neighbors):
-            J = self.params.J[pair_idx]
+            # Handle both scalar J and array J (for notebook compatibility)
+            J = self.params.J[pair_idx] if hasattr(self.params.J, '__getitem__') else self.params.J
             
             # PR#89で修正されたapply_H_TTA_basic_gates()を使用
             # これは厳密なCustomTwoゲートを生成します
@@ -1005,14 +1007,14 @@ class SuzukiTrotterMQTQuditSimulator:
         
         # H_transfer(dt/2): per-pair evolution
         for pair_idx, (mol_i, mol_j) in enumerate(self.params.neighbors):
-            V = self.params.V[pair_idx]
+            V = self.params.V[pair_idx] if hasattr(self.params.V, '__getitem__') else self.params.V
             U_transfer_9x9 = build_H_transfer_unitary(V, dt / 2, self.params.hbar, dim=3)
             U_transfer_full = build_two_molecule_operator(mol_i, mol_j, U_transfer_9x9)
             U_total = U_transfer_full @ U_total
         
         # H_TTA(dt/2): per-pair evolution
         for pair_idx, (mol_i, mol_j) in enumerate(self.params.neighbors):
-            J = self.params.J[pair_idx]
+            J = self.params.J[pair_idx] if hasattr(self.params.J, '__getitem__') else self.params.J
             U_TTA_9x9 = build_H_TTA_unitary(J, dt / 2, self.params.hbar, dim=3)
             U_TTA_full = build_two_molecule_operator(mol_i, mol_j, U_TTA_9x9)
             U_total = U_TTA_full @ U_total
@@ -1022,7 +1024,7 @@ class SuzukiTrotterMQTQuditSimulator:
         # H_TTA(dt/2): reverse order
         for pair_idx in reversed(range(len(self.params.neighbors))):
             mol_i, mol_j = self.params.neighbors[pair_idx]
-            J = self.params.J[pair_idx]
+            J = self.params.J[pair_idx] if hasattr(self.params.J, '__getitem__') else self.params.J
             U_TTA_9x9 = build_H_TTA_unitary(J, dt / 2, self.params.hbar, dim=3)
             U_TTA_full = build_two_molecule_operator(mol_i, mol_j, U_TTA_9x9)
             U_total = U_TTA_full @ U_total
@@ -1030,7 +1032,7 @@ class SuzukiTrotterMQTQuditSimulator:
         # H_transfer(dt/2): reverse order
         for pair_idx in reversed(range(len(self.params.neighbors))):
             mol_i, mol_j = self.params.neighbors[pair_idx]
-            V = self.params.V[pair_idx]
+            V = self.params.V[pair_idx] if hasattr(self.params.V, '__getitem__') else self.params.V
             U_transfer_9x9 = build_H_transfer_unitary(V, dt / 2, self.params.hbar, dim=3)
             U_transfer_full = build_two_molecule_operator(mol_i, mol_j, U_transfer_9x9)
             U_total = U_transfer_full @ U_total
@@ -1612,7 +1614,7 @@ class ExactDiagonalizationSolver:
         
         # H_transfer: エネルギー移動項
         for pair_idx, (mol_i, mol_j) in enumerate(self.params.neighbors):
-            V = self.params.V[pair_idx]
+            V = self.params.V[pair_idx] if hasattr(self.params.V, '__getitem__') else self.params.V
             for idx in range(self.dim):
                 config = index_to_config(idx, self.N)
                 # |01⟩ <-> |10⟩ 遷移
@@ -1626,7 +1628,7 @@ class ExactDiagonalizationSolver:
         
         # H_TTA: 三重項-三重項消滅項
         for pair_idx, (mol_i, mol_j) in enumerate(self.params.neighbors):
-            J = self.params.J[pair_idx]
+            J = self.params.J[pair_idx] if hasattr(self.params.J, '__getitem__') else self.params.J
             for idx in range(self.dim):
                 config = index_to_config(idx, self.N)
                 # |02⟩ <-> |11⟩ 遷移

@@ -102,7 +102,7 @@ class NoisyQuditMolecularDynamicsSimulator:
         
         # Create mathematical noise for single-qudit gates
         # The C++ backend expects Noise objects with probability_depolarizing and probability_dephasing attributes
-        # We use depol_1q for both depolarizing and dephasing to maintain consistency with qubit simulator
+        # We use depol_1q for depolarizing only (dephasing set to 0.0) to maintain consistency with qubit simulator
         if single_qudit_gates:
             noise_1q = self.Noise(depol_1q, 0.0)  # Only depolarizing, no dephasing
             noise_model.add_quantum_error_locally(noise_1q, single_qudit_gates)
@@ -364,8 +364,12 @@ class NoisyQuditMolecularDynamicsSimulator:
             
             # Apply noise manually to statevector using density matrix formalism
             # Noise model: depolarizing with proper quantum channels
-            # Combine depol_1q and depol_2q into an effective depolarizing probability
-            # Weighted by the ratio of gates (approximate as average)
+            # 
+            # NOTE: We compute an effective depolarizing probability as the average of depol_1q and depol_2q.
+            # This is an approximation that assumes roughly equal numbers of single-qudit and two-qudit gates.
+            # For more accurate modeling, this should be weighted by the actual gate counts in the circuit.
+            # However, for the comparison purposes in this notebook, this simple average is sufficient
+            # to demonstrate the unified noise model approach.
             effective_depol = (depol_1q + depol_2q) / 2.0
             if effective_depol > 0:
                 current_state = self._apply_noise_to_statevector(

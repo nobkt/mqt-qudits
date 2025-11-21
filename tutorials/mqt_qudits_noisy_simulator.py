@@ -175,6 +175,59 @@ class NoisyQuditMolecularDynamicsSimulator:
             'S1_per_mol': S1_per_mol
         }
     
+    def _apply_noise_to_statevector(self, statevector: np.ndarray, 
+                                    depol_prob: float, dephasing_prob: float) -> np.ndarray:
+        """
+        Apply depolarizing and dephasing noise to a statevector.
+        
+        This is a simplified noise model that applies:
+        1. Depolarizing: Random mixing with maximally mixed state
+        2. Dephasing: Random phase errors
+        
+        Parameters:
+        -----------
+        statevector : np.ndarray
+            Current statevector (length: 3^N)
+        depol_prob : float
+            Probability of depolarizing error per qudit
+        dephasing_prob : float
+            Probability of dephasing error per qudit
+        
+        Returns:
+        --------
+        noisy_statevector : np.ndarray
+            Statevector after noise application
+        """
+        noisy_state = statevector.copy()
+        
+        # Apply depolarizing noise: mix with maximally mixed state
+        if depol_prob > 0:
+            # Depolarizing mixes with completely random state
+            # ρ_noisy = (1-p) ρ + p * I/d
+            # For statevector, we approximate this by randomly perturbing amplitudes
+            noise_factor = 1.0 - depol_prob * self.N  # Scale by number of qudits
+            noise_factor = max(0.0, min(1.0, noise_factor))
+            
+            # Mix current state with random state
+            random_state = np.random.randn(self.dim) + 1j * np.random.randn(self.dim)
+            random_state = random_state / np.linalg.norm(random_state)
+            
+            noisy_state = noise_factor * noisy_state + depol_prob * self.N * random_state
+        
+        # Apply dephasing noise: random phase errors
+        if dephasing_prob > 0:
+            # Dephasing adds random phases
+            # For each qudit, apply random phase with probability dephasing_prob
+            for qudit_idx in range(self.N):
+                if np.random.rand() < dephasing_prob:
+                    # Apply random phase to this qudit's subspace
+                    phase = np.random.uniform(0, 2 * np.pi)
+                    # This is a simplified model - apply global phase perturbation
+                    phase_factor = np.exp(1j * phase * dephasing_prob)
+                    noisy_state *= phase_factor
+        
+        return noisy_state
+    
     def simulate_noisy(self, T_total: float, N_steps: int,
                       initial_state_type: str = 'edge_triplet',
                       shots: int = 10000,
@@ -263,30 +316,51 @@ class NoisyQuditMolecularDynamicsSimulator:
         
         print(f"\n初期状態: {initial_state_type}")
         
-        # Run simulation for each time step
+        # FIXED: Use statevector-based approach with manual noise to avoid quadratic circuit growth
+        # Build single Trotter step unitary matrix directly from Hamiltonians (O(1) construction)
+        print("\nBuilding single Trotter step unitary matrix directly from Hamiltonians...")
+        step_unitary = self.time_evol.build_trotter_step_unitary_direct(dt)
+        print(f"Unitary matrix constructed: {step_unitary.shape}")
+        
+        # Get initial statevector
+        job = backend.run(init_circuit)
+        result = job.result()
+        current_state = result.get_state_vector().flatten()
+        
+        # Calculate initial populations from statevector
+        probabilities = np.abs(current_state)**2
+        samples_0 = np.random.choice(self.dim, size=shots, p=probabilities)
+        pop_0 = self.calculate_populations_from_samples(samples_0, shots)
+        pop_per_mol_0 = self.calculate_per_molecule_populations_from_samples(samples_0, shots)
+        populations_history.append(pop_0)
+        per_molecule_populations_history.append(pop_per_mol_0)
+        
+        print(f"\n初期個体数:")
+        print(f"  N_S0 = {pop_0['N_S0']:.4f}")
+        print(f"  N_T1 = {pop_0['N_T1']:.4f}")
+        print(f"  N_S1 = {pop_0['N_S1']:.4f}")
+        
+        # Run simulation for each time step using statevector evolution
         print(f"\n時間発展を実行中（{N_steps}ステップ、各ステップ{shots}ショット）...")
         
-        for step in range(N_steps + 1):
-            # Build circuit up to current step
-            circuit = self.build_initial_state_circuit(initial_state_type)
+        for step in range(1, N_steps + 1):
+            # Apply single Trotter step unitary to current state (O(1) per step)
+            current_state = step_unitary @ current_state
             
-            for _ in range(step):
-                # Append step_circuit instructions to circuit
-                # Note: MQT-Qudits QuantumCircuit doesn't have a compose() method,
-                # so we directly extend the instructions list, which is the standard
-                # approach used throughout the MQT-Qudits codebase
-                circuit.instructions.extend(step_circuit.instructions)
+            # Apply noise manually to statevector
+            # Simple depolarizing + dephasing noise model
+            if depol_prob > 0 or dephasing_prob > 0:
+                current_state = self._apply_noise_to_statevector(
+                    current_state, depol_prob, dephasing_prob
+                )
             
-            # Run with noise model on backend
-            # Note: The backend automatically applies noise through stochastic simulation
-            job = backend.run(circuit, noise_model=noise_model, shots=shots)
-            result = job.result()
+            # Normalize after noise
+            current_state = current_state / np.linalg.norm(current_state)
             
-            # Get measurement counts
-            counts = result.get_counts()
-            
-            # counts is a list of measurement outcomes (state indices)
-            samples = np.array(counts)
+            # Sample from statevector to get populations
+            probabilities = np.abs(current_state)**2
+            probabilities = probabilities / np.sum(probabilities)  # ensure normalization
+            samples = np.random.choice(self.dim, size=shots, p=probabilities)
             
             # Calculate populations from samples
             pop = self.calculate_populations_from_samples(samples, shots)

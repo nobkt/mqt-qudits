@@ -162,10 +162,22 @@ def validate_no_heuristics(notebook_path):
     
     suspicious_cells = []
     
+    # Find where Section 9 starts (more robust than hard-coding index)
+    section_9_start = None
     for i, cell in enumerate(nb['cells']):
+        if cell['cell_type'] == 'markdown':
+            source = ''.join(cell['source'])
+            if '## 9.' in source or ('ノイズモデル' in source and '##' in source):
+                section_9_start = i
+                break
+    
+    # Only check cells in Section 9 or later
+    for i, cell in enumerate(nb['cells']):
+        if section_9_start is not None and i < section_9_start:
+            continue  # Skip cells before Section 9
         source = ''.join(cell['source']).lower()
         for keyword in heuristic_keywords:
-            if keyword in source and i >= 27:  # Only check new cells (Section 9)
+            if keyword in source:
                 # Check if it's in a comment explaining we DON'T use heuristics
                 if 'no ' + keyword not in source and 'not ' + keyword not in source:
                     suspicious_cells.append((i, keyword))

@@ -553,12 +553,13 @@ def insert_noise_cells_into_notebook(notebook_path, output_path):
     # Create noise model cells
     noise_cells = create_noise_model_cells()
     
-    # Find the index of the conclusion section (Section 7)
+    # Find the index of the conclusion section (Section 7 or 8) - more robust pattern matching
     conclusion_idx = None
     for i, cell in enumerate(nb['cells']):
         if cell['cell_type'] == 'markdown':
             source = ''.join(cell['source'])
-            if '## 7. 考察と結論' in source:
+            # Match either "## 7." or "## 8." followed by conclusion-related keywords
+            if ('## 7.' in source or '## 8.' in source) and ('考察' in source or '結論' in source or 'Conclusion' in source):
                 conclusion_idx = i
                 break
     

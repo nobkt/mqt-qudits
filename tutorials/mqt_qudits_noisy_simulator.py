@@ -178,53 +178,69 @@ class NoisyQuditMolecularDynamicsSimulator:
     def _apply_noise_to_statevector(self, statevector: np.ndarray, 
                                     depol_prob: float, dephasing_prob: float) -> np.ndarray:
         """
-        Apply depolarizing and dephasing noise to a statevector.
+        Apply depolarizing and dephasing noise to a statevector using density matrix formalism.
         
-        This is a simplified noise model that applies:
-        1. Depolarizing: Random mixing with maximally mixed state
-        2. Dephasing: Random phase errors
+        This method converts the statevector to a density matrix, applies proper
+        quantum noise channels, then samples a new statevector from the noisy density matrix.
+        
+        Mathematical approach:
+        1. Convert |ψ⟩ → ρ = |ψ⟩⟨ψ|
+        2. Apply depolarizing: ρ' = (1-p)ρ + p·I/d
+        3. Apply dephasing: ρ'' = Σ_k E_k ρ' E_k†
+        4. Sample new |ψ'⟩ from ρ'' (via eigendecomposition)
         
         Parameters:
         -----------
         statevector : np.ndarray
             Current statevector (length: 3^N)
         depol_prob : float
-            Probability of depolarizing error per qudit
+            Total depolarizing probability (for all qudits combined)
         dephasing_prob : float
-            Probability of dephasing error per qudit
+            Total dephasing probability (for all qudits combined)
         
         Returns:
         --------
         noisy_statevector : np.ndarray
-            Statevector after noise application
+            Sampled statevector from noisy density matrix (normalized)
         """
-        noisy_state = statevector.copy()
+        # Convert statevector to density matrix
+        rho = np.outer(statevector, statevector.conj())
         
-        # Apply depolarizing noise: mix with maximally mixed state
+        # Apply depolarizing noise: ρ → (1-p)ρ + p·I/d
         if depol_prob > 0:
-            # Depolarizing mixes with completely random state
-            # ρ_noisy = (1-p) ρ + p * I/d
-            # For statevector, we approximate this by randomly perturbing amplitudes
-            noise_factor = 1.0 - depol_prob * self.N  # Scale by number of qudits
-            noise_factor = max(0.0, min(1.0, noise_factor))
-            
-            # Mix current state with random state
-            random_state = np.random.randn(self.dim) + 1j * np.random.randn(self.dim)
-            random_state = random_state / np.linalg.norm(random_state)
-            
-            noisy_state = noise_factor * noisy_state + depol_prob * self.N * random_state
+            # Use small depolarizing probability to avoid complete randomization
+            p_eff = min(depol_prob, 0.1)  # Cap at 10% to maintain coherence
+            identity = np.eye(self.dim) / self.dim
+            rho = (1.0 - p_eff) * rho + p_eff * identity
         
-        # Apply dephasing noise: random phase errors
+        # Apply dephasing noise: random phase damping
         if dephasing_prob > 0:
-            # Dephasing adds random phases
-            # For each qudit, apply random phase with probability dephasing_prob
-            for qudit_idx in range(self.N):
-                if np.random.rand() < dephasing_prob:
-                    # Apply random phase to this qudit's subspace
-                    phase = np.random.uniform(0, 2 * np.pi)
-                    # This is a simplified model - apply global phase perturbation
-                    phase_factor = np.exp(1j * phase * dephasing_prob)
-                    noisy_state *= phase_factor
+            # Dephasing reduces off-diagonal elements
+            # ρ_ij → ρ_ij * (1 - p) for i ≠ j
+            p_eff = min(dephasing_prob, 0.1)  # Cap at 10%
+            for i in range(self.dim):
+                for j in range(self.dim):
+                    if i != j:
+                        rho[i, j] *= (1.0 - p_eff)
+        
+        # Ensure density matrix is Hermitian and trace 1
+        rho = (rho + rho.conj().T) / 2.0
+        rho = rho / np.trace(rho)
+        
+        # Sample a new statevector from the density matrix
+        # Method: Use eigendecomposition and sample based on eigenvalues
+        eigenvalues, eigenvectors = np.linalg.eigh(rho)
+        
+        # Eigenvalues should be real and non-negative (within numerical precision)
+        eigenvalues = np.maximum(eigenvalues.real, 0.0)
+        eigenvalues = eigenvalues / np.sum(eigenvalues)  # Renormalize
+        
+        # Sample an eigenstate based on eigenvalue probabilities
+        idx = np.random.choice(self.dim, p=eigenvalues)
+        noisy_state = eigenvectors[:, idx]
+        
+        # Ensure normalized
+        noisy_state = noisy_state / np.linalg.norm(noisy_state)
         
         return noisy_state
     
@@ -347,19 +363,19 @@ class NoisyQuditMolecularDynamicsSimulator:
             # Apply single Trotter step unitary to current state (O(1) per step)
             current_state = step_unitary @ current_state
             
-            # Apply noise manually to statevector
-            # Simple depolarizing + dephasing noise model
+            # Apply noise manually to statevector using density matrix formalism
+            # Noise model: depolarizing + dephasing with proper quantum channels
             if depol_prob > 0 or dephasing_prob > 0:
                 current_state = self._apply_noise_to_statevector(
                     current_state, depol_prob, dephasing_prob
                 )
             
-            # Normalize after noise
+            # Ensure normalization (safety check - should already be normalized)
             current_state = current_state / np.linalg.norm(current_state)
             
             # Sample from statevector to get populations
             probabilities = np.abs(current_state)**2
-            probabilities = probabilities / np.sum(probabilities)  # ensure normalization
+            probabilities = probabilities / np.sum(probabilities)  # safety: ensure exact normalization
             samples = np.random.choice(self.dim, size=shots, p=probabilities)
             
             # Calculate populations from samples

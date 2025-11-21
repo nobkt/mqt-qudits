@@ -86,7 +86,9 @@ class QubitMolecularDynamicsSimulatorNoisy:
             error_thermal_1q = thermal_relaxation_error(t1, t2, gate_time_1q)
             noise_model.add_all_qubit_quantum_error(error_thermal_1q, ['u1', 'u2', 'u3'])
             
-            error_thermal_2q = thermal_relaxation_error(t1, t2, gate_time_2q)
+            # For 2-qubit gates, apply thermal relaxation to each qubit separately
+            # This is done by creating a 2-qubit error from tensor product
+            error_thermal_2q = error_thermal_1q.tensor(error_thermal_1q)
             noise_model.add_all_qubit_quantum_error(error_thermal_2q, ['cx'])
         
         return noise_model

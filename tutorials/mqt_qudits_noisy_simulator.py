@@ -23,7 +23,7 @@ import time
 # Import from the existing implementation
 from mqt_qudits_four_molecule_sparse_implementation import (
     PhysicalParameters,
-    SparseAwareMQTTimeEvolution,
+    SparseAwareMQTQuditTimeEvolution,
     index_to_config,
     config_to_index,
     config_to_state_name
@@ -57,7 +57,7 @@ class NoisyQuditMolecularDynamicsSimulator:
             raise ImportError(f"mqt.quditsがインストールされていません: {e}")
         
         # Time evolution module for building circuits
-        self.time_evol = SparseAwareMQTTimeEvolution(params)
+        self.time_evol = SparseAwareMQTQuditTimeEvolution(params)
         
         print(f"Noisy Qudit シミュレータを初期化しました")
         print(f"  分子数: {self.N}")

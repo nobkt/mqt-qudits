@@ -182,9 +182,13 @@ def verify_H_transfer_decomposition(V: float, dt: float, hbar: float,
     """
     # Target unitary from theory (2D subspace {|01⟩, |10⟩})
     theta = V * dt / hbar
+    # Note: For theoretical verification, angle normalization is not strictly required
+    # because cos/sin are periodic. However, for consistency with CEx gate usage,
+    # we normalize to [0, 2π] range.
+    theta_normalized = theta % (2 * np.pi)
     U_target = np.array([
-        [np.cos(theta), -1j * np.sin(theta)],
-        [-1j * np.sin(theta), np.cos(theta)]
+        [np.cos(theta_normalized), -1j * np.sin(theta_normalized)],
+        [-1j * np.sin(theta_normalized), np.cos(theta_normalized)]
     ])
     
     # CEx gate implements the same rotation

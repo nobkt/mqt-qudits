@@ -52,10 +52,13 @@ class QubitMolecularDynamicsSimulatorNoisy:
         """
         Create a realistic noise model for superconducting qubits.
         
+        NOTE: As per the requirement, noise is applied ONLY to 2-qubit gates.
+        Single-qubit gates are assumed to be ideal (no noise).
+        
         Parameters:
         -----------
         depol_1q : float
-            Depolarizing error probability for single-qubit gates (default: 0.001 = 0.1%)
+            Depolarizing error probability for single-qubit gates (NOT USED - kept for API compatibility)
         depol_2q : float
             Depolarizing error probability for two-qubit gates (default: 0.01 = 1%)
         t1 : float or None
@@ -63,7 +66,7 @@ class QubitMolecularDynamicsSimulatorNoisy:
         t2 : float or None
             Dephasing time (T2) in fs. If None, thermal relaxation is not applied.
         gate_time_1q : float
-            Single-qubit gate time in fs (default: 50 fs)
+            Single-qubit gate time in fs (NOT USED - kept for API compatibility)
         gate_time_2q : float
             Two-qubit gate time in fs (default: 300 fs)
         
@@ -73,21 +76,18 @@ class QubitMolecularDynamicsSimulatorNoisy:
         """
         noise_model = NoiseModel()
         
-        # Single-qubit gates
-        error_1q = depolarizing_error(depol_1q, 1)
-        noise_model.add_all_qubit_quantum_error(error_1q, ['u1', 'u2', 'u3', 'rz', 'ry', 'rx', 'x'])
+        # MODIFICATION: Single-qubit gates are now IDEAL (no noise applied)
+        # This follows the requirement: "qubit量子シミュレーションにおけるノイズモデルは2-qubitゲートに対してのみ施す"
         
-        # Two-qubit gates
+        # Two-qubit gates ONLY
         error_2q = depolarizing_error(depol_2q, 2)
         noise_model.add_all_qubit_quantum_error(error_2q, ['cx', 'cz'])
         
-        # Thermal relaxation for single-qubit gates (optional)
+        # Thermal relaxation for 2-qubit gates (optional)
         if t1 is not None and t2 is not None and t1 > 0 and t2 > 0:
-            error_thermal_1q = thermal_relaxation_error(t1, t2, gate_time_1q)
-            noise_model.add_all_qubit_quantum_error(error_thermal_1q, ['u1', 'u2', 'u3'])
-            
             # For 2-qubit gates, apply thermal relaxation to each qubit separately
             # This is done by creating a 2-qubit error from tensor product
+            error_thermal_1q = thermal_relaxation_error(t1, t2, gate_time_1q)
             error_thermal_2q = error_thermal_1q.tensor(error_thermal_1q)
             noise_model.add_all_qubit_quantum_error(error_thermal_2q, ['cx'])
         
@@ -239,7 +239,7 @@ class QubitMolecularDynamicsSimulatorNoisy:
         depol_2q = noise_params.get('depol_2q', 0.01)
         t1 = noise_params.get('t1', None)
         t2 = noise_params.get('t2', None)
-        print(f"  1量子ビットゲート脱分極エラー: {depol_1q*100:.3f}%")
+        print(f"  1量子ビットゲート: 理想的（ノイズなし）")
         print(f"  2量子ビットゲート脱分極エラー: {depol_2q*100:.3f}%")
         if t1 is not None and t2 is not None:
             print(f"  T1 (エネルギー緩和時間): {t1:.1f} fs")

@@ -77,14 +77,18 @@ class NoisyQuditMolecularDynamicsSimulator:
         """
         Create a realistic noise model for qutrits.
         
+        NOTE: As per the requirement, noise is applied ONLY to 2-qudit gates.
+        Single-qudit gates are assumed to be ideal (no noise).
+        
         Parameters:
         -----------
         depol_1q : float
-            Depolarizing error probability for single-qudit gates (default: 0.001 = 0.1%)
+            Depolarizing error probability for single-qudit gates (NOT USED - kept for API compatibility)
         depol_2q : float
             Depolarizing error probability for two-qudit gates (default: 0.01 = 1%)
         noise_gates : List[str] or None
-            List of gate names to apply noise to. If None, applies to all gates.
+            List of gate names to apply noise to. If None, applies to all 2-qudit gates.
+            NOTE: Only 2-qudit gates will receive noise regardless of this parameter.
         
         Returns:
         --------
@@ -92,22 +96,18 @@ class NoisyQuditMolecularDynamicsSimulator:
         """
         noise_model = self.NoiseModel()
         
+        # MODIFICATION: Single-qudit gates are now IDEAL (no noise applied)
+        # This follows the requirement: "qudit量子シミュレーションにおけるノイズモデルは2-quditゲートに対してのみ施す"
+        
+        # Identify two-qudit gates only
         if noise_gates is None:
-            # Apply noise to all common gates
-            noise_gates = ['virtrz', 'r', 'rz', 'rh', 'cx', 'h', 'x', 'z', 's']
+            # Default to all common 2-qudit gates
+            two_qudit_gates = ['cx', 'csum', 'ls', 'ms']
+        else:
+            # Filter to keep only 2-qudit gates
+            two_qudit_gates = [g for g in noise_gates if g in ['cx', 'csum', 'ls', 'ms']]
         
-        # Separate single-qudit and two-qudit gates
-        two_qudit_gates = [g for g in noise_gates if g in ['cx', 'csum', 'ls', 'ms']]
-        single_qudit_gates = [g for g in noise_gates if g not in two_qudit_gates]
-        
-        # Create mathematical noise for single-qudit gates
-        # The C++ backend expects Noise objects with probability_depolarizing and probability_dephasing attributes
-        # We use depol_1q for depolarizing only (dephasing set to 0.0) to maintain consistency with qubit simulator
-        if single_qudit_gates:
-            noise_1q = self.Noise(depol_1q, 0.0)  # Only depolarizing, no dephasing
-            noise_model.add_quantum_error_locally(noise_1q, single_qudit_gates)
-        
-        # For two-qudit gates, use depol_2q
+        # Apply noise ONLY to two-qudit gates
         if two_qudit_gates:
             noise_2q = self.Noise(depol_2q, 0.0)  # Only depolarizing, no dephasing
             noise_model.add_nonlocal_quantum_error(noise_2q, two_qudit_gates)
@@ -288,7 +288,7 @@ class NoisyQuditMolecularDynamicsSimulator:
         noise_model = self.create_noise_model(depol_1q, depol_2q, noise_gates)
         
         print("\nノイズモデルパラメータ:")
-        print(f"  1量子ビットゲート脱分極エラー: {depol_1q*100:.3f}%")
+        print(f"  1量子ビットゲート: 理想的（ノイズなし）")
         print(f"  2量子ビットゲート脱分極エラー: {depol_2q*100:.3f}%")
         print(f"  ノイズ適用ゲート: {noise_model.basis_gates}")
         
@@ -365,15 +365,12 @@ class NoisyQuditMolecularDynamicsSimulator:
             # Apply noise manually to statevector using density matrix formalism
             # Noise model: depolarizing with proper quantum channels
             # 
-            # NOTE: We compute an effective depolarizing probability as the average of depol_1q and depol_2q.
-            # This is an approximation that assumes roughly equal numbers of single-qudit and two-qudit gates.
-            # For more accurate modeling, this should be weighted by the actual gate counts in the circuit.
-            # However, for the comparison purposes in this notebook, this simple average is sufficient
-            # to demonstrate the unified noise model approach.
-            effective_depol = (depol_1q + depol_2q) / 2.0
-            if effective_depol > 0:
+            # MODIFICATION: As per the requirement, noise is applied ONLY to 2-qudit gates.
+            # Therefore, we use depol_2q directly instead of averaging with depol_1q.
+            # This reflects the actual noise model where single-qudit gates are ideal.
+            if depol_2q > 0:
                 current_state = self._apply_noise_to_statevector(
-                    current_state, effective_depol
+                    current_state, depol_2q
                 )
             
             # Ensure normalization (safety check - should already be normalized)

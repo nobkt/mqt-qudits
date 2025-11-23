@@ -47,6 +47,8 @@ def apply_H_transfer_basic_gates(circuit, qudit_i: int, qudit_j: int,
     """
     # Calculate rotation angle
     theta = V * dt / hbar
+    # Normalize angle to [0, 2π] range required by CEx gate validation
+    theta = theta % (2 * np.pi)
     
     # Phase adjustment (virtual gates to realize -i factor)
     circuit.virtrz(qudit_i, [1, -np.pi/2])      # |T_1⟩ に -π/2 位相

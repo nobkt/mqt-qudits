@@ -165,8 +165,19 @@ def decompose_qudit_customtwo_gates_to_circuit(circuit, sparse_generator):
     
     Returns:
         Decomposed circuit with only basic gates
+        
+    Raises:
+        AttributeError: If sparse_generator doesn't have the decomposition method
+        RuntimeError: If decomposition fails for any CustomTwo gate
     """
     from mqt.qudits.quantum_circuit import QuantumCircuit as MQTQuantumCircuit
+    
+    # Validate that sparse_generator has the decomposition method
+    if not hasattr(sparse_generator, '_decompose_custom_two_exact'):
+        raise AttributeError(
+            "sparse_generator must have '_decompose_custom_two_exact' method. "
+            "Please ensure you're using SparseAwareMQTGateGenerator instance."
+        )
     
     # Create new circuit with same qudits
     decomposed_circuit = MQTQuantumCircuit(circuit.num_qudits, circuit.dimensions)
@@ -174,10 +185,18 @@ def decompose_qudit_customtwo_gates_to_circuit(circuit, sparse_generator):
     # Process each gate
     for gate in circuit.instructions:
         if gate.__class__.__name__ == 'CustomTwo':
-            # Decompose CustomTwo gate using the sparse generator
-            decomposed_gates = sparse_generator._decompose_custom_two_exact(gate)
-            for dec_gate in decomposed_gates:
-                decomposed_circuit.append(dec_gate)
+            try:
+                # Decompose CustomTwo gate using the sparse generator
+                # Note: This uses a private method for now. Consider making this
+                # a public API if the sparse_generator interface is stabilized.
+                decomposed_gates = sparse_generator._decompose_custom_two_exact(gate)
+                for dec_gate in decomposed_gates:
+                    decomposed_circuit.append(dec_gate)
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to decompose CustomTwo gate: {e}. "
+                    "This may indicate an API change or incompatibility."
+                ) from e
         else:
             # Copy other gates as-is
             decomposed_circuit.append(gate)

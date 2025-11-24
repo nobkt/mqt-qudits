@@ -684,6 +684,16 @@ class SparseAwareMQTQuditTimeEvolution:
         # quditインデックスを取得
         qudit_indices = gate.reference_lines
         
+        # 親回路を取得
+        circuit = gate.parent_circuit
+        
+        # 各quditの次元を取得
+        gate_dimensions = gate.dimensions
+        if isinstance(gate_dimensions, list):
+            qudit_dims = gate_dimensions
+        else:
+            qudit_dims = [gate_dimensions, gate_dimensions]
+        
         # IntegratedSparseCompilerV2で疎構造を認識して分解
         compiler = IntegratedSparseCompilerV2(tolerance=1e-10, optimize_gates=True)
         result = compiler.compile(U)
@@ -697,17 +707,24 @@ class SparseAwareMQTQuditTimeEvolution:
             
             # 各ゲートタイプに応じてMQT-Quditsゲートオブジェクトを作成
             if gate_type == 'VirtRz':
-                # VirtRz(qudit, [level, phase])
+                # VirtRz(circuit, name, qudit, parameters, dimensions)
                 # グローバルレベルからローカルレベルとquditインデックスを計算
                 global_level = params['level']
                 qudit_idx, local_level = self._global_to_local_level(global_level, [3, 3])
                 actual_qudit = qudit_indices[qudit_idx]
+                qudit_dimension = qudit_dims[qudit_idx]
                 
-                gate_obj = VirtRz(actual_qudit, [local_level, params['phase']])
+                gate_obj = VirtRz(
+                    circuit,
+                    f"VirtRz{qudit_dimension}",
+                    actual_qudit,
+                    [local_level, params['phase']],
+                    qudit_dimension
+                )
                 decomposed_gates.append(gate_obj)
             
             elif gate_type == 'R':
-                # R(qudit, [level_a, level_b, theta, phi])
+                # R(circuit, name, qudit, parameters, dimensions)
                 global_level1 = params['level1']
                 global_level2 = params['level2']
                 
@@ -721,11 +738,18 @@ class SparseAwareMQTQuditTimeEvolution:
                     raise ValueError(f"Rゲートが異なるquditにまたがっています: {global_level1} と {global_level2}")
                 
                 actual_qudit = qudit_indices[qudit_idx1]
-                gate_obj = R(actual_qudit, [local_level1, local_level2, params['theta'], params['phi']])
+                qudit_dimension = qudit_dims[qudit_idx1]
+                gate_obj = R(
+                    circuit,
+                    f"R{qudit_dimension}",
+                    actual_qudit,
+                    [local_level1, local_level2, params['theta'], params['phi']],
+                    qudit_dimension
+                )
                 decomposed_gates.append(gate_obj)
             
             elif gate_type == 'Rz':
-                # Rz(qudit, [level_a, level_b, phase])
+                # Rz(circuit, name, qudit, parameters, dimensions)
                 global_level1 = params['level1']
                 global_level2 = params['level2']
                 
@@ -736,11 +760,18 @@ class SparseAwareMQTQuditTimeEvolution:
                     raise ValueError(f"Rzゲートが異なるquditにまたがっています: {global_level1} と {global_level2}")
                 
                 actual_qudit = qudit_indices[qudit_idx1]
-                gate_obj = Rz(actual_qudit, [local_level1, local_level2, params['phase']])
+                qudit_dimension = qudit_dims[qudit_idx1]
+                gate_obj = Rz(
+                    circuit,
+                    f"Rz{qudit_dimension}",
+                    actual_qudit,
+                    [local_level1, local_level2, params['phase']],
+                    qudit_dimension
+                )
                 decomposed_gates.append(gate_obj)
             
             elif gate_type == 'Rh':
-                # Rh(qudit, [level_a, level_b, theta])
+                # Rh(circuit, name, qudit, parameters, dimensions)
                 global_level1 = params['level1']
                 global_level2 = params['level2']
                 
@@ -751,11 +782,18 @@ class SparseAwareMQTQuditTimeEvolution:
                     raise ValueError(f"Rhゲートが異なるquditにまたがっています: {global_level1} と {global_level2}")
                 
                 actual_qudit = qudit_indices[qudit_idx1]
-                gate_obj = Rh(actual_qudit, [local_level1, local_level2, params['theta']])
+                qudit_dimension = qudit_dims[qudit_idx1]
+                gate_obj = Rh(
+                    circuit,
+                    f"Rh{qudit_dimension}",
+                    actual_qudit,
+                    [local_level1, local_level2, params['theta']],
+                    qudit_dimension
+                )
                 decomposed_gates.append(gate_obj)
             
             elif gate_type == 'CEx':
-                # CEx([control_qudit, target_qudit], params)
+                # CEx(circuit, name, [control_qudit, target_qudit], parameters, dimensions)
                 # IntegratedSparseCompilerV2が返すCExゲートのパラメータを解析
                 if 'control_levels' in params and 'target_levels' in params:
                     # CEx with specific control and target levels
@@ -764,11 +802,22 @@ class SparseAwareMQTQuditTimeEvolution:
                     angle = params.get('angle', 0.0)
                     
                     # CExゲートを作成（MQT-Quditsの仕様に合わせる）
-                    gate_obj = CEx(qudit_indices, [control_levels[0], control_levels[1], 
-                                                    target_levels[0], angle])
+                    gate_obj = CEx(
+                        circuit,
+                        f"CEx{qudit_dims[0]}_{qudit_dims[1]}",
+                        qudit_indices,
+                        [control_levels[0], control_levels[1], target_levels[0], angle],
+                        qudit_dims
+                    )
                 else:
                     # 簡略形式: CEx([qudit_i, qudit_j])
-                    gate_obj = CEx(qudit_indices)
+                    gate_obj = CEx(
+                        circuit,
+                        f"CEx{qudit_dims[0]}_{qudit_dims[1]}",
+                        qudit_indices,
+                        None,
+                        qudit_dims
+                    )
                 
                 decomposed_gates.append(gate_obj)
             

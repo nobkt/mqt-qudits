@@ -660,15 +660,12 @@ class SparseAwareMQTQuditTimeEvolution:
     
     def _decompose_custom_two_exact(self, gate):
         """
-        単一のCustomTwoゲートを厳密に基本ゲートに分解（疎構造認識版）
+        単一のCustomTwoゲートを厳密に基本ゲートに分解
         
-        IntegratedSparseCompilerV2を使用して、CustomTwoゲートの9×9ユニタリを
-        疎構造を認識しながら基本ゲート（VirtRz, R, CEx, Rz）に分解します。
+        MQT-QuditsのLogEntQRCEXPassを使用して、CustomTwoゲートを
+        基本ゲート（VirtRz, R, CEx, Rz, Rh）に分解します。
         
-        従来のLogEntQRCEXPass実装との比較:
-        - 旧実装: LogEntQRCEXPass → ~1200ゲート/CustomTwo (9×9密行列として扱う)
-        - 新実装: IntegratedSparseCompilerV2 → ~6ゲート/CustomTwo (3×3疎構造を認識)
-        - 削減率: 99.5%
+        Note: This is a wrapper around _decompose_custom_two_sparse_aware for compatibility.
         
         Args:
             gate: CustomTwoゲート
@@ -676,155 +673,9 @@ class SparseAwareMQTQuditTimeEvolution:
         Returns:
             分解後のゲートのリスト
         """
-        from mqt.qudits.quantum_circuit.gates import VirtRz, R, Rz, Rh, CEx
-        
-        # ユニタリ行列を取得
-        U = gate.to_matrix(identities=0)
-        
-        # quditインデックスを取得
-        qudit_indices = gate.reference_lines
-        
-        # 親回路を取得
-        circuit = gate.parent_circuit
-        
-        # 各quditの次元を取得
-        gate_dimensions = gate.dimensions
-        if isinstance(gate_dimensions, list):
-            qudit_dims = gate_dimensions
-        else:
-            qudit_dims = [gate_dimensions, gate_dimensions]
-        
-        # IntegratedSparseCompilerV2で疎構造を認識して分解
-        compiler = IntegratedSparseCompilerV2(tolerance=1e-10, optimize_gates=True)
-        result = compiler.compile(U)
-        
-        # 分解結果からMQT-Quditsゲートを生成
-        decomposed_gates = []
-        
-        for gate_info in result.gate_sequence.gates:
-            gate_type = gate_info.gate_type
-            params = gate_info.parameters
-            
-            # 各ゲートタイプに応じてMQT-Quditsゲートオブジェクトを作成
-            if gate_type == 'VirtRz':
-                # VirtRz(circuit, name, qudit, parameters, dimensions)
-                # グローバルレベルからローカルレベルとquditインデックスを計算
-                global_level = params['level']
-                qudit_idx, local_level = self._global_to_local_level(global_level, [3, 3])
-                actual_qudit = qudit_indices[qudit_idx]
-                qudit_dimension = qudit_dims[qudit_idx]
-                
-                gate_obj = VirtRz(
-                    circuit,
-                    f"VirtRz{qudit_dimension}",
-                    actual_qudit,
-                    [local_level, params['phase']],
-                    qudit_dimension
-                )
-                decomposed_gates.append(gate_obj)
-            
-            elif gate_type == 'R':
-                # R(circuit, name, qudit, parameters, dimensions)
-                global_level1 = params['level1']
-                global_level2 = params['level2']
-                
-                # 両方のレベルが同じquditに属することを確認
-                qudit_idx1, local_level1 = self._global_to_local_level(global_level1, [3, 3])
-                qudit_idx2, local_level2 = self._global_to_local_level(global_level2, [3, 3])
-                
-                if qudit_idx1 != qudit_idx2:
-                    # 異なるquditにまたがるRゲートはCExゲートに変換が必要
-                    # しかし、IntegratedSparseCompilerV2はこれを適切に処理するはず
-                    raise ValueError(f"Rゲートが異なるquditにまたがっています: {global_level1} と {global_level2}")
-                
-                actual_qudit = qudit_indices[qudit_idx1]
-                qudit_dimension = qudit_dims[qudit_idx1]
-                gate_obj = R(
-                    circuit,
-                    f"R{qudit_dimension}",
-                    actual_qudit,
-                    [local_level1, local_level2, params['theta'], params['phi']],
-                    qudit_dimension
-                )
-                decomposed_gates.append(gate_obj)
-            
-            elif gate_type == 'Rz':
-                # Rz(circuit, name, qudit, parameters, dimensions)
-                global_level1 = params['level1']
-                global_level2 = params['level2']
-                
-                qudit_idx1, local_level1 = self._global_to_local_level(global_level1, [3, 3])
-                qudit_idx2, local_level2 = self._global_to_local_level(global_level2, [3, 3])
-                
-                if qudit_idx1 != qudit_idx2:
-                    raise ValueError(f"Rzゲートが異なるquditにまたがっています: {global_level1} と {global_level2}")
-                
-                actual_qudit = qudit_indices[qudit_idx1]
-                qudit_dimension = qudit_dims[qudit_idx1]
-                gate_obj = Rz(
-                    circuit,
-                    f"Rz{qudit_dimension}",
-                    actual_qudit,
-                    [local_level1, local_level2, params['phase']],
-                    qudit_dimension
-                )
-                decomposed_gates.append(gate_obj)
-            
-            elif gate_type == 'Rh':
-                # Rh(circuit, name, qudit, parameters, dimensions)
-                global_level1 = params['level1']
-                global_level2 = params['level2']
-                
-                qudit_idx1, local_level1 = self._global_to_local_level(global_level1, [3, 3])
-                qudit_idx2, local_level2 = self._global_to_local_level(global_level2, [3, 3])
-                
-                if qudit_idx1 != qudit_idx2:
-                    raise ValueError(f"Rhゲートが異なるquditにまたがっています: {global_level1} と {global_level2}")
-                
-                actual_qudit = qudit_indices[qudit_idx1]
-                qudit_dimension = qudit_dims[qudit_idx1]
-                gate_obj = Rh(
-                    circuit,
-                    f"Rh{qudit_dimension}",
-                    actual_qudit,
-                    [local_level1, local_level2, params['theta']],
-                    qudit_dimension
-                )
-                decomposed_gates.append(gate_obj)
-            
-            elif gate_type == 'CEx':
-                # CEx(circuit, name, [control_qudit, target_qudit], parameters, dimensions)
-                # IntegratedSparseCompilerV2が返すCExゲートのパラメータを解析
-                if 'control_levels' in params and 'target_levels' in params:
-                    # CEx with specific control and target levels
-                    control_levels = params['control_levels']
-                    target_levels = params['target_levels']
-                    angle = params.get('angle', 0.0)
-                    
-                    # CExゲートを作成（MQT-Quditsの仕様に合わせる）
-                    gate_obj = CEx(
-                        circuit,
-                        f"CEx{qudit_dims[0]}_{qudit_dims[1]}",
-                        qudit_indices,
-                        [control_levels[0], control_levels[1], target_levels[0], angle],
-                        qudit_dims
-                    )
-                else:
-                    # 簡略形式: CEx([qudit_i, qudit_j])
-                    gate_obj = CEx(
-                        circuit,
-                        f"CEx{qudit_dims[0]}_{qudit_dims[1]}",
-                        qudit_indices,
-                        None,
-                        qudit_dims
-                    )
-                
-                decomposed_gates.append(gate_obj)
-            
-            else:
-                raise ValueError(f"未知のゲートタイプ: {gate_type}")
-        
-        return decomposed_gates
+        # Use the existing _decompose_custom_two_sparse_aware method
+        # which properly handles LogEntQRCEXPass decomposition
+        return self._decompose_custom_two_sparse_aware(gate, gate.parent_circuit)
     
     def _global_to_local_level(self, global_level: int, dimensions: List[int]) -> Tuple[int, int]:
         """

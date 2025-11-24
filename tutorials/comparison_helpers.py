@@ -152,7 +152,7 @@ def estimate_qudit_customtwo_decomposition_cost(num_custom_two_gates: int) -> Di
     }
 
 
-def decompose_qudit_customtwo_gates_to_circuit(circuit, sparse_generator):
+def decompose_qudit_customtwo_gates_to_circuit(circuit, time_evol):
     """
     Actually decompose CustomTwo gates in a Qudit circuit to basic gates.
     
@@ -160,14 +160,14 @@ def decompose_qudit_customtwo_gates_to_circuit(circuit, sparse_generator):
     into basic gates (CEx, R, VirtRz, Rz, Rh) while recognizing sparse structures.
     
     Note: This function currently uses a private method (_decompose_custom_two_exact)
-    from the sparse_generator. This is a temporary solution until a public API
+    from the time_evol object. This is a temporary solution until a public API
     is established. The function includes validation to fail gracefully if the
     API changes.
     
     Args:
         circuit (mqt.qudits.quantum_circuit.QuantumCircuit): MQT-Qudits QuantumCircuit 
             with CustomTwo gates to be decomposed
-        sparse_generator (SparseAwareMQTGateGenerator): Instance with compiler that
+        time_evol (SparseAwareMQTQuditTimeEvolution): Time evolution instance that
             provides the _decompose_custom_two_exact method
     
     Returns:
@@ -175,22 +175,22 @@ def decompose_qudit_customtwo_gates_to_circuit(circuit, sparse_generator):
             decomposed into basic gates (CEx, R, VirtRz, Rz, Rh)
         
     Raises:
-        AttributeError: If sparse_generator doesn't have the decomposition method
+        AttributeError: If time_evol doesn't have the decomposition method
         RuntimeError: If decomposition fails for any CustomTwo gate
         
     Example:
         >>> decomposed = decompose_qudit_customtwo_gates_to_circuit(
         ...     circuit_with_customtwo,
-        ...     qudit_simulator.time_evol.gate_generator
+        ...     qudit_simulator.time_evol
         ... )
     """
     from mqt.qudits.quantum_circuit import QuantumCircuit as MQTQuantumCircuit
     
-    # Validate that sparse_generator has the decomposition method
-    if not hasattr(sparse_generator, '_decompose_custom_two_exact'):
+    # Validate that time_evol has the decomposition method
+    if not hasattr(time_evol, '_decompose_custom_two_exact'):
         raise AttributeError(
-            "sparse_generator must have '_decompose_custom_two_exact' method. "
-            "Please ensure you're using SparseAwareMQTGateGenerator instance."
+            "time_evol must have '_decompose_custom_two_exact' method. "
+            "Please ensure you're using SparseAwareMQTQuditTimeEvolution instance."
         )
     
     # Create new circuit with same qudits
@@ -200,10 +200,10 @@ def decompose_qudit_customtwo_gates_to_circuit(circuit, sparse_generator):
     for gate in circuit.instructions:
         if gate.__class__.__name__ == 'CustomTwo':
             try:
-                # Decompose CustomTwo gate using the sparse generator
+                # Decompose CustomTwo gate using the time evolution's method
                 # Note: This uses a private method for now. Consider making this
-                # a public API if the sparse_generator interface is stabilized.
-                decomposed_gates = sparse_generator._decompose_custom_two_exact(gate)
+                # a public API if the time_evol interface is stabilized.
+                decomposed_gates = time_evol._decompose_custom_two_exact(gate)
                 for dec_gate in decomposed_gates:
                     decomposed_circuit.append(dec_gate)
             except Exception as e:

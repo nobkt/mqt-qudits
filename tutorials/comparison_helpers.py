@@ -159,16 +159,30 @@ def decompose_qudit_customtwo_gates_to_circuit(circuit, sparse_generator):
     This uses the IntegratedSparseCompilerV2 to decompose CustomTwo gates
     into basic gates (CEx, R, VirtRz, Rz, Rh) while recognizing sparse structures.
     
+    Note: This function currently uses a private method (_decompose_custom_two_exact)
+    from the sparse_generator. This is a temporary solution until a public API
+    is established. The function includes validation to fail gracefully if the
+    API changes.
+    
     Args:
-        circuit: MQT-Qudits QuantumCircuit with CustomTwo gates
-        sparse_generator: SparseAwareMQTGateGenerator instance with compiler
+        circuit (mqt.qudits.quantum_circuit.QuantumCircuit): MQT-Qudits QuantumCircuit 
+            with CustomTwo gates to be decomposed
+        sparse_generator (SparseAwareMQTGateGenerator): Instance with compiler that
+            provides the _decompose_custom_two_exact method
     
     Returns:
-        Decomposed circuit with only basic gates
+        mqt.qudits.quantum_circuit.QuantumCircuit: New circuit with CustomTwo gates
+            decomposed into basic gates (CEx, R, VirtRz, Rz, Rh)
         
     Raises:
         AttributeError: If sparse_generator doesn't have the decomposition method
         RuntimeError: If decomposition fails for any CustomTwo gate
+        
+    Example:
+        >>> decomposed = decompose_qudit_customtwo_gates_to_circuit(
+        ...     circuit_with_customtwo,
+        ...     qudit_simulator.time_evol.gate_generator
+        ... )
     """
     from mqt.qudits.quantum_circuit import QuantumCircuit as MQTQuantumCircuit
     

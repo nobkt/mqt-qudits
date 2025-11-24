@@ -205,7 +205,7 @@ def decompose_qudit_customtwo_gates_to_circuit(circuit, time_evol):
                 # a public API if the time_evol interface is stabilized.
                 decomposed_gates = time_evol._decompose_custom_two_exact(gate)
                 for dec_gate in decomposed_gates:
-                    decomposed_circuit.append(dec_gate)
+                    decomposed_circuit.instructions.append(dec_gate)
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to decompose CustomTwo gate: {e}. "
@@ -213,6 +213,6 @@ def decompose_qudit_customtwo_gates_to_circuit(circuit, time_evol):
                 ) from e
         else:
             # Copy other gates as-is
-            decomposed_circuit.append(gate)
+            decomposed_circuit.instructions.append(gate)
     
     return decomposed_circuit

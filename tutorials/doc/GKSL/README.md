@@ -8,6 +8,18 @@
 
 ### 主要文書
 
+- **MQT_Qudits量子ダイナミクスシミュレーション完全理論.md** (63KB, 2158行) 🆕
+  - **MQT-Quditsフレームワークによる実装に特化した完全理論書**
+  - GKSL-Lindblad理論の完全統合
+  - **Stinespring Dilationによる散逸項の厳密な量子回路実装**
+  - 環境Quditの導入とユニタリ拡大の具体的手順
+  - Qudit表現による分子系のモデリング
+  - 鈴木トロッター分解によるユニタリ時間発展
+  - TTA、蛍光、燐光、IC、ISC全過程の実装
+  - MQT-Quditsゲート分解とPythonコード例
+  - 数値検証と物理的正当性の完全な検証手法
+  - **ヒューリスティック手法の完全排除**
+
 - **量子ダイナミクスGKSL-Lindblad理論完全定式化.md** (49KB, 1539行)
   - 開放量子系の理論的基礎
   - GKSL-Lindblad方程式の完全定式化
@@ -15,12 +27,34 @@
   - 放射減衰過程（蛍光・燐光）の定式化
   - 無放射遷移過程（内部転換・項間交差）
   - 完全なLindblad方程式の統合
-  - 数値シミュレーション手法
+  - 数値シミュレーション手法（古典的な超演算子形式）
   - 物理的正当性と検証
 
 ## 主要な特徴
 
-### 1. TTA過程の非ユニタリ表現
+### 1. 2つの理論文書の役割分担
+
+#### MQT_Qudits量子ダイナミクスシミュレーション完全理論.md（新規）
+- **対象**: MQT-Quditsフレームワークでの量子回路実装
+- **焦点**: Stinespring Dilationによる散逸項の厳密な量子回路実装
+- **内容**:
+  - 環境Quditの導入と初期化
+  - Lindblad演算子のユニタリ拡大
+  - 系-環境エンタングリングゲートの構成
+  - 環境のトレースアウトによる非ユニタリ効果の実現
+  - MQT-Quditsゲート（VirtRz, R, RH, CEx等）への分解
+  - 完全なPythonコード実装例
+
+#### 量子ダイナミクスGKSL-Lindblad理論完全定式化.md（既存）
+- **対象**: 理論的基礎と数学的厳密性
+- **焦点**: GKSL-Lindblad方程式の完全定式化
+- **内容**:
+  - 開放量子系理論の数学的基礎
+  - Lindblad演算子の物理的導出
+  - 各散逸過程の詳細な理論
+  - 古典的な超演算子形式による数値計算
+
+### 2. TTA過程の非ユニタリ表現
 
 従来のユニタリハミルトニアン表現：
 ```
@@ -112,9 +146,13 @@ L_total = L_TTA + L_fl + L_ph + L_IC + L_ISC  (散逸部分)
 
 ### 推奨ツール
 
-- Python with NumPy/SciPy
-- QuTiP (Quantum Toolbox in Python)
-- MQT-Qudits framework
+#### 量子回路実装（MQT_Qudits文書で解説）
+- **MQT-Qudits framework**: Qudit量子回路の構築と実行
+- Python with NumPy/SciPy: 数値計算と検証
+
+#### 古典的シミュレーション（GKSL-Lindblad文書で解説）
+- Python with NumPy/SciPy: 超演算子形式の実装
+- QuTiP (Quantum Toolbox in Python): Lindblad方程式のソルバー
 
 ## 参考文献
 
@@ -131,9 +169,22 @@ L_total = L_TTA + L_fl + L_ph + L_IC + L_ISC  (散逸部分)
 
 ### 関連文書
 
+#### GKSL理論関連
+- `MQT_Qudits量子ダイナミクスシミュレーション完全理論.md` (本ディレクトリ): **MQT-Qudits実装版**
+- `量子ダイナミクスGKSL-Lindblad理論完全定式化.md` (本ディレクトリ): **理論基礎版**
+
+#### 分子ダイナミクス理論
 - `tutorials/doc/quantum_dynamics_molecular_triplet_states.md`
-- `tutorials/doc/qubit/qubit_quantum_dynamics_molecular_triplet_states_theory.md`
+- `tutorials/doc/qudit_quantum_algorithm_for_molecular_triplet_dynamics.md`
 - `tutorials/doc/theory_quantum_dynamics_complete_comparison.md`
+- `tutorials/doc/suzuki_trotter_decomposition_theory.md`
+
+#### Qubit実装との比較
+- `tutorials/doc/qubit/qubit_quantum_dynamics_molecular_triplet_states_theory.md`
+- `tutorials/doc/qubit/qubit_detailed_design.md`
+
+#### MQT-Quditsゲートリファレンス
+- `tutorials/doc/mqt_qudits_gates_and_bases_reference.md`
 
 ## バージョン情報
 

@@ -8,7 +8,7 @@
 
 ### 主要文書
 
-- **TTA-UC現象のGKSL-Lindblad量子ダイナミクス完全理論書.md** (NEW - 完全版)
+- **TTA-UC現象のGKSL-Lindblad量子ダイナミクス完全理論書.md** (57KB, 1945行, NEW - 完全版)
   - TTA-UC（三重項-三重項消滅アップコンバージョン）現象の完全理論
   - 6つの実装シナリオを網羅：
     1. 古典計算、ボソン相互作用無し
@@ -31,12 +31,12 @@
   - 数値シミュレーション手法
   - 物理的正当性と検証
 
-- **GKSL-Lindblad量子ダイナミクスQiskit-Qubit完全実装理論.md**
+- **GKSL-Lindblad量子ダイナミクスQiskit-Qubit完全実装理論.md** (101KB, 3293行)
   - Qubit表現による3準位系のエンコーディング
   - Stinespring Dilationの完全定式化
   - Qiskitを用いた量子回路実装
 
-- **GKSL-Lindblad量子ダイナミクスQudit完全実装理論.md**
+- **GKSL-Lindblad量子ダイナミクスQudit完全実装理論.md** (93KB, 2991行)
   - Qudit（Qutrit）表現による自然なエンコーディング
   - MQT-Quditsフレームワークでの実装
   - Qubit実装との比較

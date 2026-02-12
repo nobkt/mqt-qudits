@@ -3,8 +3,8 @@
 ## 文書情報
 
 **作成日**: 2026年2月12日  
-**最終更新日**: 2026年2月13日  
-**バージョン**: 1.1.0  
+**最終更新日**: 2026年2月12日  
+**バージョン**: 1.1.1  
 **対象ノートブック**: `tutorials/quantum_dynamics_complete_comparison.ipynb`  
 **理論基礎文書**: `tutorials/doc/GKSL/TTA-UC現象のGKSL-Lindblad量子ダイナミクス完全理論書.md`  
 **目的**: 既存ノートブック `quantum_dynamics_complete_comparison.ipynb` と同一の仕様（パラメータ、データ構造、比較フレームワーク、可視化）で、TTA-UC現象のGKSL-Lindblad量子ダイナミクスを実装するための省略無しの詳細仕様
@@ -513,6 +513,10 @@ $$
 $$
 
 $\gamma_{\text{TTA}}/2$ の因子は、2つのLindblad演算子が同じ物理過程の2つのチャネルを表すため。
+
+**理論書との表記対応**: 理論書では $\hat{L}_{\text{TTA}} = \sqrt{\gamma_{\text{TTA}}/2}\,|20\rangle\langle 11|$ のように $\sqrt{\gamma_{\text{TTA}}/2}$ を演算子側に含める。本仕様書は $\hat{L}$ を無次元の遷移演算子として定義し、係数を散逸項にまとめる。どちらも同値なGKSL形式である。
+
+**スピン統計因子の取り込み**: 理論書で触れたスピン統計因子 $f_{\text{spin}} \in \{1/9, 1/5\}$ を考慮する場合は $\gamma_{\text{TTA,eff}} = f_{\text{spin}}\gamma_{\text{TTA}}$ を使用し、`GKSLPhysicalParameters.gamma_TTA` には既に $f_{\text{spin}}$ を含めた値を設定する（重複計上を避ける）。
 
 #### 3.3.2 蛍光発光のLindblad演算子
 
@@ -2150,6 +2154,9 @@ class QuditGKSLBosonSimulator:
     # Qubit/Qudit: 回路情報
     'step_circuit': object,          # 1トロッターステップの回路
     'total_gates': int,
+    'total_depth': int,
+    'gates_per_step': int,
+    'depth_per_step': int,
     'n_ancilla': int,                # ancilla数
     'shots': int,
 }
@@ -2382,6 +2389,15 @@ $$
 $$
 
 ここで $\epsilon_{\text{tol}}$ は Trotter 誤差 + ショットノイズ + Stinespring 近似誤差の合計。
+
+密度行列が取得できる場合はトレース距離も評価する：
+
+$$
+D_{\text{trace}}(t) = \frac{1}{2}\|\hat{\rho}_{\text{classical}}(t) - \hat{\rho}_{\text{quantum}}(t)\|_1
+$$
+
+- Statevector（ショット無し）: $\max_t D_{\text{trace}}(t) < 10^{-3}$
+- Shot-based（有限ショット）: $\max_t D_{\text{trace}}(t) < 5\times10^{-2}$（ショット数に応じて調整）
 
 #### 13.3.2 ユニタリ極限の確認
 
@@ -2665,7 +2681,7 @@ $$
 **文書終了**
 
 作成日: 2026年2月12日  
-最終更新日: 2026年2月13日  
-バージョン: 1.1.0  
+最終更新日: 2026年2月12日  
+バージョン: 1.1.1  
 対象リポジトリ: nobkt/mqt-qudits  
 ライセンス: MIT License

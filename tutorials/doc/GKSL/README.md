@@ -8,7 +8,7 @@
 
 ### 主要文書
 
-- **TTA-UC現象GKSL-Lindblad量子ダイナミクス実装詳細仕様書.md** (72KB, 2038行, NEW - 実装仕様書)
+- **TTA-UC現象GKSL-Lindblad量子ダイナミクス実装詳細仕様書.md** (72KB, 2038行, 実装仕様書)
   - `quantum_dynamics_complete_comparison.ipynb` と同じ仕様でGKSL-Lindblad量子ダイナミクスを実装するための詳細仕様
   - 現行ノートブックの仕様（パラメータ、データ構造、可視化）を完全に分析
   - 6シナリオの実装仕様を省略無しの数式付きで定義

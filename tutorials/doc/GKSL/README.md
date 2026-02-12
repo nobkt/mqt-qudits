@@ -8,7 +8,14 @@
 
 ### 主要文書
 
-- **TTA-UC現象のGKSL-Lindblad量子ダイナミクス完全理論書.md** (57KB, 1945行, NEW - 完全版)
+- **TTA-UC現象GKSL-Lindblad量子ダイナミクス実装詳細仕様書.md** (72KB, 2038行, NEW - 実装仕様書)
+  - `quantum_dynamics_complete_comparison.ipynb` と同じ仕様でGKSL-Lindblad量子ダイナミクスを実装するための詳細仕様
+  - 現行ノートブックの仕様（パラメータ、データ構造、可視化）を完全に分析
+  - 6シナリオの実装仕様を省略無しの数式付きで定義
+  - 超演算子形式、Stinespring dilation、Trotter分解の具体的な実装手順
+  - 検証仕様と実装ロードマップを含む
+
+- **TTA-UC現象のGKSL-Lindblad量子ダイナミクス完全理論書.md** (57KB, 1945行, 完全版)
   - TTA-UC（三重項-三重項消滅アップコンバージョン）現象の完全理論
   - 6つの実装シナリオを網羅：
     1. 古典計算、ボソン相互作用無し

@@ -1240,6 +1240,57 @@ build_H_total_boson(params):
   RETURN H_total
 ```
 
+#### 5.3.5 将来拡張: Peierls型結合
+
+理論書・実装仕様書との整合のため、将来拡張として以下を定義する：
+
+$$
+\hat{H}_{\text{Peierls}} = \sum_{\langle i,j \rangle} V_{ij}\left(1 + g_P(\hat{u}_i - \hat{u}_j)\right)\hat{T}_{ij}, \quad
+\hat{u}_i = \frac{\hat{a}_i + \hat{a}_i^\dagger}{\sqrt{2}}
+$$
+
+**実装優先度**: 初期実装（Phase 1–4）では非採用（Holstein型のみ採用）。
+
+#### 5.3.6 将来拡張: 電子-光子結合
+
+蛍光の微視的記述として、
+
+$$
+\hat{H}_{e\text{-photon}}^{\text{RWA}} = \sum_i g_{\text{photon}}\left(|S_0\rangle_i\langle S_1|\hat{b}^\dagger + |S_1\rangle_i\langle S_0|\hat{b}\right)
+$$
+
+を定義可能。初期実装では蛍光はLindblad項で扱い、光子自由度は明示的に含めない。
+
+#### 5.3.7 将来拡張: 完全ハミルトニアン（5項）
+
+光子・フォノン自由度を明示する場合：
+
+$$
+\hat{H}_{\text{total}} = \hat{H}_{\text{el}} + \hat{H}_{\text{phonon}} + \hat{H}_{\text{photon}} + \hat{H}_{e\text{-ph}} + \hat{H}_{e\text{-photon}}
+$$
+
+初期実装は3項（$\hat{H}_{\text{el}} + \hat{H}_{\text{phonon}} + \hat{H}_{e\text{-ph}}$）を対象とする。
+
+#### 5.3.8 将来拡張: スペクトル密度関数
+
+連続ボソン浴の記述として：
+
+$$
+J(\omega) = \sum_k |g_k|^2\delta(\omega - \omega_k)
+$$
+
+代表例（Drude-Lorentz, Ohmic）を採用可能とし、HEOM等（§5.6.2）と組み合わせる。
+
+#### 5.3.9 将来拡張: 有限温度効果
+
+有限温度での平均占有数：
+
+$$
+\bar{n}(\omega) = \frac{1}{e^{\hbar\omega/k_BT} - 1}
+$$
+
+初期実装は $T=0$（フォノン真空初期状態）を前提とし、有限温度は拡張範囲とする。
+
 ### 5.4 Lindblad演算子の拡張
 
 Lindblad演算子は電子系にのみ作用するが、フォノン空間への拡張が必要：
@@ -1302,6 +1353,19 @@ simulate_boson(params):
   sol = solve_ivp(lindblad_rhs, [0, T_total], rho_0_vec,
                   method='BDF', t_eval=t_eval, rtol=1e-8, atol=1e-10)
 ```
+
+#### 5.6.1 初期実装で採用する手法
+
+- 直接ODE積分（BDF）を標準手法とする。
+- ヒューリスティックな手法選択や失敗時Fallbackは採用しない。
+
+#### 5.6.2 将来候補の追加手法（理論整合のため明記）
+
+- **HEOM（階層的運動方程式）**：非マルコフ浴を扱う拡張。
+- **テンソルネットワーク法（MPS/MPO）**：大規模ボソン空間向け。
+- **量子モンテカルロ法（確率的波動関数法）**：軌道平均による密度行列再構成。
+
+これらは状態空間拡大時（例: $N>4$, $n_{\max}>3$）の拡張候補とする。
 
 ### 5.7 ClassicalGKSLBosonSimulator フローチャート
 
@@ -1563,6 +1627,18 @@ check_forbidden_states(rho_qubit, N=4):
 │  + 回路情報（ゲート数、深さ）      │
 └──────────────────────────────────┘
 ```
+
+### 6.7 ハードウェアノイズモデル（Qubit GKSL）
+
+物理Lindblad散逸とハードウェアノイズは独立に扱う。ノイズ付き評価時は `QubitGKSLNoisySimulator` を用いる。
+
+- 1-qubitゲート: ノイズなし（理想）
+- 2-qubitゲート: 脱分極 $p_{\text{depol}} = 0.01$
+- 熱緩和（2-qubitゲート）: $T_1 = 50\,\mu$s, $T_2 = 70\,\mu$s, ゲート時間 $300$ fs
+
+$$
+\mathcal{E}_{\text{depol}}[\hat{\rho}] = (1-p)\hat{\rho} + \frac{p}{d^2-1}\sum_{P\neq I} P\hat{\rho}P^\dagger
+$$
 
 
 ---
@@ -1861,6 +1937,18 @@ $$
 2. **自然な部分空間回転**: $|0\rangle\langle 2|$ 等の遷移演算子が部分空間回転 $R_{02}(\theta)$ で直接実装可能
 3. **少ないゲート数**: Stinespringユニタリの疎構造を認識し、効率的に分解可能
 4. **Qubit比較**: $N=4$ で Qubit-NB ~34 qubit vs Qudit-NB ~34 等価qubitだが、ゲート数でQudit版が優位
+
+### 8.9 ハードウェアノイズモデル（Qudit GKSL）
+
+Qubit版（§6.7）と同様に、物理Lindblad散逸とハードウェアノイズを分離して扱う。ノイズ付き評価時は `QuditGKSLNoisySimulator` を用いる。
+
+- 1-quditゲート: ノイズなし（理想）
+- 2-quditゲート: 脱分極 $p_{\text{depol}} = 0.01$
+- 位相緩和（オプション）:
+
+$$
+\mathcal{E}_{\text{dephasing}}[\hat{\rho}] = (1-p_{\text{deph}})\hat{\rho} + p_{\text{deph}}\sum_{k=0}^{d-1}|k\rangle\langle k|\hat{\rho}|k\rangle\langle k|
+$$
 
 ---
 
@@ -2885,4 +2973,3 @@ $$
 バージョン: 1.0.0  
 対象リポジトリ: nobkt/mqt-qudits  
 ライセンス: MIT License
-

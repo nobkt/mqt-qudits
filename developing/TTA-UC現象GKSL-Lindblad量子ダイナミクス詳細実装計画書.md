@@ -2428,6 +2428,797 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
 
 ---
 
+## 第3.6部: シナリオ2の実装（Classical GKSL・ボソン有り）
+
+### 3.6.1 classical_gksl_boson_simulator.py
+
+#### 3.6.1.1 目的
+
+電子-フォノン結合を含む拡張GKSL方程式を古典計算で厳密に積分する。Holstein型電子-フォノン結合を初期実装として、将来的にPeierls型・電子-光子結合に拡張可能な設計とする。
+
+#### 3.6.1.2 拡張ヒルベルト空間設計
+
+$$
+\mathcal{H}_{\text{total}} = \mathcal{H}_{\text{el}} \otimes \mathcal{H}_{\text{phonon}}
+$$
+
+- **電子系**: $\mathcal{H}_{\text{el}} = \bigotimes_{i=0}^{3} \mathbb{C}^3$, $\dim = 81$
+- **フォノン系**: $\mathcal{H}_{\text{phonon}} = \bigotimes_{i=0}^{3} \mathbb{C}^{n_{\max}+1}$, $\dim = (n_{\max}+1)^4$
+- 各分子に1つの局所フォノンモードを仮定、Fock空間を $n_{\max}$ で切断
+
+次元テーブル:
+
+| $n_{\max}$ | フォノン次元 | 全次元 | 密度行列要素数 | メモリ概算 |
+|-----------|-----------|-------|-------------|-----------|
+| 2（推奨） | $3^4 = 81$ | $81 \times 81 = 6561$ | $6561^2 \approx 4.3 \times 10^7$ | ~690 MB |
+| 3 | $4^4 = 256$ | $81 \times 256 = 20736$ | $20736^2 \approx 4.3 \times 10^8$ | ~6.9 GB |
+| 5 | $6^4 = 1296$ | $81 \times 1296 = 104976$ | $\sim 10^{10}$ | ~176 GB |
+
+基底順序:
+
+$$
+|e_0, e_1, e_2, e_3, n_0, n_1, n_2, n_3\rangle
+$$
+
+- $e_i \in \{0, 1, 2\}$: 分子 $i$ の電子状態
+- $n_i \in \{0, 1, \ldots, n_{\max}\}$: フォノン数
+
+インデックス計算:
+
+$$
+\text{idx} = \left(\sum_{i=0}^{3} e_i \cdot 3^{3-i}\right) \cdot (n_{\max}+1)^4 + \sum_{i=0}^{3} n_i \cdot (n_{\max}+1)^{3-i}
+$$
+
+#### 3.6.1.3 フォノンハミルトニアン構築手順
+
+$$
+\hat{H}_{\text{phonon}} = \hat{I}_{\text{el}} \otimes \sum_{i=0}^{3} \hbar\omega_{\text{ph}} \hat{a}_i^\dagger \hat{a}_i
+$$
+
+消滅演算子の行列表現（$(n_{\max}+1) \times (n_{\max}+1)$）:
+
+$$
+\hat{a} = \begin{pmatrix} 0 & \sqrt{1} & 0 & \cdots \\ 0 & 0 & \sqrt{2} & \cdots \\ \vdots & & & \ddots \\ 0 & \cdots & 0 & \sqrt{n_{\max}} \\ 0 & \cdots & & 0 \end{pmatrix}
+$$
+
+```python
+def build_phonon_operators(n_max: int) -> tuple:
+    """
+    フォノン基本演算子を構築
+    
+    Returns:
+        a: 消滅演算子 (d_ph × d_ph)
+        a_dag: 生成演算子 (d_ph × d_ph)
+        n_op: 数演算子 (d_ph × d_ph)
+    """
+    d_ph = n_max + 1
+    a = np.zeros((d_ph, d_ph), dtype=np.complex128)
+    for n in range(n_max):
+        a[n, n + 1] = np.sqrt(n + 1)
+    a_dag = a.conj().T
+    n_op = a_dag @ a  # diag(0, 1, 2, ..., n_max)
+    return a, a_dag, n_op
+
+def build_H_phonon(params, dim_el: int) -> np.ndarray:
+    """
+    フォノンハミルトニアンを構築
+    
+    Returns:
+        H_phonon: (d_total × d_total) エルミート行列
+    """
+    d_ph = params.n_max + 1
+    dim_ph = d_ph ** params.N_molecules
+    a, a_dag, n_op = build_phonon_operators(params.n_max)
+    
+    H_phonon_local = np.zeros((dim_ph, dim_ph), dtype=np.complex128)
+    for i in range(params.N_molecules):
+        n_i = build_single_site_operator(n_op, i, N=params.N_molecules, d=d_ph)
+        H_phonon_local += params.hbar * params.omega_ph * n_i
+    
+    return np.kron(np.eye(dim_el), H_phonon_local)
+```
+
+#### 3.6.1.4 Holstein型電子-フォノン結合構築
+
+$$
+\hat{H}_{e\text{-ph}} = g \sum_{i=0}^{3} |1\rangle_i\langle 1| \otimes (\hat{a}_i + \hat{a}_i^\dagger)
+$$
+
+（簡略化: 三重項状態 $|T_1\rangle = |1\rangle$ のみフォノン結合）
+
+パラメータ:
+- $g = 0.02$ eV（結合定数）
+- $\hbar\omega_{\text{ph}} = 0.15$ eV（典型的分子内振動）
+- Huang-Rhysパラメータ: $S = g^2 / (\hbar\omega_{\text{ph}})^2 = 0.0178$
+
+```python
+def build_H_eph(params) -> np.ndarray:
+    """
+    Holstein型電子-フォノン結合ハミルトニアンを構築
+    
+    Returns:
+        H_eph: (d_total × d_total) エルミート行列
+    """
+    d_el = 3
+    d_ph = params.n_max + 1
+    dim_el = d_el ** params.N_molecules
+    dim_ph = d_ph ** params.N_molecules
+    
+    proj_T1 = np.diag([0, 1, 0])  # |1⟩⟨1| 射影演算子 (3×3)
+    a, a_dag, _ = build_phonon_operators(params.n_max)
+    x_op = a + a_dag  # 変位演算子
+    
+    H_eph = np.zeros((dim_el * dim_ph, dim_el * dim_ph), dtype=np.complex128)
+    for i in range(params.N_molecules):
+        el_part = build_single_site_operator(proj_T1, i, N=params.N_molecules, d=d_el)
+        ph_part = build_single_site_operator(x_op, i, N=params.N_molecules, d=d_ph)
+        H_eph += params.g_eph * np.kron(el_part, ph_part)
+    
+    return H_eph
+```
+
+全ハミルトニアン組立:
+
+$$
+\hat{H}_{\text{total}} = \hat{H}_{\text{el}}^{\text{ext}} + \hat{H}_{\text{phonon}} + \hat{H}_{e\text{-ph}}
+$$
+
+```python
+def build_H_total_boson(params) -> np.ndarray:
+    """全ハミルトニアン（電子 + フォノン + 結合）を構築"""
+    dim_el = 3 ** params.N_molecules
+    dim_ph = (params.n_max + 1) ** params.N_molecules
+    
+    H_sys = build_onsite_hamiltonian(params) + build_transfer_hamiltonian(params)
+    H_el_ext = np.kron(H_sys, np.eye(dim_ph))  # 電子系のフォノン空間への拡張
+    H_phonon = build_H_phonon(params, dim_el)
+    H_eph = build_H_eph(params)
+    
+    H_total = H_el_ext + H_phonon + H_eph
+    
+    # エルミート検証
+    assert np.linalg.norm(H_total - H_total.conj().T) < 1e-10, \
+        "全ハミルトニアンがエルミートではありません"
+    
+    return H_total
+```
+
+#### 3.6.1.5 Lindblad演算子のボソン空間への拡張
+
+$$
+\hat{L}_\alpha^{\text{ext}} = \hat{L}_\alpha^{\text{el}} \otimes \hat{I}_{\text{phonon}}
+$$
+
+26個のLindblad演算子すべてを拡張:
+
+```python
+def extend_lindblad_operators(lindblad_ops_el, dim_phonon: int):
+    """
+    電子系Lindblad演算子をボソン空間に拡張
+    
+    Parameters:
+        lindblad_ops_el: [(gamma, L_el), ...] 電子系のLindblad演算子
+        dim_phonon: フォノンヒルベルト空間の次元
+    
+    Returns:
+        extended_ops: [(gamma, L_ext), ...] 拡張Lindblad演算子
+    """
+    extended_ops = []
+    for gamma, L_el in lindblad_ops_el:
+        L_ext = np.kron(L_el, np.eye(dim_phonon))
+        extended_ops.append((gamma, L_ext))
+    return extended_ops
+```
+
+#### 3.6.1.6 個体数計算（部分トレース）
+
+$$
+\hat{\rho}_{\text{el}}(t) = \text{Tr}_{\text{phonon}}[\hat{\rho}_{\text{total}}(t)]
+$$
+
+```python
+def partial_trace_phonon(rho_total, dim_el: int = 81, dim_ph: int = None) -> np.ndarray:
+    """
+    全密度行列からフォノン部分をトレースアウト
+    
+    Parameters:
+        rho_total: (d_total × d_total) 全系密度行列
+        dim_el: 電子系次元 (81)
+        dim_ph: フォノン系次元
+    
+    Returns:
+        rho_el: (dim_el × dim_el) 縮約密度行列
+    """
+    rho_el = np.zeros((dim_el, dim_el), dtype=np.complex128)
+    for i in range(dim_el):
+        for j in range(dim_el):
+            for k in range(dim_ph):
+                rho_el[i, j] += rho_total[i * dim_ph + k, j * dim_ph + k]
+    return rho_el
+```
+
+#### 3.6.1.7 数値手法
+
+**初期実装**: 暗黙的ODE積分（BDF法、スティッフ系向け）
+
+```python
+from scipy.sparse.linalg import LinearOperator
+
+def L_super_matvec(rho_vec, H_total, lindblad_ops, hbar, d_total):
+    """超演算子の行列-ベクトル積（メモリ効率型）"""
+    rho = rho_vec.reshape((d_total, d_total), order='F')
+    drho = -1j / hbar * (H_total @ rho - rho @ H_total)
+    for gamma, L in lindblad_ops:
+        LdL = L.conj().T @ L
+        drho += gamma * (L @ rho @ L.conj().T - 0.5 * LdL @ rho - 0.5 * rho @ LdL)
+    return drho.flatten(order='F')
+
+# BDF法を使用（スティッフ系に適した暗黙的ソルバー）
+sol = solve_ivp(lindblad_rhs, [0, T_total], rho_0_vec,
+                method='BDF', t_eval=t_eval, rtol=1e-8, atol=1e-10)
+```
+
+**将来候補の追加手法**（理論整合のため明記、初期実装では非採用）:
+
+**HEOM（階層的運動方程式）** — 非マルコフ的ボソン浴の体系的手法:
+
+$$
+\frac{\partial \hat{\rho}_\mathbf{n}}{\partial t} = -\left(\frac{i}{\hbar}\hat{H}_S^\times + \sum_k n_k \gamma_k\right)\hat{\rho}_\mathbf{n} + \sum_k \hat{V}_k^\times \hat{\rho}_{\mathbf{n}+\mathbf{e}_k} + \sum_k n_k \hat{C}_k \hat{\rho}_{\mathbf{n}-\mathbf{e}_k}
+$$
+
+- 計算コスト: $O\left(\binom{L+K}{K} \cdot d^4\right)$（$L$: 階層切断レベル, $K$: 相関関数の指数項数）
+- $L=10$, $K=4$ の場合: 286個の補助密度行列が必要
+- Drude-Lorentz型スペクトル密度 $J(\omega) = \frac{2\lambda \gamma_c \omega}{\omega^2 + \gamma_c^2}$ と組み合わせ
+
+**テンソルネットワーク法（MPS/MPO）**:
+- ボンド次元 $\chi$ が精度を制御
+- TEBD（Time-Evolving Block Decimation）アルゴリズム
+- 計算コスト: $O(N \cdot d \cdot \chi^3)$
+
+**量子モンテカルロ法（確率的波動関数法）**:
+- 量子ジャンプ軌道の集団平均
+- $N_{\text{traj}}$ 本の軌道を生成し統計的に密度行列を再構成
+- 計算コスト: $O(N_{\text{traj}} \cdot d \cdot t/\tau)$
+- 波動関数ベースのためメモリ効率が良い
+
+適用条件: HEOM/テンソルネットワーク/量子モンテカルロは $N > 4$ 分子、$n_{\max} > 3$ の場合の将来実装候補。
+
+#### 3.6.1.8 将来拡張項目（初期実装では非採用、理論的完備性のため文書化）
+
+| 項目 | 初期実装 | 将来の拡張 |
+|------|---------|-----------|
+| Holstein型電子-フォノン結合 | ✅ | — |
+| Peierls型結合: $\hat{H}_{\text{Peierls}} = \sum_{\langle i,j \rangle} V_{ij}(1 + g_P(\hat{u}_i - \hat{u}_j))\hat{T}_{ij}$ | — | 将来 |
+| 電子-光子結合（RWA）: $\hat{H}_{e\text{-photon}}^{\text{RWA}}$ | — | 将来 |
+| 完全ハミルトニアン5項 | 3項のみ | 将来 |
+| スペクトル密度関数（Drude-Lorentz, Ohmic） | — | HEOM等と組合せ |
+| 有限温度効果: $\bar{n}(\omega) = 1/(e^{\hbar\omega/k_BT}-1)$ | $T=0$ 前提 | 将来 |
+
+#### 3.6.1.9 クラス設計
+
+```python
+class ClassicalGKSLBosonSimulator:
+    """
+    古典GKSLシミュレータ（ボソン有り）
+    
+    手法:
+    -----
+    拡張超演算子形式 + ODE積分（BDF法推奨）
+    
+    次元:
+    -----
+    - 電子系: 81次元（3^4）
+    - フォノン系: (n_max+1)^4次元
+    - 全系: 81 × (n_max+1)^4次元
+    - 密度行列: d_total × d_total
+    """
+    
+    def __init__(self, params: GKSLPhysicalParameters):
+        """初期化"""
+        self.params = params
+        self.validate_params()
+        
+        # 次元計算
+        self.dim_el = 3 ** params.N_molecules
+        self.dim_ph = (params.n_max + 1) ** params.N_molecules
+        self.dim_total = self.dim_el * self.dim_ph
+        
+        # ハミルトニアン構築
+        self.H_total = build_H_total_boson(params)
+        
+        # Lindblad演算子構築（ボソン空間に拡張）
+        lindblad_ops_el = build_lindblad_operators(params)
+        self.lindblad_ops = extend_lindblad_operators(lindblad_ops_el, self.dim_ph)
+    
+    def validate_params(self):
+        """パラメータ検証"""
+        if not self.params.with_boson:
+            raise ValueError("ClassicalGKSLBosonSimulatorはボソン有りモデル専用です")
+        if self.params.n_max < 1:
+            raise ParameterValidationError("n_max >= 1 が必要です")
+        if self.params.omega_ph <= 0:
+            raise ParameterValidationError("omega_ph > 0 が必要です")
+        if self.params.g_eph < 0:
+            raise ParameterValidationError("g_eph >= 0 が必要です")
+    
+    def prepare_initial_state(self, state_type: str) -> np.ndarray:
+        """
+        初期密度行列を準備
+        
+        フォノン真空状態（T=0前提）:
+        ρ_0 = |ψ_el⟩⟨ψ_el| ⊗ |0000⟩⟨0000|_phonon
+        """
+        # 電子系初期状態
+        rho_el = prepare_initial_density_matrix(self.params, state_type)
+        
+        # フォノン真空状態
+        psi_ph = np.zeros(self.dim_ph, dtype=np.complex128)
+        psi_ph[0] = 1.0  # |0000⟩
+        rho_ph = np.outer(psi_ph, psi_ph.conj())
+        
+        return np.kron(rho_el, rho_ph)
+    
+    def simulate(self, t_max: float, n_steps: int,
+                 initial_state: str = 'edge_triplet',
+                 method: str = 'BDF') -> dict:
+        """
+        GKSLシミュレーション（ボソン有り）
+        
+        Returns:
+            result : dict（統一出力形式）
+        """
+        import time
+        start_time = time.time()
+        
+        dt = t_max / n_steps
+        t_eval = np.linspace(0, t_max, n_steps + 1)
+        
+        rho_0 = self.prepare_initial_state(initial_state)
+        rho_0_vec = rho_0.flatten(order='F')
+        
+        # ODE積分
+        def rhs(t, rho_vec):
+            return L_super_matvec(rho_vec, self.H_total, self.lindblad_ops,
+                                  self.params.hbar, self.dim_total)
+        
+        sol = solve_ivp(rhs, [0, t_max], rho_0_vec,
+                        method=method, t_eval=t_eval, rtol=1e-8, atol=1e-10)
+        
+        # 結果の集約
+        times = sol.t.tolist()
+        populations = []
+        entropies = []
+        purities = []
+        traces = []
+        
+        for k in range(len(times)):
+            rho_total = sol.y[:, k].reshape((self.dim_total, self.dim_total), order='F')
+            
+            # 部分トレースで電子系密度行列を取得
+            rho_el = partial_trace_phonon(rho_total, self.dim_el, self.dim_ph)
+            
+            # 物理性検証
+            validate_density_matrix(rho_el, step=k)
+            
+            # 個体数計算
+            pops = compute_populations_from_density_matrix(rho_el, self.params)
+            populations.append(pops)
+            entropies.append(compute_von_neumann_entropy(rho_el))
+            purities.append(compute_purity(rho_el))
+            traces.append(np.real(np.trace(rho_el)))
+        
+        elapsed_time = time.time() - start_time
+        
+        rho_final_total = sol.y[:, -1].reshape((self.dim_total, self.dim_total), order='F')
+        rho_final_el = partial_trace_phonon(rho_final_total, self.dim_el, self.dim_ph)
+        
+        return {
+            'times': times,
+            'populations': populations,
+            'entropy': entropies,
+            'purity': purities,
+            'trace': traces,
+            'rho_final': rho_final_el,
+            'elapsed_time': elapsed_time,
+            'method': 'classical_gksl_boson',
+            'params': self.params.to_dict(),
+            'ode_solver': method,
+            'n_function_evals': sol.nfev,
+        }
+```
+
+#### 3.6.1.10 フローチャート
+
+```
+┌──────────────────────────────┐
+│    simulate() 開始            │
+└──────────┬───────────────────┘
+           ▼
+┌──────────────────────────────┐
+│ 1. パラメータ検証             │
+│    + ボソンパラメータの検証    │
+│    (n_max >= 1, omega_ph > 0, │
+│     g_eph >= 0)               │
+└──────────┬───────────────────┘
+           ▼
+┌──────────────────────────────┐
+│ 2. 拡張ハミルトニアン構築     │
+│    H_total = H_el⊗I + I⊗H_ph │
+│              + H_eph          │
+│    検証: H_total = H_total†   │
+└──────────┬───────────────────┘
+           ▼
+┌──────────────────────────────┐
+│ 3. 拡張Lindblad演算子構築     │
+│    L_ext = L_el ⊗ I_phonon   │
+│    26個の演算子を拡張          │
+└──────────┬───────────────────┘
+           ▼
+┌──────────────────────────────┐
+│ 4. 初期状態構築               │
+│    ρ_0 = |ψ_el⟩⟨ψ_el| ⊗     │
+│          |0000⟩⟨0000|_phonon │
+│    （フォノン真空状態、T=0）   │
+└──────────┬───────────────────┘
+           ▼
+┌──────────────────────────────┐
+│ 5. ODE積分（BDF法）           │
+│    各ステップで:               │
+│    ├─ 部分トレース→ ρ_el      │
+│    ├─ 個体数計算               │
+│    ├─ エントロピー計算         │
+│    └─ 物理性検証               │
+└──────────┬───────────────────┘
+           ▼
+┌──────────────────────────────┐
+│ 6. 結果の集約と出力           │
+│    + フォノン占有数も記録      │
+└──────────────────────────────┘
+```
+
+#### 3.6.1.11 実装手順
+
+1. **ファイル作成**: `tutorials/classical_gksl_boson_simulator.py`
+2. **gksl_math_utils.pyに追加**: `build_phonon_operators`, `build_H_phonon`, `build_H_eph`, `build_H_total_boson`, `extend_lindblad_operators`, `partial_trace_phonon`
+3. **クラス実装**: 上記の完全なクラス
+4. **テスト**: $g_{\text{eph}} = 0$ でシナリオ1と個体数一致（許容誤差: $10^{-6}$）
+5. **メモリ管理**: $n_{\max} \leq 2$ の場合のみ密行列、それ以上は疎行列使用を検討
+
+#### 3.6.1.12 検証基準
+
+- [ ] 拡張ハミルトニアンがエルミートである
+- [ ] $g_{\text{eph}} = 0$ でシナリオ1と個体数一致（許容誤差: $10^{-6}$）
+- [ ] トレース保存（全時刻で|Tr[ρ]-1| < 1e-8）
+- [ ] 正定値性（全固有値 ≥ -1e-10）
+- [ ] エントロピー非減少（$S(t+\Delta t) \geq S(t) - 10^{-8}$）
+- [ ] 粒子数保存（$N_{S_0} + N_{T_1} + N_{S_1} = 4 \pm 10^{-8}$）
+- [ ] 長時間極限で基底状態へ緩和（$\hat{\rho}(\infty) \to |0000\rangle\langle 0000| \otimes |0000\rangle\langle 0000|_{\text{phonon}}$）
+
+---
+
+## 第3.7部: シナリオ4の実装（Qubit GKSL・ボソン有り）
+
+### 3.7.1 qubit_gksl_boson_simulator.py
+
+#### 3.7.1.1 目的
+
+Qubit量子回路によるGKSL実装にフォノンモードのqubitエンコーディングを追加する。シナリオ3（Qubit NB）の拡張。
+
+#### 3.7.1.2 Qubitフォノンエンコーディング
+
+バイナリエンコーディング: $n_{\max} = 2$ の場合、$\lceil\log_2(n_{\max}+1)\rceil = \lceil\log_2 3\rceil = 2$ qubit/フォノンモード
+
+$$
+|0\rangle_{\text{Fock}} \leftrightarrow |00\rangle, \quad |1\rangle_{\text{Fock}} \leftrightarrow |01\rangle, \quad |2\rangle_{\text{Fock}} \leftrightarrow |10\rangle
+$$
+
+禁止状態: $|11\rangle$（Fock状態 $|3\rangle$ に対応するが $n_{\max} = 2$ で切断されるため物理的意味なし）
+
+#### 3.7.1.3 必要な量子資源
+
+| リソース | 数 | 説明 |
+|---------|-----|------|
+| 電子系 qubit | 8 | 4分子 × 2 qubit |
+| フォノン qubit | 8 | 4分子 × 2 qubit ($n_{\max} = 2$) |
+| Ancilla qubit (Lindblad) | 26 | 26個のLindblad演算子 |
+| **合計** | **42** | |
+
+#### 3.7.1.4 電子-フォノン結合の量子回路設計
+
+Holstein型結合 $g(\hat{a} + \hat{a}^\dagger)|1\rangle\langle 1|$ の回路実装:
+
+手順:
+1. 電子系の $|T_1\rangle = |01\rangle$ を制御条件として検出
+2. フォノン qubit に対して条件付きインクリメント/デクリメント回路を適用
+
+近似ユニタリ:
+
+$$
+e^{-ig\Delta t(\hat{a}+\hat{a}^\dagger)|1\rangle\langle 1|/\hbar} \approx \text{C-}[R_X(2g\Delta t/\hbar)]
+$$
+
+フォノン昇降演算子のqubit表現（$n_{\max} = 2$: $3 \times 3$ → $4 \times 4$ 拡張）:
+
+$$
+\hat{a}_{\text{qubit}} = \begin{pmatrix} 0&1&0&0\\0&0&\sqrt{2}&0\\0&0&0&0\\0&0&0&0 \end{pmatrix}
+$$
+
+- バイナリエンコーディングでのフォノン昇降演算子の実装は非自明
+- $O(n_{\max})$ 個の制御ゲートが必要
+- 2-qubitゲートに分解する必要がある
+
+回路概略:
+```
+電子-フォノン結合の1ステップ回路:
+  IF electron_state == |01⟩ THEN:
+    フォノンqubitに exp(-ig·Δt·(a+a†)/ℏ) を適用
+```
+
+#### 3.7.1.5 Lindblad演算子の扱い
+
+- Lindblad演算子は電子系qubit + ancilla qubitのみに作用
+- フォノンqubitには散逸ステップで作用しない
+- Stinespring dilation をシナリオ3と同様に使用
+
+#### 3.7.1.6 クラス設計
+
+```python
+class QubitGKSLBosonSimulator:
+    """
+    Qubit GKSL-Lindblad量子シミュレータ（ボソン有り）
+    
+    構成:
+    -----
+    - 8個のqubit（電子系: 4分子 × 2 qubit）
+    - 8個のqubit（フォノン: 4分子 × 2 qubit）
+    - 26個のqubit（補助系: Lindblad用）
+    - 合計: 42 qubit
+    """
+    
+    def __init__(self, params: GKSLPhysicalParameters):
+        self.params = params
+        self.n_phonon_qubits_per_mol = int(np.ceil(np.log2(params.n_max + 1)))
+        self.n_sys_qubits = 2 * params.N_molecules + \
+                            self.n_phonon_qubits_per_mol * params.N_molecules
+        self.n_ancilla = 26
+        self.n_total_qubits = self.n_sys_qubits + self.n_ancilla
+    
+    def build_phonon_operators(self):
+        """フォノン昇降演算子のqubit回路を構築"""
+        ...
+    
+    def build_eph_coupling_circuit(self, circuit, mol_idx: int, dt: float):
+        """
+        電子-フォノン結合ゲートを構築
+        
+        mol_idx: 分子インデックス (0-3)
+        電子qubit: (q_{2*mol_idx}, q_{2*mol_idx+1})
+        フォノンqubit: (q_{8+2*mol_idx}, q_{8+2*mol_idx+1})
+        """
+        ...
+    
+    def simulate(self, T_total: float, N_steps: int,
+                 initial_state_type: str = 'edge_triplet',
+                 shots: int = None) -> dict:
+        """GKSLシミュレーション実行（統一出力形式）"""
+        ...
+```
+
+#### 3.7.1.7 フローチャート
+
+```
+┌────────────────────────────────────┐
+│     simulate() 開始                 │
+└──────────┬─────────────────────────┘
+           ▼
+┌────────────────────────────────────┐
+│ 1. qubit割当て                      │
+│   電子: q0-q7 (8 qubit)            │
+│   フォノン: q8-q15 (8 qubit)       │
+│   Ancilla: q16-q41 (26 qubit)      │
+└──────────┬─────────────────────────┘
+           ▼
+┌────────────────────────────────────┐
+│ 2. 1 Trotterステップの構築          │
+│  ├─ ユニタリ前半:                   │
+│  │   H0(el) + H_transfer + H_phonon│
+│  │   + H_eph                        │
+│  ├─ Lindblad散逸ステップ            │
+│  │   (電子系qubit + ancilla qubitのみ│
+│  │    フォノンqubitには作用しない)    │
+│  └─ ユニタリ後半                    │
+└──────────┬─────────────────────────┘
+           ▼
+┌────────────────────────────────────┐
+│ 3. N_stepsループ実行               │
+│    各ステップ後に部分トレース       │
+│    （ancilla + フォノンを除去）      │
+└──────────┬─────────────────────────┘
+           ▼
+┌────────────────────────────────────┐
+│ 4. 結果出力（統一出力形式）         │
+└────────────────────────────────────┘
+```
+
+#### 3.7.1.8 検証基準
+
+- [ ] 回路が正常に構築される（42 qubit回路）
+- [ ] トレース保存（全時刻で|Tr[ρ]-1| < 1e-6）
+- [ ] 禁止状態遷移なし（電子系・フォノン系それぞれ）
+- [ ] 古典GKSL（シナリオ2）との個体数一致（Statevector, 許容誤差: $10^{-3}$）
+- [ ] Stinespring忠実度: $F > 0.99$
+
+---
+
+## 第3.8部: シナリオ6の実装（Qudit GKSL・ボソン有り）
+
+### 3.8.1 qudit_gksl_boson_simulator.py
+
+#### 3.8.1.1 目的
+
+MQT-Quditsのqutritとqudit表現を活用してフォノンモードを自然にエンコーディングする。禁止状態が存在しないqudit表現の利点を最大限に活かす。
+
+#### 3.8.1.2 Quditフォノンエンコーディング
+
+$$
+|n\rangle_{\text{Fock}} \leftrightarrow |n\rangle_{d_{\text{ph}}}
+$$
+
+$n_{\max} = 2$ の場合: $d_{\text{ph}} = 3$（qutrit）
+
+**Qubitエンコーディングとの重要な違い**: 禁止状態が存在しない。Fock状態 $|0\rangle, |1\rangle, |2\rangle$ がqutritの $|0\rangle, |1\rangle, |2\rangle$ に自然に1対1対応する。
+
+#### 3.8.1.3 必要な量子資源
+
+| リソース | 数 | 説明 |
+|---------|-----|------|
+| 電子系 qutrit | 4 | 4分子 × 1 qutrit ($d = 3$) |
+| フォノン qutrit | 4 | 4分子 × 1 qutrit ($d = 3$, $n_{\max} = 2$) |
+| Ancilla qubit | 26 | Lindblad演算子数 |
+| **合計** | **8 qutrit + 26 qubit** | |
+| 等価 qubit 数 | $8 \times 2 + 26 = 42$ | （参考値） |
+
+#### 3.8.1.4 電子-フォノン結合のQudit回路設計
+
+Holstein型結合のqudit実装 — 電子qutrit（$d=3$）とフォノンqutrit（$d=3$）間の2-quditゲート:
+
+$$
+\hat{U}_{e\text{-ph}} = |0\rangle\langle 0|_{\text{el}} \otimes \hat{I}_{\text{ph}} + |1\rangle\langle 1|_{\text{el}} \otimes e^{-ig\Delta t(\hat{a}+\hat{a}^\dagger)/\hbar} + |2\rangle\langle 2|_{\text{el}} \otimes \hat{I}_{\text{ph}}
+$$
+
+制御条件: 電子qutritが $|1\rangle$（三重項状態 $T_1$）のとき、フォノンqutritに変位演算子的な回転を適用。$|0\rangle$ と $|2\rangle$ のときはフォノンに恒等演算を適用。
+
+フォノンqutrit上の $(\hat{a}+\hat{a}^\dagger)$ の行列表現:
+
+$$
+\hat{a} + \hat{a}^\dagger = \begin{pmatrix} 0&1&0\\1&0&\sqrt{2}\\0&\sqrt{2}&0 \end{pmatrix}
+$$
+
+指数関数の計算:
+
+$$
+e^{-i\alpha(\hat{a}+\hat{a}^\dagger)} \text{ を行列指数関数で計算} \quad (\alpha = g\Delta t / \hbar)
+$$
+
+- 結果は $9 \times 9$ のユニタリ行列
+- MQT-Qudits の `CustomTwo` ゲートとして実装
+- IntegratedSparseCompilerV2により基本ゲート（VirtRz, R, Rh, Rz, CEx）に分解
+
+#### 3.8.1.5 クラス設計
+
+```python
+class QuditGKSLBosonSimulator:
+    """
+    Qudit GKSL-Lindblad量子シミュレータ（ボソン有り）
+    
+    構成:
+    -----
+    - 4個のqutrit（電子系: d=3）
+    - 4個のqutrit（フォノン: d=3, n_max=2）
+    - 26個のqubit（補助系: Lindblad用）
+    - 合計: 8 qutrit + 26 qubit
+    
+    利点:
+    -----
+    - 禁止状態なし（電子・フォノンともに）
+    - フォノン昇降演算子のネイティブ表現
+    - Qubit版より量子資源効率が高い
+    """
+    
+    def __init__(self, params: GKSLPhysicalParameters):
+        self.params = params
+        self.n_el_qutrits = params.N_molecules       # 4
+        self.n_ph_qutrits = params.N_molecules        # 4
+        self.d_ph = params.n_max + 1                  # 3 for n_max=2
+        self.n_ancilla_qubits = 26
+    
+    def build_eph_coupling_gate(self, mol_idx: int, dt: float) -> np.ndarray:
+        """
+        電子-フォノン結合のCustomTwoゲートを構築
+        
+        Returns:
+            9×9 ユニタリ行列
+        """
+        from scipy.linalg import expm
+        
+        d_ph = self.d_ph
+        # フォノン変位演算子
+        a = np.zeros((d_ph, d_ph), dtype=np.complex128)
+        for n in range(d_ph - 1):
+            a[n, n + 1] = np.sqrt(n + 1)
+        x_op = a + a.conj().T
+        
+        # 9×9ユニタリ: 電子qutrit × フォノンqutrit
+        alpha = self.params.g_eph * dt / self.params.hbar
+        U_ph = expm(-1j * alpha * x_op)  # d_ph × d_ph
+        
+        # 制御ユニタリ: |1⟩⟨1| ⊗ U_ph + (I - |1⟩⟨1|) ⊗ I
+        U_9x9 = np.eye(3 * d_ph, dtype=np.complex128)
+        # |1⟩ 状態（index 1）の場合のみ U_ph を適用
+        for m in range(d_ph):
+            for n in range(d_ph):
+                U_9x9[1 * d_ph + m, 1 * d_ph + n] = U_ph[m, n]
+        
+        return U_9x9
+    
+    def simulate(self, T_total: float, N_steps: int,
+                 initial_state_type: str = 'edge_triplet',
+                 use_shots: bool = False, n_shots: int = 10000) -> dict:
+        """
+        Qudit GKSLシミュレーション（ボソン有り）
+        
+        Returns:
+            result : dict（統一出力形式）
+        """
+        ...
+```
+
+#### 3.8.1.6 フローチャート
+
+```
+┌────────────────────────────────────────┐
+│     simulate() 開始                     │
+└──────────┬─────────────────────────────┘
+           ▼
+┌────────────────────────────────────────┐
+│ 1. qudit/qubit割当て                    │
+│   電子 qutrit: q0-q3 (d=3)            │
+│   フォノン qutrit: q4-q7 (d=3)        │
+│   ancilla qubit: q8-q33 (d=2)         │
+└──────────┬─────────────────────────────┘
+           ▼
+┌────────────────────────────────────────┐
+│ 2. 初期状態準備                         │
+│   電子: |1,0,0,1⟩                      │
+│   フォノン: |0,0,0,0⟩（真空）           │
+│   ancilla: |0...0⟩                     │
+└──────────┬─────────────────────────────┘
+           ▼
+┌────────────────────────────────────────┐
+│ 3. 1 Trotterステップの構築              │
+│  ├─ ユニタリ前半:                       │
+│  │   H0(el) + H_transfer               │
+│  │   + H_phonon + H_eph                │
+│  ├─ Lindblad散逸ステップ                │
+│  │   (電子qutrit + ancillaのみ)         │
+│  └─ ユニタリ後半                        │
+└──────────┬─────────────────────────────┘
+           ▼
+┌────────────────────────────────────────┐
+│ 4. N_stepsループ→測定→結果出力          │
+└────────────────────────────────────────┘
+```
+
+#### 3.8.1.7 検証基準
+
+- [ ] 回路が正常に構築される（8 qutrit + 26 qubit）
+- [ ] トレース保存（全時刻で|Tr[ρ]-1| < 1e-6）
+- [ ] 古典GKSL（シナリオ2）との個体数一致（Statevector, 許容誤差: $10^{-3}$）
+- [ ] Stinespring忠実度: $F > 0.99$
+- [ ] 禁止状態検証は不要（qutritエンコーディングでは禁止状態が存在しない）
+
+---
+
 ## 第4部: 統合とテスト
 
 ### 4.1 test_gksl_simulators.py

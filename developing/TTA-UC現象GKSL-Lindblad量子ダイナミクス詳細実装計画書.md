@@ -1757,11 +1757,55 @@ class QuditGKSLSimulator:
     def compute_populations_from_density_matrix(self, rho: np.ndarray) -> dict:
         """
         密度行列から個体数を計算（classical_gksl_simulatorと同じロジック）
+
+        NOTE: 本番コードでは gksl_math_utils.py の共通関数
+        compute_populations_from_density_matrix(rho, d, N) を使うべき。
         """
-        # ClassicalGKSLSimulatorのcompute_populationsと同じ実装
-        # （重複を避けるため、共通関数化すべき）
-        # ここでは簡略化のため省略
-        pass
+        d = self.params.d
+        N = self.params.N_molecules
+        dim = d ** N  # ヒルベルト空間の次元
+
+        N_S0 = 0.0
+        N_T1 = 0.0
+        N_S1 = 0.0
+
+        # 分子ごとの個体数
+        per_molecule = []
+        for mol in range(N):
+            per_molecule.append({'S0': 0.0, 'T1': 0.0, 'S1': 0.0})
+
+        # 対角要素を走査し、各基底状態の寄与を計算
+        for idx in range(dim):
+            prob = np.real(rho[idx, idx])
+
+            # idx → 各分子の状態を求める (index_to_config)
+            # idx = s_{N-1} * d^{N-1} + ... + s_1 * d + s_0
+            config = []
+            remainder = idx
+            for mol in range(N):
+                state = remainder % d
+                config.append(state)
+                remainder //= d
+
+            # config[mol] が分子 mol の状態 (0=S0, 1=T1, 2=S1)
+            for mol in range(N):
+                state = config[mol]
+                if state == 0:
+                    N_S0 += prob
+                    per_molecule[mol]['S0'] += prob
+                elif state == 1:
+                    N_T1 += prob
+                    per_molecule[mol]['T1'] += prob
+                elif state == 2:
+                    N_S1 += prob
+                    per_molecule[mol]['S1'] += prob
+
+        return {
+            'N_S0': N_S0,
+            'N_T1': N_T1,
+            'N_S1': N_S1,
+            'per_molecule_populations': per_molecule,
+        }
 ```
 
 #### 3.1.4 実装手順

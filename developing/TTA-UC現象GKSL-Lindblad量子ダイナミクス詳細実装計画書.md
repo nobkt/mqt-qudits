@@ -1784,6 +1784,606 @@ class QuditGKSLSimulator:
 
 ---
 
+## 第3.5部: シナリオ3の実装（Qubit GKSL・ボソン無し）
+
+### 3.5.1 qubit_gksl_simulator.py
+
+#### 3.5.1.1 目的
+
+現行ノートブックのQubit実装を拡張し、Stinespring dilationを用いてLindblad散逸項をQiskit量子回路に実装する。Qubitエンコーディングでは禁止状態 $|11\rangle$ が存在するため、物理的部分空間の保存を各ステップで検証する。
+
+#### 3.5.1.2 設計方針
+
+- **2-Qubitエンコーディング**: 各分子を2 qubitで表現（3準位→4次元空間、1状態が禁止）
+- **Stinespring dilation**: 26個の補助qubit（各Lindblad演算子に1つ）
+- **2次対称Trotter分解**: ハミルトニアン(Δt/2)→散逸(Δt)→ハミルトニアン(Δt/2)
+- **Qiskit回路**: UnitaryGate表現 + KAK基本ゲート分解の2段階
+- **禁止状態監視**: 各ステップで $|11\rangle$ 状態へのリーク検出
+
+#### 3.5.1.3 Qubitエンコーディング
+
+各分子 $i$ を2個のqubit $(q_{2i}, q_{2i+1})$ で表現:
+
+$$
+|S_0\rangle_i \leftrightarrow |00\rangle_{2i,2i+1}, \quad |T_1\rangle_i \leftrightarrow |01\rangle_{2i,2i+1}, \quad |S_1\rangle_i \leftrightarrow |10\rangle_{2i,2i+1}
+$$
+
+禁止状態: $|11\rangle_{2i,2i+1}$（物理的意味なし）
+
+状態空間:
+- 完全Qubit空間: $4^N = 256$ 次元（N=4）
+- 物理的部分空間: $3^N = 81$ 次元
+- 非物理状態数: $4^N - 3^N = 175$
+
+#### 3.5.1.4 物理的部分空間と射影演算子
+
+各分子 $i$ の物理的部分空間への射影演算子（$|11\rangle$ 状態を除外）:
+
+$$
+\hat{P}_{\text{phys}}^{(i)} = |00\rangle\langle 00| + |01\rangle\langle 01| + |10\rangle\langle 10|
+$$
+
+全系の射影演算子:
+
+$$
+\hat{P}_{\text{phys}} = \bigotimes_{i=0}^{N-1} \hat{P}_{\text{phys}}^{(i)}
+$$
+
+禁止状態遷移の検証基準:
+
+$$
+P_{\text{forbidden}}(t) = 1 - \text{Tr}[\hat{P}_{\text{phys}} \hat{\rho}_{\text{sys}}(t)] < 10^{-8}
+$$
+
+注: Qutritエンコーディング（シナリオ5）では禁止状態が存在しないため、この検証は不要。
+
+#### 3.5.1.5 Stinespring Dilationの原理
+
+**基本定理**: 任意のCPTP写像 $\mathcal{E}[\hat{\rho}]$ は、補助系（ancilla）を追加したユニタリ演算と部分トレースで実現できる:
+
+$$
+\mathcal{E}[\hat{\rho}_S] = \text{Tr}_E\left[\hat{U}_{SE}(\hat{\rho}_S \otimes |0\rangle_E\langle 0|)\hat{U}_{SE}^\dagger\right]
+$$
+
+**Lindblad演算子からのStinespringユニタリの構築**:
+
+単一Lindblad演算子 $\hat{L}$ に対する微小時間 $\Delta t$ の散逸ステップ:
+
+$$
+\mathcal{E}_{\Delta t}[\hat{\rho}] \approx \hat{\rho} + \gamma \Delta t \cdot \mathcal{D}[\hat{L}][\hat{\rho}]
+$$
+
+1. **生成子の定義**:
+
+$$
+\hat{G} = \hat{L} \otimes |1\rangle_E\langle 0| + \hat{L}^\dagger \otimes |0\rangle_E\langle 1|
+$$
+
+（理論書の表記: $\hat{G}_{\text{Lindblad}} = \frac{1}{\sqrt{2}} (\hat{L} \otimes \hat{\sigma}^-_E + \hat{L}^\dagger \otimes \hat{\sigma}^+_E)$）
+
+2. **ユニタリ演算子**:
+
+$$
+\hat{U}(\theta) = e^{-i\theta \hat{G}}
+$$
+
+ここで $\theta = \sqrt{\gamma \Delta t}$。
+
+3. **Stinespring近似の精度**:
+
+$$
+\text{Tr}_E[\hat{U}(\theta)(\hat{\rho} \otimes |0\rangle\langle 0|)\hat{U}^\dagger(\theta)] = \hat{\rho} + \gamma \Delta t \cdot \mathcal{D}[\hat{L}][\hat{\rho}] + O(\gamma^2 \Delta t^2)
+$$
+
+誤差は $O(\gamma^2 \Delta t^2)$ で、Trotterステップ数を増やすことで改善可能。2次Trotter全体では誤差 $O(\tau^3)$ per step、全体で $O(t^3/N^2)$。
+
+#### 3.5.1.6 各Lindblad演算子のQubit量子回路設計
+
+**蛍光 $\hat{L}_{\text{fl}}^{(i)} = |0\rangle_i\langle 2|$** (Qubit: $|00\rangle\langle 10|$)
+
+Stinespring生成子:
+
+$$
+\hat{G}_{\text{fl}} = |00\rangle\langle 10|_{(q_0,q_1)} \otimes |1\rangle\langle 0|_E + |10\rangle\langle 00|_{(q_0,q_1)} \otimes |0\rangle\langle 1|_E
+$$
+
+回路手順:
+1. $q_0 = 1, q_1 = 0$（$|10\rangle$ 状態 = $S_1$）を検出
+2. 条件付きで ancilla $q_E$ に $R_Y(2\arcsin(\sqrt{\Gamma_{\text{fl}} \Delta t}))$ 適用
+3. ancilla が $|1\rangle$ なら系を $|10\rangle \to |00\rangle$ に遷移（$q_0$ を反転）
+
+具体的ゲート列:
+```
+1. X gate on q1 (|10⟩ → |11⟩ を制御条件にするため)
+2. Toffoli(q0, q1, q_E) with RY rotation
+   = CCX制御の条件付き回転
+3. 条件: q_E = |1⟩ ならば X gate on q0 (|10⟩ → |00⟩)
+4. X gate on q1 (元に戻す)
+```
+
+**燐光 $\hat{L}_{\text{ph}}^{(i)} = |0\rangle_i\langle 1|$** (Qubit: $|00\rangle\langle 01|$)
+
+Stinespring生成子:
+
+$$
+\hat{G}_{\text{ph}} = |00\rangle\langle 01|_{(q_0,q_1)} \otimes |1\rangle\langle 0|_E + |01\rangle\langle 00|_{(q_0,q_1)} \otimes |0\rangle\langle 1|_E
+$$
+
+回路手順:
+1. $q_1 = 1, q_0 = 0$（$|01\rangle$ 状態 = $T_1$）を検出
+2. 条件付き ancilla 回転
+3. ancilla が $|1\rangle$ なら $|01\rangle \to |00\rangle$（$q_1$ を反転）
+
+**ISC S₁→T₁ $\hat{L}_{\text{ISC}}^{S\to T,(i)} = |1\rangle_i\langle 2|$** (Qubit: $|01\rangle\langle 10|$)
+
+Stinespring生成子:
+
+$$
+\hat{G}_{\text{ISC}} = |01\rangle\langle 10|_{(q_0,q_1)} \otimes |1\rangle\langle 0|_E + |10\rangle\langle 01|_{(q_0,q_1)} \otimes |0\rangle\langle 1|_E
+$$
+
+回路手順:
+1. $|10\rangle$（$S_1$）を検出
+2. 条件付き ancilla 回転
+3. ancilla が $|1\rangle$ なら $|10\rangle \to |01\rangle$（両qubit反転）
+
+**TTA $\hat{L}_{\text{TTA},1}^{(ij)} = |2\rangle_i\langle 1| \otimes |0\rangle_j\langle 1|$** (Qubit: $|10,00\rangle\langle 01,01|$)
+
+4-qubit系 + 1 ancilla の操作。
+
+Stinespring生成子:
+
+$$
+\hat{G}_{\text{TTA},1} = |10,00\rangle\langle 01,01| \otimes |1\rangle\langle 0|_E + |01,01\rangle\langle 10,00| \otimes |0\rangle\langle 1|_E
+$$
+
+回路手順:
+1. 4-qubit状態 $|01,01\rangle$（$T_1, T_1$）を検出
+2. 条件付き ancilla 回転（$\theta = \sqrt{(\gamma_{\text{TTA}}/2) \Delta t}$）
+3. ancilla が $|1\rangle$ なら $|01,01\rangle \to |10,00\rangle$
+
+回路: 4 qubit ($q_{2i}, q_{2i+1}, q_{2j}, q_{2j+1}$) の $|01,01\rangle$ 状態を検出し、条件付きで ancilla に回転を適用後、$|01,01\rangle \to |10,00\rangle$ に遷移。
+
+#### 3.5.1.7 Trotter分解の構成
+
+2次対称Trotter分解:
+
+$$
+e^{\mathcal{L}_{\text{GKSL}} \Delta t} \approx e^{\mathcal{L}_H \Delta t/2} \cdot e^{\mathcal{L}_{\text{diss}} \Delta t} \cdot e^{\mathcal{L}_H \Delta t/2}
+$$
+
+1 Trotterステップの回路構成:
+
+```
+┌────────────────────────────────────────────────────┐
+│ ユニタリ前半 (Δt/2)                                 │
+│  ├─ H0: 各分子の対角位相 (Rz ゲート × 4分子)         │
+│  └─ H_transfer: 2分子エネルギー移動 (ペア (0,1),     │
+│                  (1,2), (2,3))                       │
+├────────────────────────────────────────────────────┤
+│ 散逸ステップ (Δt)                                    │
+│  ├─ TTA Stinespring: ペア(0,1)×2ch, (1,2)×2ch,     │
+│  │                    (2,3)×2ch → 6 ancilla          │
+│  ├─ 蛍光 Stinespring: 分子 0,1,2,3 → 4 ancilla      │
+│  ├─ 燐光 Stinespring: 分子 0,1,2,3 → 4 ancilla      │
+│  ├─ IC Stinespring: 分子 0,1,2,3 → 4 ancilla        │
+│  ├─ ISC S→T Stinespring: 分子 0,1,2,3 → 4 ancilla   │
+│  └─ ISC T→S Stinespring: 分子 0,1,2,3 → 4 ancilla   │
+│  各ステップで ancilla qubit を |0⟩ にリセット         │
+├────────────────────────────────────────────────────┤
+│ ユニタリ後半 (Δt/2)                                  │
+│  ├─ H_transfer: ペア (2,3), (1,2), (0,1) [逆順]     │
+│  └─ H0: 分子 3,2,1,0 [逆順]                         │
+└────────────────────────────────────────────────────┘
+```
+
+ユニタリ部分の量子回路:
+
+**オンサイトエネルギー項**: $\hat{H}_0$ は対角なので $Z$ 回転ゲートで実装:
+
+$$
+e^{-i\hat{H}_0\tau/\hbar} = \prod_i e^{-i(E_T |01\rangle\langle 01| + E_S |10\rangle\langle 10|)_i \tau/\hbar}
+$$
+
+各分子に対して:
+$$
+\text{RZ}_{q_{2i}}(-E_S\tau/\hbar) \cdot \text{RZ}_{q_{2i+1}}(-E_T\tau/\hbar) \cdot \text{制御位相ゲート}
+$$
+
+**エネルギー移動項**: $\hat{H}_{\text{transfer}}$ は4-qubit演算（2分子 = 4qubit）:
+
+$$
+e^{-iV\tau(\hat{\sigma}^+_i\hat{\sigma}^-_j + \text{h.c.})/\hbar}
+$$
+
+これをCNOTと単一qubit回転に分解。
+
+#### 3.5.1.8 ゲート分解戦略
+
+2段階アプローチ（現行ノートブック準拠）:
+
+**レベル1: UnitaryGate表現**
+- Stinespring ユニタリ $\hat{U}_{\text{Lindblad}}$ を直接 `UnitaryGate`（Qiskit）として回路に適用
+- ゲート数: 少ない（高レベル表現）
+- 検証用途に適している
+
+**レベル2: 基本ゲート分解**
+- UnitaryGate → KAK分解（Cartan分解）→ CNOT + Rz + Ry + Rx
+- ゲート数: 多い（実機で実行可能な低レベル表現）
+- 実機実行用途
+
+ゲート数計測: `comparison_helpers` モジュールの以下の関数を使用:
+- `count_gates_by_type(circuit)`: ゲート種類別のカウント
+- `decompose_qiskit_unitary_gates(circuit)`: Qubit UnitaryGate分解
+
+Stinespring ユニタリの分解特性（GKSL回路固有の構造）:
+- 各Stinespring ユニタリは **疎行列**（$|\cdot\rangle\langle \cdot| \otimes |\cdot\rangle\langle \cdot|$ の形式の項のみ非ゼロ）
+- 単一分子Lindblad演算子の場合、Stinespring ユニタリは2×2の非自明ブロックのみを持つ
+- TTA Stinespring（4 qubit系 + 1 ancilla = 5 qubit）はより多くのゲートが必要
+
+#### 3.5.1.9 必要な量子資源
+
+| リソース | 数 | 説明 |
+|---------|-----|------|
+| 系 qubit | 8 | 4分子 × 2 qubit |
+| Ancilla qubit (TTA) | 6 | 3ペア × 2チャネル |
+| Ancilla qubit (蛍光) | 4 | 4分子 |
+| Ancilla qubit (燐光) | 4 | 4分子 |
+| Ancilla qubit (IC) | 4 | 4分子 |
+| Ancilla qubit (ISC S→T) | 4 | 4分子 |
+| Ancilla qubit (ISC T→S) | 4 | 4分子 |
+| **合計** | **34** | |
+
+ancilla の再利用を行えば削減可能（ミッドサーキット測定によるリセット）。
+
+#### 3.5.1.10 クラス設計
+
+```python
+class QubitGKSLSimulator:
+    """
+    Qubit GKSL-Lindblad量子シミュレータ（ボソン無し）
+    
+    構成:
+    -----
+    - 8個のqubit（システム: 4分子 × 2 qubit）
+    - 26個のqubit（補助系: 各Lindblad演算子に1つ）
+    - 合計: 34 qubit
+    
+    手法:
+    -----
+    Stinespring dilation + 2次Trotter分解 + Qiskit回路
+    
+    特記事項:
+    ---------
+    - 禁止状態 |11⟩ への遷移を各ステップで監視
+    - 256×256のqubit密度行列から81×81の物理的密度行列を抽出
+    """
+    
+    def __init__(self, params: GKSLPhysicalParameters):
+        self.params = params
+        self.N = params.N_molecules
+        self.n_sys_qubits = 2 * self.N     # 8
+        self.n_ancilla = 26                 # Lindblad演算子数
+        self.n_total_qubits = self.n_sys_qubits + self.n_ancilla  # 34
+        
+        # ハミルトニアン準備
+        self.H_0 = build_onsite_hamiltonian(params)
+        self.H_transfer = build_transfer_hamiltonian(params)
+        
+        # Lindblad演算子準備
+        self.lindblad_ops = build_lindblad_operators(params)
+    
+    def build_unitary_step(self, circuit, dt):
+        """
+        ユニタリ部分（H0 + H_transfer）の半ステップ回路
+        
+        H0部分:
+        -------
+        各分子の対角位相をRzゲートで実装。
+        
+        H_transfer部分:
+        ---------------
+        2分子間エネルギー移動をCNOT + 単一qubit回転に分解。
+        ペア (0,1), (1,2), (2,3) に対して順次適用。
+        """
+        ...
+    
+    def build_lindblad_step(self, circuit, dt):
+        """
+        全Lindblad散逸ステップの回路
+        
+        各Lindblad演算子に対して:
+        1. Stinespringユニタリを構築
+        2. UnitaryGateとして回路に追加（レベル1）
+        3. 必要に応じてKAK分解で基本ゲートに変換（レベル2）
+        4. ancilla qubitを|0⟩にリセット
+        
+        実装順序:
+        ---------
+        TTA → 蛍光 → 燐光 → IC → ISC S→T → ISC T→S
+        """
+        ...
+    
+    def build_fluorescence_stinespring(self, mol_idx, ancilla_idx, dt):
+        """
+        蛍光Lindblad演算子のStinespring回路を構築
+        
+        L_fl = |00⟩⟨10| (S1→S0)
+        系qubit: (q_{2i}, q_{2i+1}), ancilla: q_E
+        
+        ゲート列:
+        1. X on q_{2i+1}
+        2. CCX(q_{2i}, q_{2i+1}, q_E) with RY rotation
+        3. CNOT(q_E, q_{2i}) (条件付き反転)
+        4. X on q_{2i+1}
+        """
+        ...
+    
+    def build_phosphorescence_stinespring(self, mol_idx, ancilla_idx, dt):
+        """
+        燐光Lindblad演算子のStinespring回路を構築
+        
+        L_ph = |00⟩⟨01| (T1→S0)
+        系qubit: (q_{2i}, q_{2i+1}), ancilla: q_E
+        """
+        ...
+    
+    def build_isc_stinespring(self, mol_idx, ancilla_idx, dt):
+        """
+        ISC S1→T1 Lindblad演算子のStinespring回路を構築
+        
+        L_ISC = |01⟩⟨10| (S1→T1)
+        系qubit: (q_{2i}, q_{2i+1}), ancilla: q_E
+        両qubit反転が必要
+        """
+        ...
+    
+    def build_tta_stinespring(self, mol_i, mol_j, ancilla_idx, dt):
+        """
+        TTA Lindblad演算子のStinespring回路を構築
+        
+        L_TTA = |10,00⟩⟨01,01|
+        4-qubit系 (q_{2i}, q_{2i+1}, q_{2j}, q_{2j+1}) + 1 ancilla
+        
+        手順:
+        1. 4-qubit |01,01⟩ 状態検出
+        2. 条件付き ancilla 回転 (θ = √((γ_TTA/2)Δt))
+        3. ancilla |1⟩ なら |01,01⟩→|10,00⟩ に遷移
+        """
+        ...
+    
+    def simulate_statevector(self, T_total, N_steps, initial_state_type) -> dict:
+        """
+        Statevectorシミュレーション（密度行列再構成用）
+        
+        ancillaを含む全系の状態ベクトルから部分トレースで
+        系の密度行列を取得。ショットノイズなし。
+        GKSL古典ソルバーとの一致検証に使用。
+        
+        Returns:
+        --------
+        result : dict
+            シミュレーション結果（ClassicalGKSLSimulatorと同じ形式）
+        """
+        ...
+    
+    def simulate_shot_based(self, T_total, N_steps, initial_state_type, shots) -> dict:
+        """
+        ショットベースシミュレーション
+        
+        実際の量子ハードウェアを模擬。ショット数に依存した
+        統計的揺らぎを含む。
+        """
+        ...
+    
+    def simulate(self, T_total, N_steps, initial_state_type, shots=None) -> dict:
+        """
+        完全なGKSLシミュレーション
+        
+        shots=None の場合は statevector、指定時は shot-based を使用。
+        """
+        ...
+    
+    def reconstruct_density_matrix(self, statevector):
+        """
+        全系の状態ベクトルからシステムの密度行列を再構成
+        
+        ρ_sys = Tr_ancilla[|Ψ_total⟩⟨Ψ_total|]
+        
+        実装:
+        -----
+        from qiskit.quantum_info import Statevector, partial_trace
+        sv = Statevector(statevector)
+        ancilla_indices = list(range(self.n_sys_qubits, self.n_total_qubits))
+        rho_sys = partial_trace(sv, ancilla_indices)
+        
+        注: 物理的部分空間は3^4=81次元。
+        256×256行列から81×81の物理的密度行列を抽出する必要がある。
+        """
+        ...
+    
+    def extract_physical_density_matrix(self, rho_qubit):
+        """
+        256×256のqubit密度行列から81×81の物理的密度行列を抽出
+        
+        |11⟩状態に対応する行・列を除去し、物理的部分空間のみの
+        密度行列を返す。
+        """
+        ...
+    
+    def check_forbidden_states(self, rho_qubit, step=None):
+        """
+        禁止状態（|11⟩）への遷移確率を検証
+        
+        P_forbidden = 1 - Tr[P_phys ρ_qubit]
+        
+        P_phys = ⊗_{i=0}^{N-1} (|00⟩⟨00| + |01⟩⟨01| + |10⟩⟨10|)^(i)
+        
+        基準: P_forbidden < 1e-8
+        
+        Raises:
+        -------
+        PhysicsViolationError: P_forbidden >= 1e-8 の場合
+        """
+        ...
+```
+
+#### 3.5.1.11 密度行列の再構成（Statevector方式）
+
+Statevectorシミュレータを使用する場合、ancillaを含む全系の状態ベクトルから系のみの密度行列を部分トレースで取得:
+
+$$
+\hat{\rho}_{\text{sys}} = \text{Tr}_{\text{ancilla}}[|\Psi_{\text{total}}\rangle\langle\Psi_{\text{total}}|]
+$$
+
+```python
+from qiskit.quantum_info import Statevector, partial_trace
+
+sv = Statevector(circuit)
+# ancilla qubitのインデックスリスト
+ancilla_indices = list(range(self.n_sys_qubits, self.n_total_qubits))
+rho_sys = partial_trace(sv, ancilla_indices)
+# rho_sys.data は 2^8 × 2^8 = 256×256 行列
+
+# 物理的部分空間（81×81）の抽出が別途必要
+```
+
+#### 3.5.1.12 禁止状態への遷移監視
+
+各ステップで禁止状態（$|11\rangle$）への遷移確率を検証:
+
+$$
+P_{\text{forbidden}}(t) = 1 - \text{Tr}[\hat{P}_{\text{phys}} \hat{\rho}_{\text{sys}}(t)] < 10^{-8}
+$$
+
+```python
+def check_forbidden_states(rho_qubit, N=4):
+    P_phys = construct_physical_projector(N)
+    P_forbidden = 1 - np.real(np.trace(P_phys @ rho_qubit))
+    if P_forbidden > 1e-8:
+        raise PhysicsViolationError(
+            f"Forbidden state leakage: {P_forbidden}")
+```
+
+### 3.5.2 QubitGKSLNoisySimulator（ハードウェアノイズモデル）
+
+#### 3.5.2.1 概要
+
+**重要な区別**: Lindblad散逸（物理的TTA/蛍光過程）とハードウェアノイズ（ゲート不完全性）は概念的に完全に独立である。GKSL実装ではこの両方を含むシミュレーションが可能。
+
+#### 3.5.2.2 ノイズパラメータ
+
+**脱分極エラー**（2-qubitゲートのみに適用、現行ノートブックと同一仕様）:
+- 1-qubitゲート: 理想的（ノイズなし）
+- 2-qubitゲート: $p_{\text{depol}} = 0.01$ (1.0%)
+
+$$
+\mathcal{E}_{\text{depol}}[\hat{\rho}] = (1 - p)\hat{\rho} + \frac{p}{d^2 - 1}\sum_{P \neq I} P\hat{\rho}P^\dagger
+$$
+
+ここで $d$ は演算子が作用する部分空間の次元（2-qubitゲートの場合 $d = 4$）。
+
+**熱緩和**（2-qubitゲートにのみ適用）:
+- $T_1 = 50\,\mu\text{s} = 5 \times 10^{10}\,\text{fs}$
+- $T_2 = 70\,\mu\text{s} = 7 \times 10^{10}\,\text{fs}$
+- 2-qubitゲート時間: $300\,\text{fs}$
+
+#### 3.5.2.3 クラス設計
+
+```python
+class QubitGKSLNoisySimulator(QubitGKSLSimulator):
+    """
+    ハードウェアノイズ付きQubit GKSLシミュレータ
+    
+    Lindblad散逸（物理プロセス）に加え、量子ゲートの
+    ハードウェアノイズ（脱分極・熱緩和）を含む。
+    """
+    
+    def __init__(self, params: GKSLPhysicalParameters, noise_model):
+        super().__init__(params)
+        self.noise_model = noise_model
+    
+    def simulate(self, T_total, N_steps, initial_state_type, shots) -> dict:
+        """ハードウェアノイズ付きGKSLシミュレーション"""
+        ...
+```
+
+### 3.5.3 QubitGKSLSimulator フローチャート
+
+```
+┌──────────────────────────────────┐
+│     simulate() 開始               │
+└──────────┬───────────────────────┘
+           ▼
+┌──────────────────────────────────┐
+│ 1. パラメータ検証                 │
+└──────────┬───────────────────────┘
+           ▼
+┌──────────────────────────────────┐
+│ 2. 量子回路の構築                 │
+│  ├─ qubit レジスタ割当て          │
+│  │   (sys: 8, ancilla: 26)       │
+│  ├─ 初期状態準備                  │
+│  │   |ψ₀⟩ = |01,00,00,01⟩_sys   │
+│  │         ⊗ |0...0⟩_ancilla     │
+│  └─ N_stepsループ:               │
+│      ├─ build_unitary_step(dt/2) │
+│      ├─ build_lindblad_step(dt)  │
+│      ├─ ancilla リセット（|0⟩）   │
+│      └─ build_unitary_step(dt/2) │
+│          [逆順]                   │
+└──────────┬───────────────────────┘
+           ▼
+┌──────────────────────────────────┐
+│ 3. シミュレーション実行           │
+│  ├─ Statevector: 密度行列再構成   │
+│  │   ρ_sys = Tr_anc[|Ψ⟩⟨Ψ|]     │
+│  └─ Shot-based: 測定統計から推定  │
+└──────────┬───────────────────────┘
+           ▼
+┌──────────────────────────────────┐
+│ 4. 各ステップの後処理             │
+│  ├─ 部分トレース（ancilla除去）   │
+│  ├─ 禁止状態遷移チェック          │
+│  │   P_forbidden < 1e-8          │
+│  ├─ 物理的密度行列抽出            │
+│  │   256×256 → 81×81             │
+│  ├─ 個体数計算                    │
+│  ├─ エントロピー計算              │
+│  └─ 純度計算                      │
+└──────────┬───────────────────────┘
+           ▼
+┌──────────────────────────────────┐
+│ 5. 結果出力                       │
+│  + 回路情報（ゲート数、深さ）      │
+└──────────────────────────────────┘
+```
+
+### 3.5.4 実装手順
+
+1. **ファイル作成**: `tutorials/qubit_gksl_simulator.py`
+2. **Qiskitのインポート**: `from qiskit import QuantumCircuit, QuantumRegister`、`from qiskit.quantum_info import Statevector, partial_trace, Operator`
+3. **クラス実装**: `QubitGKSLSimulator` の完全な実装
+4. **Stinespring回路の構築**: 各Lindblad演算子のUnitaryGateを構築し回路に追加
+5. **禁止状態監視**: `check_forbidden_states()` の実装と各ステップでの呼び出し
+6. **密度行列抽出**: 256×256→81×81の物理的部分空間抽出
+7. **ノイズモデル**: `QubitGKSLNoisySimulator` の実装（脱分極 + 熱緩和）
+8. **テスト**: Classical GKSLとの比較
+   - 同じパラメータ、初期状態で実行
+   - 個体数の時間発展を比較（許容誤差: 1e-3）
+
+### 3.5.5 検証基準
+
+- [ ] 回路が正常に構築される（34 qubit回路）
+- [ ] トレース保存（全時刻で|Tr[ρ]-1| < 1e-6）
+- [ ] 禁止状態遷移なし（P_forbidden < 1e-8 全ステップ）
+- [ ] Classical GKSLとの個体数一致（誤差 < 1e-3）
+- [ ] ゲート数が予想範囲内（レベル1: 少数UnitaryGate、レベル2: KAK分解後）
+- [ ] 計算時間が妥当（N_steps=100で数分程度）
+- [ ] QubitGKSLNoisySimulatorでノイズ付き結果が物理的に妥当
+
+---
+
 ## 第4部: 統合とテスト
 
 ### 4.1 test_gksl_simulators.py

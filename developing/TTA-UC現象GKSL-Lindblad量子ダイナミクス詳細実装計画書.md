@@ -4156,34 +4156,34 @@ plot_gksl_comparison(result_unitary, result1,
 ### 6.2 各フェーズの詳細タスク
 
 **フェーズ1（PR#143）: 共通モジュール + シナリオ1**
-- [ ] gksl_physical_parameters.py実装
-- [ ] gksl_math_utils.py実装
-- [ ] stinespring_utils.py実装
-- [ ] gksl_validation.py実装
-- [ ] classical_gksl_simulator.py実装
-- [ ] 単体テスト作成
-- [ ] 動作確認（edge_tripletケース）
+- [x] gksl_physical_parameters.py実装
+- [x] gksl_math_utils.py実装
+- [x] stinespring_utils.py実装
+- [x] gksl_validation.py実装
+- [x] classical_gksl_simulator.py実装
+- [x] 単体テスト作成
+- [x] 動作確認（edge_tripletケース）
 
 **フェーズ2（PR#144）: シナリオ5 + テスト**
-- [ ] qudit_gksl_simulator.py実装
-- [ ] MQT-Qudits回路構築の最適化
-- [ ] Classical GKSLとの比較検証
-- [ ] test_gksl_simulators.py拡充
+- [x] qudit_gksl_simulator.py実装
+- [ ] MQT-Qudits回路構築の最適化（マトリクスレベルシミュレーションで実装済み、実回路構築は未実装）
+- [x] Classical GKSLとの比較検証
+- [x] test_gksl_simulators.py拡充
 - [ ] パフォーマンステスト
 
 **フェーズ3（PR#145）: シナリオ3 + 可視化**
-- [ ] qubit_gksl_simulator.py実装
-- [ ] Qiskit回路構築
-- [ ] gksl_visualization.py実装
-- [ ] 3シナリオの比較プロット
+- [x] qubit_gksl_simulator.py実装
+- [ ] Qiskit回路構築（マトリクスレベルシミュレーションで実装済み、実回路構築は未実装）
+- [x] gksl_visualization.py実装
+- [x] 3シナリオの比較プロット（可視化関数実装済み）
 - [ ] ドキュメント整備
 
 **フェーズ4（PR#146-148）: ボソン有りモデル**
-- [ ] classical_gksl_boson_simulator.py実装
-- [ ] qudit_gksl_boson_simulator.py実装
-- [ ] qubit_gksl_boson_simulator.py実装
-- [ ] ボソン相互作用の検証
-- [ ] 拡張テストケース
+- [x] classical_gksl_boson_simulator.py実装
+- [x] qudit_gksl_boson_simulator.py実装
+- [x] qubit_gksl_boson_simulator.py実装
+- [x] ボソン相互作用の検証（小規模テスト通過）
+- [x] 拡張テストケース
 
 **最終フェーズ（PR#149）: 統合**
 - [ ] quantum_dynamics_gksl_comparison.ipynb作成
@@ -4681,17 +4681,17 @@ $$
 - [x] テストケースが全6シナリオをカバーしている
 
 本実装の完了基準（後続PRで達成）:
-- [ ] 6シナリオ全てが実装されている
-- [ ] 全テストがパスする
-- [ ] Classical GKSLとQudit GKSLで個体数が1e-3の精度で一致
-- [ ] Classical GKSLとQubit GKSLで個体数が1e-3の精度で一致
-- [ ] ボソン有りシナリオで$g_{\text{eph}}=0$でボソン無しと一致（$10^{-6}$）
-- [ ] 蛍光のみのテストで解析解と一致（$10^{-3}$）
-- [ ] ユニタリ極限テストでエントロピーが0のまま（$10^{-10}$）
-- [ ] 定常状態テストで基底状態に緩和
-- [ ] Stinespring忠実度 $F > 0.99$
-- [ ] 統合ノートブックが実行できる
-- [ ] ドキュメントが整備されている
+- [x] 6シナリオ全てが実装されている
+- [x] 全テストがパスする（35/35テスト通過）
+- [ ] Classical GKSLとQudit GKSLで個体数が1e-3の精度で一致（Stinespring+Trotter近似のため、dt→0で収束。現状dt=1.0では近似誤差あり）
+- [ ] Classical GKSLとQubit GKSLで個体数が1e-3の精度で一致（同上）
+- [ ] ボソン有りシナリオで$g_{\text{eph}}=0$でボソン無しと一致（$10^{-6}$）（N=4の4分子系はボソン有りで6561次元となりODE積分が非常に重く、小規模テストでは検証済み）
+- [ ] 蛍光のみのテストで解析解と一致（$10^{-3}$）（要追加実装：'all_singlet'初期状態 + V=0パラメータ）
+- [ ] ユニタリ極限テストでエントロピーが0のまま（$10^{-10}$）（要追加実装：全γ=0テスト）
+- [ ] 定常状態テストで基底状態に緩和（長時間シミュレーション要実行）
+- [ ] Stinespring忠実度 $F > 0.99$（dt十分小さい場合に成立。検証可能）
+- [ ] 統合ノートブックが実行できる（未実装。gksl_visualization.pyは実装済み）
+- [ ] ドキュメントが整備されている（進捗書を作成済み）
 
 ---
 
@@ -4700,3 +4700,4 @@ $$
 - v1.0.0 (2026-02-13): 初版作成（シナリオ1, 5、共通モジュール）
 - v2.0.0 (2026-02-13): 全6シナリオ完全版（シナリオ2, 3, 4, 6を追加、テスト拡充、付録追加）
 - v2.1.0 (2026-02-13): 参照文書充足性監査と要求トレーサビリティを追記（本PR）
+- v3.0.0 (2026-02-14): 全6シナリオの実装完了。フェーズ1〜4のコード実装とテスト（35/35テスト通過）。進捗を計画書に反映。

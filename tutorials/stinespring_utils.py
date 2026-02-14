@@ -61,7 +61,7 @@ def apply_stinespring_to_density_matrix(rho: np.ndarray, U: np.ndarray) -> np.nd
 
 def build_gksl_superoperator(
     H_total: np.ndarray,
-    lindblad_ops: list[np.ndarray],
+    lindblad_ops: list,
     hbar: float = 1.0,
 ) -> np.ndarray:
     """Build the full GKSL Liouvillian superoperator in vectorized (column-major) form.
@@ -71,7 +71,8 @@ def build_gksl_superoperator(
       L_D = sum_alpha [ L_alpha ⊗ conj(L_alpha)
                         - 0.5*(L†_alpha L_alpha ⊗ I + I ⊗ (L†_alpha L_alpha)^T) ]
 
-    lindblad_ops already contain sqrt(gamma) factors.
+    lindblad_ops: list of (L_alpha, gamma_alpha) tuples.
+    L_alpha already contains sqrt(gamma) factor.
     """
     dim = H_total.shape[0]
     I = np.eye(dim, dtype=np.complex128)
@@ -81,8 +82,11 @@ def build_gksl_superoperator(
 
     # Dissipator part
     L_D = np.zeros((dim * dim, dim * dim), dtype=np.complex128)
-    for L_op in lindblad_ops:
-        L_op = np.asarray(L_op, dtype=np.complex128)
+    for item in lindblad_ops:
+        if isinstance(item, tuple):
+            L_op = np.asarray(item[0], dtype=np.complex128)
+        else:
+            L_op = np.asarray(item, dtype=np.complex128)
         LdL = L_op.conj().T @ L_op
         L_D += (
             np.kron(L_op, L_op.conj())
@@ -96,7 +100,7 @@ def build_gksl_superoperator(
 def build_trotter_step_classical(
     H_0: np.ndarray,
     H_transfer: np.ndarray,
-    lindblad_ops: list[np.ndarray],
+    lindblad_ops: list,
     dt: float,
 ) -> Callable[[np.ndarray], np.ndarray]:
     """Build a 2nd-order symmetric Trotter step function.
@@ -104,6 +108,7 @@ def build_trotter_step_classical(
     exp(L dt) ≈ exp(L_H dt/2) exp(L_D dt) exp(L_H dt/2)
 
     Returns a function trotter_step(rho) -> rho'.
+    lindblad_ops: list of (L_alpha, gamma_alpha) tuples or plain arrays.
     """
     dim = H_0.shape[0]
     I = np.eye(dim, dtype=np.complex128)
@@ -114,8 +119,11 @@ def build_trotter_step_classical(
 
     # Dissipator superoperator
     L_D = np.zeros((dim * dim, dim * dim), dtype=np.complex128)
-    for L_op in lindblad_ops:
-        L_op = np.asarray(L_op, dtype=np.complex128)
+    for item in lindblad_ops:
+        if isinstance(item, tuple):
+            L_op = np.asarray(item[0], dtype=np.complex128)
+        else:
+            L_op = np.asarray(item, dtype=np.complex128)
         LdL = L_op.conj().T @ L_op
         L_D += (
             np.kron(L_op, L_op.conj())

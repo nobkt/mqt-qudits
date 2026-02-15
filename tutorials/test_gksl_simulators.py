@@ -191,6 +191,12 @@ class TestClassicalGKSLSimulator:
         assert abs(pops["N_S0"] - 0.0) < 1e-10
         assert abs(pops["N_S1"] - 0.0) < 1e-10
 
+    def test_edge_triplet_requires_two_or_more_molecules(self):
+        params = GKSLPhysicalParameters(N_molecules=1)
+        sim = ClassicalGKSLSimulator(params)
+        with pytest.raises(ValueError, match="N_molecules >= 2"):
+            sim.prepare_initial_state("edge_triplet")
+
     def test_entropy_non_negative(self, sim):
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for S in result["entropy"]:
@@ -323,9 +329,8 @@ class TestBosonSimulators:
         for pop_non_boson, pop_boson in zip(
             result_non_boson["populations"], result_boson["populations"]
         ):
-            assert abs(pop_non_boson["N_S0"] - pop_boson["N_S0"]) < 1e-6
-            assert abs(pop_non_boson["N_T1"] - pop_boson["N_T1"]) < 1e-6
-            assert abs(pop_non_boson["N_S1"] - pop_boson["N_S1"]) < 1e-6
+            for key in ("N_S0", "N_T1", "N_S1"):
+                assert abs(pop_non_boson[key] - pop_boson[key]) < 1e-6
 
 
 # ---------------------------------------------------------------------------

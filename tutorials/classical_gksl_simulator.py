@@ -75,13 +75,15 @@ class ClassicalGKSLSimulator:
 
         if state_type == "edge_triplet":
             # |1001⟩: molecules 0 and 3 in T1, molecules 1 and 2 in S0
+            if N < 2:
+                raise ValueError("edge_triplet requires N_molecules >= 2")
             psi = np.zeros(dim, dtype=np.complex128)
             basis_state = [0] * N
             basis_state[0] = 1
-            if N > 1:
-                basis_state[-1] = 1
+            basis_state[-1] = 1
+            # Convert digits in base-d (molecule states) to a linear basis index.
             index = sum(
-                state * (d ** (N - 1 - i)) for i, state in enumerate(basis_state)
+                digit * (d ** (N - 1 - i)) for i, digit in enumerate(basis_state)
             )
             psi[index] = 1.0
             return np.outer(psi, psi.conj())

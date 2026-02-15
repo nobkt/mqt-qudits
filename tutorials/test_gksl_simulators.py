@@ -1093,3 +1093,221 @@ class TestClassicalQuantumConvergence:
 
         # With more steps (smaller dt), difference should decrease
         assert diffs[1] < diffs[0]
+
+
+# ================================================================
+# Native gate compilation tests
+# ================================================================
+
+
+class TestNativeGateCompilation:
+    """Tests for compileO0/compileO1 native gate decomposition."""
+
+    def test_compile_to_native_gates_o0(self):
+        """compileO0 produces native gate statistics."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        result = sim.compile_to_native_gates(dt=0.5, optimization_level=0)
+
+        assert result["hamiltonian"]["native_gates_total"] > 0
+        assert result["stinespring_single"]["native_gates_total"] > 0
+        assert result["stinespring_pair"]["uncompiled_cu_multi"] == 6
+        assert result["per_step_summary"]["native_gates"] > 0
+        assert result["per_step_summary"]["optimization_level"] == 0
+
+    def test_compile_to_native_gates_o1(self):
+        """compileO1 also produces native gate statistics."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        result = sim.compile_to_native_gates(dt=0.5, optimization_level=1)
+
+        assert result["hamiltonian"]["native_gates_total"] > 0
+        assert result["per_step_summary"]["optimization_level"] == 1
+
+    def test_cu_one_compiles_to_virtrz(self):
+        """Diagonal on-site Hamiltonian compiles to VirtRz gates only."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        result = sim.compile_to_native_gates(dt=0.5, optimization_level=0)
+
+        # cu_one is diagonal -> should compile to VirtRz only
+        breakdown = result["hamiltonian"]["cu_one_breakdown"]
+        assert "VirtRz" in breakdown
+        assert sum(v for k, v in breakdown.items() if k != "VirtRz") == 0
+
+    def test_cu_two_compiles_to_native_set(self):
+        """Transfer Hamiltonian compiles to native gate set."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        result = sim.compile_to_native_gates(dt=0.5, optimization_level=0)
+
+        # cu_two -> should have native gates from {R, Rz, Rh, VirtRz, CEx}
+        native_types = {"R", "Rz", "Rh", "VirtRz", "CEx"}
+        for pair_info in result["hamiltonian"]["cu_two_per_pair"]:
+            for gate_name in pair_info["breakdown"]:
+                assert gate_name in native_types, f"Unexpected gate: {gate_name}"
+
+    def test_cu_multi_not_decomposed(self):
+        """cu_multi (TTA pair Stinespring) gates are correctly reported as uncompiled."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        result = sim.compile_to_native_gates(dt=0.5, optimization_level=0)
+
+        n_pairs = len(params.neighbors)
+        n_tta_channels = 2  # TTA channel 1 and 2
+        expected_cu_multi = n_tta_channels * n_pairs
+        assert result["stinespring_pair"]["uncompiled_cu_multi"] == expected_cu_multi
+        for ch in result["stinespring_pair"]["per_channel"]:
+            assert ch["status"] == "uncompiled_cu_multi"
+
+    def test_verify_compiled_circuit(self):
+        """Compiled and uncompiled circuits produce identical state vectors."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        result = sim.verify_compiled_circuit(dt=0.5, optimization_level=0)
+
+        assert result["match"]
+        assert result["statevector_distance"] < 1e-8
+        assert result["n_compiled_gates"] >= result["n_original_gates"]
+
+    def test_invalid_optimization_level(self):
+        """Invalid optimization level raises ValueError."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        with pytest.raises(ValueError, match="optimization_level"):
+            sim.compile_to_native_gates(dt=0.5, optimization_level=2)
+
+
+# ================================================================
+# Boson circuit simulator tests
+# ================================================================
+
+
+class TestQuditGKSLCircuitBosonSimulator:
+    """Tests for QuditGKSLCircuitBosonSimulator."""
+
+    def test_requires_boson_params(self):
+        """Non-boson params raise ValueError."""
+        from qudit_gksl_circuit_boson_simulator import QuditGKSLCircuitBosonSimulator
+
+        params = GKSLPhysicalParameters(with_boson=False)
+        with pytest.raises(ValueError, match="with_boson"):
+            QuditGKSLCircuitBosonSimulator(params)
+
+    def test_g_eph_zero_exact_reduction(self):
+        """g_eph=0 delegates to non-boson circuit simulator."""
+        from qudit_gksl_circuit_boson_simulator import QuditGKSLCircuitBosonSimulator
+
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=True, g_eph=0.0)
+        sim = QuditGKSLCircuitBosonSimulator(params)
+        result = sim.simulate(t_max=2.0, n_steps=5)
+
+        assert "g_eph=0" in result["method"]
+        for tr in result["trace"]:
+            assert abs(tr - 1.0) < 1e-10
+
+    def test_g_eph_zero_matches_non_boson(self):
+        """g_eph=0 boson circuit matches non-boson circuit simulator."""
+        from qudit_gksl_circuit_boson_simulator import QuditGKSLCircuitBosonSimulator
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params_b = GKSLPhysicalParameters(N_molecules=2, with_boson=True, g_eph=0.0)
+        params_nb = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+
+        r_b = QuditGKSLCircuitBosonSimulator(params_b).simulate(t_max=2.0, n_steps=5)
+        r_nb = QuditGKSLCircuitSimulator(params_nb).simulate(t_max=2.0, n_steps=5)
+
+        for key in ["N_S0", "N_T1", "N_S1"]:
+            diff = abs(r_b["populations"][-1][key] - r_nb["populations"][-1][key])
+            assert diff < 1e-10, f"{key} mismatch: {diff}"
+
+    def test_trace_preservation(self):
+        """Boson circuit simulation preserves trace."""
+        from qudit_gksl_circuit_boson_simulator import QuditGKSLCircuitBosonSimulator
+
+        params = GKSLPhysicalParameters(
+            N_molecules=2, with_boson=True, n_max=1, g_eph=0.005
+        )
+        sim = QuditGKSLCircuitBosonSimulator(params)
+        result = sim.simulate(t_max=2.0, n_steps=5)
+
+        for tr in result["trace"]:
+            assert abs(tr - 1.0) < 1e-8, f"Trace violation: {tr}"
+
+    def test_matches_matrix_boson_simulator(self):
+        """Circuit boson simulator matches matrix-level boson simulator."""
+        from qudit_gksl_circuit_boson_simulator import QuditGKSLCircuitBosonSimulator
+        from qudit_gksl_boson_simulator import QuditGKSLBosonSimulator
+
+        params = GKSLPhysicalParameters(
+            N_molecules=2, with_boson=True, n_max=1, g_eph=0.005
+        )
+        r_circuit = QuditGKSLCircuitBosonSimulator(params).simulate(
+            t_max=2.0, n_steps=5
+        )
+        r_matrix = QuditGKSLBosonSimulator(params).simulate(
+            t_max=2.0, n_steps=5
+        )
+
+        for key in ["N_S0", "N_T1", "N_S1"]:
+            diff = abs(
+                r_circuit["populations"][-1][key]
+                - r_matrix["populations"][-1][key]
+            )
+            assert diff < 1e-10, f"{key} mismatch: {diff}"
+
+    def test_gate_breakdown(self):
+        """Gate breakdown is reported correctly for boson model."""
+        from qudit_gksl_circuit_boson_simulator import QuditGKSLCircuitBosonSimulator
+
+        params = GKSLPhysicalParameters(
+            N_molecules=2, with_boson=True, n_max=1, g_eph=0.005
+        )
+        sim = QuditGKSLCircuitBosonSimulator(params)
+        result = sim.simulate(t_max=2.0, n_steps=5)
+
+        gb = result["gate_breakdown"]
+        N = params.N_molecules
+        n_pairs = len(params.neighbors)
+        assert gb["cu_one_el_onsite"] == 2 * N
+        assert gb["cu_two_el_transfer"] == 2 * n_pairs
+        assert gb["cu_one_ph_onsite"] == 2 * N
+        assert gb["cu_two_eph_coupling"] == 2 * N  # g_eph > 0
+        assert result["n_el_qutrits"] == N
+        assert result["n_ph_qutrits"] == N
+
+    def test_method_label(self):
+        """Result contains correct method label."""
+        from qudit_gksl_circuit_boson_simulator import QuditGKSLCircuitBosonSimulator
+
+        params = GKSLPhysicalParameters(
+            N_molecules=2, with_boson=True, n_max=1, g_eph=0.005
+        )
+        sim = QuditGKSLCircuitBosonSimulator(params)
+        result = sim.simulate(t_max=2.0, n_steps=5)
+        assert result["method"] == "qudit_gksl_circuit_boson"
+
+    def test_edge_triplet_requires_n2(self):
+        """edge_triplet initial state requires N >= 2."""
+        from qudit_gksl_circuit_boson_simulator import QuditGKSLCircuitBosonSimulator
+
+        params = GKSLPhysicalParameters(
+            N_molecules=1, with_boson=True, n_max=1, g_eph=0.0
+        )
+        sim = QuditGKSLCircuitBosonSimulator(params)
+        with pytest.raises(ValueError, match="edge_triplet"):
+            sim.prepare_initial_state("edge_triplet")

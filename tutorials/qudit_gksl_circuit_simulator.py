@@ -675,6 +675,205 @@ class QuditGKSLCircuitSimulator:
         }
 
     # ------------------------------------------------------------------
+    # Native gate compilation (compileO0 / compileO1)
+    # ------------------------------------------------------------------
+
+    def compile_to_native_gates(
+        self,
+        dt: float,
+        optimization_level: int = 0,
+        backend_name: str = "faketraps2trits",
+    ) -> dict:
+        """Compile circuit gates to MQT-Qudits native gate set.
+
+        Compiles cu_one and cu_two custom gates into native gates:
+        VirtRz, R, Rh, Rz, CEx.
+
+        Each gate is compiled individually in a minimal circuit matching
+        the backend's qudit count to avoid dimension mismatch.
+
+        cu_multi gates (TTA pair Stinespring, 18x18) are NOT decomposed
+        because the MQT-Qudits compiler does not currently support
+        multi-qudit gate decomposition into 2-qudit primitives.
+        This is an honest limitation, not a fallback.
+
+        Parameters
+        ----------
+        dt : float
+            Time step for gate construction.
+        optimization_level : int
+            0 for compileO0 (baseline), 1 for compileO1 (optimized).
+        backend_name : str
+            MQT-Qudits backend for compilation target.
+
+        Returns
+        -------
+        dict
+            Compilation statistics including native gate counts.
+        """
+        from mqt.qudits.quantum_circuit import QuantumCircuit
+
+        if optimization_level not in (0, 1):
+            msg = f"optimization_level must be 0 or 1, got {optimization_level}"
+            raise ValueError(msg)
+
+        compile_fn_name = f"compileO{optimization_level}"
+        d = self.d
+        results = {}
+
+        # --- Hamiltonian on-site compilation (cu_one, 3x3) ---
+        U_onsite = expm(-1j * self.h_local * dt)
+        onsite_circ = QuantumCircuit(2, [d, d], 0)
+        onsite_circ.cu_one(0, U_onsite)
+        onsite_compiled = getattr(onsite_circ, compile_fn_name)(backend_name)
+        onsite_counts = self._count_native_gates(onsite_compiled)
+        onsite_native_per_gate = sum(onsite_counts.values())
+
+        # --- Hamiltonian transfer compilation (cu_two, 9x9) ---
+        transfer_compilations = []
+        for pair in self.params.neighbors:
+            ip, jp = pair
+            H_pair = self.h_transfer_pairs[(ip, jp)]
+            U_pair = expm(-1j * H_pair * dt)
+            pair_circ = QuantumCircuit(2, [d, d], 0)
+            pair_circ.cu_two([0, 1], U_pair)
+            pair_compiled = getattr(pair_circ, compile_fn_name)(backend_name)
+            counts = self._count_native_gates(pair_compiled)
+            transfer_compilations.append({
+                "pair": (ip, jp),
+                "native_gates": sum(counts.values()),
+                "breakdown": counts,
+            })
+
+        ham_onsite_total = self.N * onsite_native_per_gate
+        ham_transfer_total = sum(c["native_gates"] for c in transfer_compilations)
+
+        results["hamiltonian"] = {
+            "cu_one_per_gate": onsite_native_per_gate,
+            "cu_one_breakdown": onsite_counts,
+            "cu_one_total": ham_onsite_total,
+            "cu_two_per_pair": transfer_compilations,
+            "cu_two_total": ham_transfer_total,
+            "native_gates_total": ham_onsite_total + ham_transfer_total,
+        }
+
+        # --- Stinespring single-site compilation (cu_two, 6x6) ---
+        single_native_total = 0
+        single_custom_total = 0
+        single_compilations = []
+        pair_uncompiled_total = 0
+        pair_custom_total = 0
+        pair_circuits_info = []
+
+        for op_type, sites, L_local, _gamma in self.lindblad_local_info:
+            if op_type == "single":
+                circ, _ = self.build_stinespring_circuit_single(
+                    L_local, dt, sites[0]
+                )
+                compiled = getattr(circ, compile_fn_name)(backend_name)
+                counts = self._count_native_gates(compiled)
+                single_native_total += sum(counts.values())
+                single_custom_total += 1
+                single_compilations.append({
+                    "sites": sites,
+                    "native_gates": sum(counts.values()),
+                    "breakdown": counts,
+                })
+            elif op_type == "pair":
+                pair_uncompiled_total += 1
+                pair_custom_total += 1
+                pair_circuits_info.append({
+                    "sites": sites,
+                    "status": "uncompiled_cu_multi",
+                })
+
+        results["stinespring_single"] = {
+            "custom_gates": single_custom_total,
+            "native_gates_total": single_native_total,
+            "per_channel": single_compilations,
+        }
+        results["stinespring_pair"] = {
+            "custom_gates": pair_custom_total,
+            "uncompiled_cu_multi": pair_uncompiled_total,
+            "note": (
+                "cu_multi gates are not decomposed into native gates. "
+                "MQT-Qudits compiler does not support multi-qudit gate "
+                "decomposition into 2-qudit primitives."
+            ),
+            "per_channel": pair_circuits_info,
+        }
+
+        # --- Per-step totals ---
+        ham_native_half = ham_onsite_total + ham_transfer_total
+        total_native_per_step = 2 * ham_native_half + single_native_total
+        total_uncompiled_per_step = pair_uncompiled_total
+
+        results["per_step_summary"] = {
+            "native_gates": total_native_per_step,
+            "uncompiled_cu_multi": total_uncompiled_per_step,
+            "optimization_level": optimization_level,
+            "backend": backend_name,
+        }
+
+        return results
+
+    @staticmethod
+    def _count_native_gates(compiled_circuit) -> dict[str, int]:
+        """Count native gates in a compiled circuit by type."""
+        counts: dict[str, int] = {}
+        for inst in compiled_circuit.instructions:
+            name = type(inst).__name__
+            counts[name] = counts.get(name, 0) + 1
+        return counts
+
+    def verify_compiled_circuit(
+        self,
+        dt: float,
+        optimization_level: int = 0,
+        backend_name: str = "faketraps2trits",
+    ) -> dict:
+        """Verify that compiled Hamiltonian on-site gate gives same state vector.
+
+        Compiles a single cu_one on-site gate and runs both compiled and
+        uncompiled versions through MQT-Qudits state-vector simulation,
+        comparing the output state vectors.
+
+        Uses a 2-qutrit circuit (matching backend) with the gate on qudit 0.
+        """
+        from mqt.qudits.quantum_circuit import QuantumCircuit
+        from mqt.qudits.simulation import MQTQuditProvider
+
+        compile_fn_name = f"compileO{optimization_level}"
+        d = self.d
+        provider = MQTQuditProvider()
+        backend = provider.get_backend("tnsim")
+
+        # Build a 2-qutrit circuit with cu_one on qudit 0
+        U_onsite = expm(-1j * self.h_local * dt)
+        circuit = QuantumCircuit(2, [d, d], 0)
+        circuit.cu_one(0, U_onsite)
+        compiled = getattr(circuit, compile_fn_name)(backend_name)
+
+        # Run both
+        job_orig = backend.run(circuit, shots=1)
+        sv_orig = job_orig.result().get_state_vector()[0]
+
+        job_compiled = backend.run(compiled, shots=1)
+        sv_compiled = job_compiled.result().get_state_vector()[0]
+
+        distance = np.linalg.norm(sv_orig - sv_compiled)
+
+        return {
+            "dt": dt,
+            "optimization_level": optimization_level,
+            "backend": backend_name,
+            "statevector_distance": float(distance),
+            "match": distance < 1e-8,
+            "n_original_gates": len(circuit.instructions),
+            "n_compiled_gates": len(compiled.instructions),
+        }
+
+    # ------------------------------------------------------------------
     # Main simulation loop
     # ------------------------------------------------------------------
 

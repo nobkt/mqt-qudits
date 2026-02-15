@@ -71,6 +71,7 @@ class QuditGKSLCircuitSimulator:
         d = self.d
 
         # On-site Hamiltonian (3x3 diagonal)
+        # State ordering: |0⟩ = S0 (ground), |1⟩ = T1 (triplet), |2⟩ = S1 (excited singlet)
         self.h_local = np.diag(
             np.array([0.0, self.params.E_T, self.params.E_S], dtype=np.complex128)
         )
@@ -81,8 +82,8 @@ class QuditGKSLCircuitSimulator:
             i, j = pair
             H_pair = np.zeros((d * d, d * d), dtype=np.complex128)
             # |01><10| + |10><01| in the (i,j) pair space
-            idx_01 = 0 * d + 1  # = 1
-            idx_10 = 1 * d + 0  # = 3
+            idx_01 = 0 * d + 1
+            idx_10 = 1 * d + 0
             H_pair[idx_01, idx_10] = self.params.V
             H_pair[idx_10, idx_01] = self.params.V
             self.h_transfer_pairs[(i, j)] = H_pair

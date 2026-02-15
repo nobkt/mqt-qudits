@@ -950,7 +950,8 @@ class TestQuditGKSLCircuitSimulator:
         v = sim.verify_circuit_via_mqt(0.5)
         assert v["match"]
         assert v["statevector_distance"] < 1e-10
-        assert v["gate_count"] == 7  # 4 cu_one + 3 cu_two
+        expected_gates = params.N_molecules + len(params.neighbors)
+        assert v["gate_count"] == expected_gates
 
     def test_trace_preservation(self):
         """Circuit-based simulation preserves trace."""
@@ -987,11 +988,15 @@ class TestQuditGKSLCircuitSimulator:
         sim = QuditGKSLCircuitSimulator(params)
         result = sim.simulate(t_max=5.0, n_steps=5)
         gb = result["gate_breakdown"]
-        assert gb["cu_one_onsite"] == 8  # 4 per half-step × 2
-        assert gb["cu_two_transfer"] == 6  # 3 per half-step × 2
-        assert gb["cu_two_stinespring_single"] == 20  # 5 types × 4 molecules
-        assert gb["cu_multi_stinespring_pair"] == 6  # 2 channels × 3 pairs
-        assert result["gates_per_step"] == 40
+        N = params.N_molecules
+        n_pairs = len(params.neighbors)
+        n_single = 5 * N  # 5 single-site operator types × N molecules
+        n_pair = 2 * n_pairs  # 2 TTA channels × number of pairs
+        assert gb["cu_one_onsite"] == 2 * N
+        assert gb["cu_two_transfer"] == 2 * n_pairs
+        assert gb["cu_two_stinespring_single"] == n_single
+        assert gb["cu_multi_stinespring_pair"] == n_pair
+        assert result["gates_per_step"] == 2 * (N + n_pairs) + n_single + n_pair
 
     def test_method_label(self):
         """Result contains correct method label."""

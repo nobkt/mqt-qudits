@@ -356,3 +356,124 @@ class TestStinespring:
         rho = np.outer(psi, psi.conj())
         rho_out = apply_stinespring_to_density_matrix(rho, U)
         assert np.allclose(rho_out, rho_out.conj().T, atol=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# 9. TestPhysicalLimits – Unitary limit, fluorescence analytical, steady state
+# ---------------------------------------------------------------------------
+class TestPhysicalLimits:
+    def test_unitary_limit(self):
+        """Unitary limit: all gamma=0, entropy must stay zero (pure state)."""
+        params = GKSLPhysicalParameters(
+            gamma_TTA=0, Gamma_fl=0, Gamma_ph=0,
+            k_IC=0, k_ISC_ST=0, k_ISC_TS=0,
+        )
+        sim = ClassicalGKSLSimulator(params)
+        result = sim.simulate(t_max=10.0, n_steps=20, initial_state="edge_triplet")
+
+        # ODE solver (RK45, rtol=1e-9) accumulates numerical errors over
+        # the integration interval. For t_max=10, the accumulated error in
+        # the density matrix eigenvalues leads to entropy ~1e-8.
+        # Tolerance 1e-6 is still extremely stringent
+        # (maximally mixed 81-dim entropy = ln(81) ≈ 4.4).
+        for entropy in result["entropy"]:
+            assert abs(entropy) < 1e-6
+
+        # Purity must stay 1 (pure state)
+        for purity in result["purity"]:
+            assert abs(purity - 1.0) < 1e-6
+
+        # Trace must stay 1
+        for tr in result["trace"]:
+            assert abs(tr - 1.0) < 1e-12
+
+    def test_fluorescence_analytical(self):
+        """Fluorescence-only: V=0, only Gamma_fl, compare with analytical exponential decay."""
+        Gamma_fl = 0.01
+        params = GKSLPhysicalParameters(
+            V=0, gamma_TTA=0, Gamma_fl=Gamma_fl, Gamma_ph=0,
+            k_IC=0, k_ISC_ST=0, k_ISC_TS=0,
+        )
+        sim = ClassicalGKSLSimulator(params)
+        result = sim.simulate(t_max=50.0, n_steps=100, initial_state="all_singlet")
+
+        for i, t in enumerate(result["times"]):
+            expected_N_S1 = 4.0 * np.exp(-Gamma_fl * t / params.hbar)
+            actual_N_S1 = result["populations"][i]["N_S1"]
+            assert abs(expected_N_S1 - actual_N_S1) < 1e-3, (
+                f"t={t}: expected N_S1={expected_N_S1:.6f}, got {actual_N_S1:.6f}"
+            )
+
+    def test_steady_state(self):
+        """Steady state: long-time evolution relaxes all molecules to ground state S0."""
+        params = GKSLPhysicalParameters()
+        sim = ClassicalGKSLSimulator(params)
+        result = sim.simulate(t_max=1000.0, n_steps=100, initial_state="edge_triplet")
+
+        pops_final = result["populations"][-1]
+        assert pops_final["N_S0"] > 3.5, f"N_S0={pops_final['N_S0']:.4f} (expected > 3.5)"
+        assert pops_final["N_T1"] < 0.5, f"N_T1={pops_final['N_T1']:.4f} (expected < 0.5)"
+        assert pops_final["N_S1"] < 0.5, f"N_S1={pops_final['N_S1']:.4f} (expected < 0.5)"
+
+    def test_validate_unitary_params(self):
+        """Validate that all-zero dissipation passes parameter validation."""
+        params = GKSLPhysicalParameters(
+            gamma_TTA=0, Gamma_fl=0, Gamma_ph=0,
+            k_IC=0, k_ISC_ST=0, k_ISC_TS=0,
+        )
+        errors = params.validate()
+        # No weak-coupling violation when all dissipation is zero
+        assert not any("Weak coupling" in e for e in errors)
+
+    def test_validate_zero_V_params(self):
+        """Validate that V=0 with small dissipation passes (no spurious weak coupling error)."""
+        params = GKSLPhysicalParameters(
+            V=0, gamma_TTA=0, Gamma_fl=0.01, Gamma_ph=0,
+            k_IC=0, k_ISC_ST=0, k_ISC_TS=0,
+        )
+        errors = params.validate()
+        # V=0 is valid; weak coupling should compare against E_T, not V
+        assert not any("Weak coupling" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# 10. TestStinespringFidelity – Classical vs Qudit/Qubit fidelity comparison
+# ---------------------------------------------------------------------------
+class TestStinespringFidelity:
+    @staticmethod
+    def _quantum_fidelity(rho: np.ndarray, sigma: np.ndarray) -> float:
+        """Compute quantum state fidelity F(rho, sigma) = (Tr[sqrt(sqrt(rho) sigma sqrt(rho))])^2.
+
+        Uses eigendecomposition for numerical stability (avoids sqrtm on
+        near-singular matrices).
+        """
+        # sqrt(rho) via eigendecomposition
+        evals_rho, evecs_rho = np.linalg.eigh(rho)
+        evals_rho = np.maximum(evals_rho, 0.0)
+        sqrt_rho = evecs_rho @ np.diag(np.sqrt(evals_rho)) @ evecs_rho.conj().T
+
+        M = sqrt_rho @ sigma @ sqrt_rho
+        M = (M + M.conj().T) / 2  # enforce Hermiticity
+        evals_M = np.linalg.eigvalsh(M)
+        evals_M = np.maximum(evals_M, 0.0)
+        return float(np.real(np.sum(np.sqrt(evals_M))) ** 2)
+
+    def test_stinespring_fidelity_qudit(self):
+        """Qudit Stinespring+Trotter fidelity vs classical ODE: F > 0.99 at small dt."""
+        params = GKSLPhysicalParameters()
+
+        sim_classical = ClassicalGKSLSimulator(params)
+        result_classical = sim_classical.simulate(
+            t_max=1.0, n_steps=20, initial_state="edge_triplet"
+        )
+
+        sim_qudit = QuditGKSLSimulator(params)
+        result_qudit = sim_qudit.simulate(
+            t_max=1.0, n_steps=20, initial_state="edge_triplet"
+        )
+
+        rho_classical = result_classical["rho_final"]
+        rho_qudit = result_qudit["rho_final"]
+
+        F = self._quantum_fidelity(rho_classical, rho_qudit)
+        assert F > 0.99, f"Fidelity = {F:.6f} (expected > 0.99)"

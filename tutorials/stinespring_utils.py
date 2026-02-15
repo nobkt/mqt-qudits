@@ -16,15 +16,18 @@ from gksl_math_utils import unvectorize_density_matrix, vectorize_density_matrix
 def stinespring_unitary_from_lindblad(L: np.ndarray, dt: float) -> np.ndarray:
     """Build Stinespring unitary from Lindblad operator L (which already includes sqrt(gamma)).
 
-    The generator is the block matrix G = [[0, L], [L†, 0]] and the unitary is
+    The generator is the block matrix G = [[0, L†], [L, 0]] and the unitary is
     U = expm(-i * theta * G) with theta = sqrt(dt).
+
+    At leading order this implements the GKSL dissipator:
+    E(ρ) ≈ ρ + dt * (L ρ L† − ½{L†L, ρ})
     """
     d_sys = L.shape[0]
     L = np.asarray(L, dtype=np.complex128)
 
     G = np.zeros((2 * d_sys, 2 * d_sys), dtype=np.complex128)
-    G[:d_sys, d_sys:] = L
-    G[d_sys:, :d_sys] = L.conj().T
+    G[:d_sys, d_sys:] = L.conj().T
+    G[d_sys:, :d_sys] = L
 
     theta = np.sqrt(dt)
     U = expm(-1j * theta * G)
@@ -50,7 +53,8 @@ def apply_stinespring_to_density_matrix(rho: np.ndarray, U: np.ndarray) -> np.nd
     env0 = np.zeros((2, 2), dtype=np.complex128)
     env0[0, 0] = 1.0
 
-    rho_ext = np.kron(rho, env0)
+    # Use kron(env, system) ordering to match Stinespring unitary block structure
+    rho_ext = np.kron(env0, rho)
     rho_prime = U @ rho_ext @ U.conj().T
 
     # Partial trace over environment (2-level) using block structure

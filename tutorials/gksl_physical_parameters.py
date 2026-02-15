@@ -116,12 +116,18 @@ class GKSLPhysicalParameters:
                 errors.append("g_eph must be non-negative when with_boson is True")
 
         # 7. Weak coupling: max_dissipation < 0.5 * min_energy
+        # Skip when all dissipation rates are zero (pure unitary limit)
+        # or when V=0 (no inter-molecular coupling; use E_T as energy scale)
         max_dissipation = max(self.gamma_TTA, self.Gamma_fl, self.Gamma_ph, self.k_IC, self.k_ISC_ST, self.k_ISC_TS)
-        min_energy = min(self.E_T, self.V)
-        if max_dissipation > 0.5 * min_energy:
-            errors.append(
-                f"Weak coupling violated: max_dissipation ({max_dissipation}) >= 0.5 * min_energy ({0.5 * min_energy})"
-            )
+        if max_dissipation > 0:
+            energy_scales = [self.E_T]
+            if self.V > 0:
+                energy_scales.append(self.V)
+            min_energy = min(energy_scales)
+            if max_dissipation > 0.5 * min_energy:
+                errors.append(
+                    f"Weak coupling violated: max_dissipation ({max_dissipation}) >= 0.5 * min_energy ({0.5 * min_energy})"
+                )
 
         return errors
 

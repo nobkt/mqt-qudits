@@ -13,7 +13,7 @@ Physical distinction:
 
 Noise channels (2-qudit gates only; 1-qudit gates are ideal):
   - Depolarization: E_S[rho] = (1-p) rho + p/d_S * I_S ⊗ Tr_S[rho]
-  - Dephasing: E_S[rho] = (1-p) rho + p * sum_k |k><k|_S rho |k><k|_S
+  - Dephasing: E_S[rho] = (1-p) rho + p * sum_k (|k><k|_S ⊗ I_rest) rho (|k><k|_S ⊗ I_rest)
 
 Gate-noise mapping for the Trotter step:
   - Hamiltonian transfer: one local pair depolarization per nearest-neighbor pair
@@ -121,7 +121,7 @@ def _apply_local_dephasing_single(
 ) -> np.ndarray:
     """Apply dephasing channel on a single molecule site.
 
-    E_deph[rho] = (1-p) rho + p * sum_k |k><k|_site ⊗ I_rest . rho . |k><k|_site ⊗ I_rest
+    E_deph[rho] = (1-p) rho + p * sum_k (|k><k|_site ⊗ I_rest) rho (|k><k|_site ⊗ I_rest)
 
     This decoheres the off-diagonal elements between different local states
     at the specified site while leaving diagonal elements and other sites intact.

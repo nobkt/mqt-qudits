@@ -51,7 +51,7 @@ def _apply_thermal_relaxation_single(
     |1> -> |0> and |2> -> |0> with probability p_reset.
 
     Kraus operators for molecule k (in the {|0>,|1>,|2>} basis):
-      K0 = |0><0| + sqrt(1-p)*|1><1| + sqrt(1-p)*|2><2|  (no decay)
+      K0 = diag(1, sqrt(1-p), sqrt(1-p))  (no decay)
       K1 = sqrt(p) * |0><1|  (T1 -> S0)
       K2 = sqrt(p) * |0><2|  (S1 -> S0)
 

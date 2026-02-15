@@ -655,7 +655,7 @@ class TestQuditGKSLNoisySimulator:
         sim = QuditGKSLNoisySimulator(params, p_depol=0.01)
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for tr in result["trace"]:
-            assert abs(tr - 1.0) < 0.01
+            assert abs(tr - 1.0) < 1e-10
 
     def test_method_label(self, params):
         """Method field must indicate noisy qudit simulation."""
@@ -735,7 +735,7 @@ class TestQubitGKSLNoisySimulator:
         sim = QubitGKSLNoisySimulator(params, p_depol=0.01)
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for tr in result["trace"]:
-            assert abs(tr - 1.0) < 0.01
+            assert abs(tr - 1.0) < 1e-10
 
     def test_method_label(self, params):
         """Method field must indicate noisy qubit simulation."""
@@ -762,7 +762,7 @@ class TestQubitGKSLNoisySimulator:
         sim = QubitGKSLNoisySimulator(params, p_depol=0.01, T1=5e10, T2=7e10, t_gate=300.0)
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for tr in result["trace"]:
-            assert abs(tr - 1.0) < 0.01
+            assert abs(tr - 1.0) < 1e-10
 
     def test_qubit_qudit_noisy_consistency(self, params):
         """Noisy qubit and qudit simulators should produce qualitatively similar results."""

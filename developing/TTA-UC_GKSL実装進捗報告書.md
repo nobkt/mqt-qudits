@@ -177,8 +177,49 @@ tutorials/
 
 ## 5. 次のアクション
 
-1. 統合ノートブック `quantum_dynamics_gksl_comparison.ipynb` の作成
-2. 追加テストケース（ユニタリ極限、蛍光解析解、定常状態）の実装
+1. ~~統合ノートブック `quantum_dynamics_gksl_comparison.ipynb` の作成~~ ✅ PR#147で完了
+2. ~~追加テストケース（ユニタリ極限、蛍光解析解、定常状態）の実装~~ ✅ PR#147で完了
 3. MQT-Quditsの実回路構築（インストール後）
 4. ハードウェアノイズモデルの実装
 5. パフォーマンス最適化（疎行列、並列計算）
+
+---
+
+## 6. PR#147での追加実装（2026-02-15）
+
+### 6.1 Stinespring dilationバグ修正 ✅
+
+`stinespring_utils.py`に2箇所のバグを発見・修正：
+
+1. **基底順序の修正**: `apply_stinespring_to_density_matrix`内の`np.kron(rho, env0)`を`np.kron(env0, rho)`に修正。Stinespring unitaryのブロック構造（環境⊗系）と密度行列拡張の基底順序が不一致だった。
+2. **ジェネレータ行列の修正**: `stinespring_unitary_from_lindblad`内のジェネレータ`G = [[0, L], [L†, 0]]`を`G = [[0, L†], [L, 0]]`に修正。元の構成ではD[L†]（逆過程の散逸子）が実装されており、正しいD[L]（GKSL散逸子）とは異なっていた。
+
+**影響**: Qubit/Quditシミュレータ（シナリオ3-6）の全結果が修正により改善。修正前はClassical ODE結果と大きく乖離していたが、修正後はStinespring+Trotter近似の理論的精度の範囲内で一致。
+
+### 6.2 パラメータバリデーション修正 ✅
+
+`gksl_physical_parameters.py`のvalidate()メソッドの弱結合条件チェックを修正：
+- 全散逸率=0（ユニタリ極限）: チェックをスキップ
+- V=0（分子間結合なし）: エネルギースケールとしてE_Tのみを使用（V=0による偽の違反を防止）
+
+### 6.3 追加テスト（6件） ✅
+
+| テスト名 | 内容 | 許容誤差 |
+|---------|------|---------|
+| test_unitary_limit | 全γ=0でエントロピー≈0（純粋ユニタリ発展） | < 1e-6 |
+| test_fluorescence_analytical | V=0, Γ_fl=0.01でN_S1(t)=4exp(-Γ_fl*t) | < 1e-3 |
+| test_steady_state | t_max=1000で全分子がS0に緩和 | N_S0>3.5 |
+| test_validate_unitary_params | 全γ=0でバリデーション通過 | - |
+| test_validate_zero_V_params | V=0でバリデーション通過 | - |
+| test_stinespring_fidelity_qudit | Classical vs Qudit忠実度F>0.99 | F>0.99 |
+
+### 6.4 統合ノートブック ✅
+
+`tutorials/quantum_dynamics_gksl_comparison.ipynb`を作成。全6シナリオの実行・比較・検証・Stinespring忠実度評価・ユニタリ vs GKSL比較を含む。
+
+### 6.5 残存する未完了項目
+
+1. **実回路構築**: MQT-Quditsの実際のQuantumCircuit APIを使った回路構築は未実装。マトリクスレベルシミュレーションは数学的に等価だが、実機実行のためにはMQT-Quditsのインストール・コンパイルが必要。
+2. **ハードウェアノイズモデル**: QubitGKSLNoisySimulator/QuditGKSLNoisySimulatorは未実装。設計は計画書の付録Cに記載。
+3. **Classical-Qubit/Qudit完全一致**: dt→0の極限で一致するが、計算時間の制約からdt=1.0程度では近似誤差がある。n_steps増加で改善可能。
+4. **ボソン有りg_eph=0一致テスト**: N=4ではボソン空間が6561次元と非常に大きく、実用的なテスト時間内での検証は困難。

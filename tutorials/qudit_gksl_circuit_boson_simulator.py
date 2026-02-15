@@ -616,6 +616,7 @@ class QuditGKSLCircuitBosonSimulator:
             1 for t, _, _, _ in self.lindblad_local_info if t == "pair"
         )
         n_eph_gates = N if self.params.g_eph != 0.0 else 0
+        # N (el on-site) + n_pairs (el transfer) + N (ph on-site) + n_eph (el-ph coupling)
         gates_per_half_ham = N + n_pairs + N + n_eph_gates
         gates_per_step = 2 * gates_per_half_ham + n_stinespring_single + n_stinespring_pair
 

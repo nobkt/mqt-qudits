@@ -714,7 +714,10 @@ class QuditGKSLCircuitSimulator:
         from mqt.qudits.quantum_circuit import QuantumCircuit
 
         if optimization_level not in (0, 1):
-            msg = f"optimization_level must be 0 or 1, got {optimization_level}"
+            msg = (
+                f"optimization_level must be 0 (compileO0: baseline) "
+                f"or 1 (compileO1: optimized), got {optimization_level}"
+            )
             raise ValueError(msg)
 
         compile_fn_name = f"compileO{optimization_level}"

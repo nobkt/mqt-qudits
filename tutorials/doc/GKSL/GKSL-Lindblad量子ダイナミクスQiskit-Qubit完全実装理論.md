@@ -2,11 +2,11 @@
 
 ## 文書情報
 
-**作成日**: 2026年1月15日  
-**バージョン**: 1.0.0  
-**対象フレームワーク**: Qiskit  
-**理論的基礎**: GKSL-Lindblad方程式のStinespring dilation表現  
-**表現方式**: Qubit表現による完全量子回路実装  
+**作成日**: 2026年1月15日
+**バージョン**: 1.0.0
+**対象フレームワーク**: Qiskit
+**理論的基礎**: GKSL-Lindblad方程式のStinespring dilation表現
+**表現方式**: Qubit表現による完全量子回路実装
 **適用系**: 分子三重項状態の開放量子系ダイナミクス
 
 ---
@@ -38,14 +38,17 @@
 既存のGKSL理論文書では、以下の非ユニタリ過程がLindblad演算子により厳密に記述されている：
 
 1. **三重項-三重項消滅（TTA）過程**
+
    $$
    \hat{L}_{\text{TTA},\alpha}^{(ij)} = \sqrt{\frac{\gamma_{\text{TTA}}}{2}} |S_1\rangle_i\langle T_1|_i \otimes |S_0\rangle_j\langle T_1|_j
    $$
 
 2. **放射減衰過程（蛍光・燐光）**
+
    $$
    \hat{L}_{\text{fl}}^{(i)} = \sqrt{\Gamma_{\text{fl}}} |S_0\rangle_i\langle S_1|_i
    $$
+
    $$
    \hat{L}_{\text{ph}}^{(i)} = \sqrt{\Gamma_{\text{ph}}} |S_0\rangle_i\langle T_1|_i
    $$
@@ -67,12 +70,14 @@
 分子の電子状態は3準位系（$|S_0\rangle, |T_1\rangle, |S_1\rangle$）であるが、以下の理由からQubit表現が実用上重要である：
 
 **✅ Qubit表現の利点**：
+
 1. **ハードウェアの広範な利用可能性**: IBM Quantum、Google Quantum AI、Rigettiなど、ほぼ全ての量子コンピュータはqubitベース
 2. **Qiskitの成熟したエコシステム**: 豊富なゲートライブラリ、シミュレータ、最適化ツール
 3. **エラー訂正理論の確立**: Qubitに対するエラー訂正符号は理論的・実験的に確立
 4. **スケーラビリティ**: 大規模量子回路の実装が現実的
 
 **❌ Qutrit（3準位）実装の課題**：
+
 1. **ハードウェアの制約**: Qutritゲートを直接実装できる量子コンピュータは極めて限定的
 2. **制御の複雑さ**: 3準位間の制御には高度な実験技術が必要
 3. **エラー率の増大**: 準位数が増えるとデコヒーレンスが加速
@@ -91,6 +96,7 @@ $$
 $$
 
 **禁止状態**：
+
 $$
 |11\rangle_{2i,2i+1} \text{ は物理的に意味を持たず、この状態への遷移は厳密に防ぐ}
 $$
@@ -124,6 +130,7 @@ $$
 $$
 
 ここで：
+
 - $\hat{\rho}_S$: 系（System）の密度演算子
 - $|0\rangle_E$: 環境（Environment）の初期状態
 - $\hat{U}_{SE}$: 系と環境の合成系におけるユニタリ演算子
@@ -140,13 +147,13 @@ $$
 
 他の手法との比較：
 
-| 手法 | 実装可能性 | 厳密性 | 計算効率 | 採用判定 |
-|------|----------|-------|---------|---------|
-| **Stinespring dilation** | ○ ユニタリゲート | ◎ 完全に厳密 | ○ 補助qubit必要 | ✅ **採用** |
-| Kraus表現の直接実装 | × 非ユニタリ演算 | ◎ 厳密 | - | ❌ 量子回路不可 |
-| 量子ジャンプ法（Monte Carlo） | ○ 確率的実装可 | △ 統計誤差 | △ 多数軌跡必要 | ❌ 非決定論的 |
-| 超演算子の行列指数関数 | × ヒューリスティック | △ 近似 | × 次元爆発 | ❌ **禁止** |
-| トロッター化Lindbladian | △ 不明瞭 | △ 近似 | △ | ❌ 分解不明 |
+| 手法                          | 実装可能性           | 厳密性       | 計算効率        | 採用判定        |
+| ----------------------------- | -------------------- | ------------ | --------------- | --------------- |
+| **Stinespring dilation**      | ○ ユニタリゲート     | ◎ 完全に厳密 | ○ 補助qubit必要 | ✅ **採用**     |
+| Kraus表現の直接実装           | × 非ユニタリ演算     | ◎ 厳密       | -               | ❌ 量子回路不可 |
+| 量子ジャンプ法（Monte Carlo） | ○ 確率的実装可       | △ 統計誤差   | △ 多数軌跡必要  | ❌ 非決定論的   |
+| 超演算子の行列指数関数        | × ヒューリスティック | △ 近似       | × 次元爆発      | ❌ **禁止**     |
+| トロッター化Lindbladian       | △ 不明瞭             | △ 近似       | △               | ❌ 分解不明     |
 
 **結論**: Stinespring dilationは、非ユニタリLindblad演算を**完全にユニタリな量子回路**として実装する唯一の厳密かつ実用的な手法である。
 
@@ -157,6 +164,7 @@ $$
 本文書は以下の原則に基づく：
 
 ✅ **保証される厳密性**：
+
 1. **完全な数式展開**: 全ての演算子を行列要素レベルで明示
 2. **量子回路への完全分解**: 各Lindblad演算子をQiskitの基本ゲート（$U3, CNOT$など）に分解
 3. **補助qubitの最小化**: 必要十分な補助qubitのみを使用
@@ -164,6 +172,7 @@ $$
 5. **物理的整合性**: CPTP性、トレース保存、正定値性の厳密な保証
 
 ❌ **禁止される手法**：
+
 1. **ヒューリスティックな近似**: 数学的根拠のない近似は一切使用しない
 2. **Fallback処理**: 計算失敗時の「適当な値」への置き換えは許されない
 3. **非物理的状態**: $|11\rangle$ 状態への遷移など、エンコーディング外の状態を生成しない
@@ -197,11 +206,13 @@ $$
 各分子 $i$ は以下の3つの電子状態を持つ：
 
 1. **基底一重項状態** $|S_0\rangle_i$
+
    - エネルギー: $E_{S_0} = 0$ eV（基準）
    - スピン多重度: 1（singlet）
    - 物理的意味: 全電子がスピン対を形成した基底状態
 
 2. **励起三重項状態** $|T_1\rangle_i$
+
    - エネルギー: $E_{T_1} = E_T = 1.5$ eV
    - スピン多重度: 3（triplet）
    - 物理的意味: 不対電子を持つ励起状態、長寿命
@@ -212,6 +223,7 @@ $$
    - 物理的意味: スピン対を保ったまま励起された状態、短寿命
 
 エネルギー関係式：
+
 $$
 E_{S_1} = 2 E_{T_1} \Rightarrow 3.0 \text{ eV} = 2 \times 1.5 \text{ eV}
 $$
@@ -231,6 +243,7 @@ $$
 $$
 
 **禁止状態の明示**：
+
 $$
 |11\rangle_{2i,2i+1} = |1\rangle_{2i} \otimes |1\rangle_{2i+1} \quad \text{（物理的に対応する分子状態が存在しない）}
 $$
@@ -309,12 +322,12 @@ $$
 #### 2.2.3 次元の比較
 
 | 分子数 $N$ | Qutrit次元 $3^N$ | Qubit次元 $4^N$ | 非物理状態数 |
-|-----------|----------------|----------------|------------|
-| 1 | 3 | 4 | 1 |
-| 2 | 9 | 16 | 7 |
-| 3 | 27 | 64 | 37 |
-| 4 | 81 | 256 | 175 |
-| 5 | 243 | 1024 | 781 |
+| ---------- | ---------------- | --------------- | ------------ |
+| 1          | 3                | 4               | 1            |
+| 2          | 9                | 16              | 7            |
+| 3          | 27               | 64              | 37           |
+| 4          | 81               | 256             | 175          |
+| 5          | 243              | 1024            | 781          |
 
 非物理状態の割合：
 
@@ -353,6 +366,7 @@ $$
 ここで、$s = (s_0, s_1, \ldots, s_{N-1})$ は状態の多重インデックスである。
 
 密度演算子の性質：
+
 1. **エルミート性**: $\hat{\rho} = \hat{\rho}^\dagger$
 2. **正定値性**: $\langle \phi | \hat{\rho} | \phi \rangle \geq 0$ for all $|\phi\rangle$
 3. **トレース1**: $\text{Tr}[\hat{\rho}] = 1$
@@ -385,11 +399,13 @@ $$
 分子 $i$ の射影演算子をQubit表現で書く：
 
 **基底状態射影演算子**：
+
 $$
 |S_0\rangle_i\langle S_0|_i = |00\rangle\langle 00|_{2i,2i+1} = |0\rangle\langle 0|_{2i} \otimes |0\rangle\langle 0|_{2i+1}
 $$
 
 行列表現：
+
 $$
 |S_0\rangle_i\langle S_0|_i = \begin{pmatrix}
 1 & 0 & 0 & 0 \\
@@ -400,11 +416,13 @@ $$
 $$
 
 **三重項状態射影演算子**：
+
 $$
 |T_1\rangle_i\langle T_1|_i = |01\rangle\langle 01|_{2i,2i+1} = |0\rangle\langle 0|_{2i} \otimes |1\rangle\langle 1|_{2i+1}
 $$
 
 行列表現：
+
 $$
 |T_1\rangle_i\langle T_1|_i = \begin{pmatrix}
 0 & 0 & 0 & 0 \\
@@ -415,11 +433,13 @@ $$
 $$
 
 **一重項励起状態射影演算子**：
+
 $$
 |S_1\rangle_i\langle S_1|_i = |10\rangle\langle 10|_{2i,2i+1} = |1\rangle\langle 1|_{2i} \otimes |0\rangle\langle 0|_{2i+1}
 $$
 
 行列表現：
+
 $$
 |S_1\rangle_i\langle S_1|_i = \begin{pmatrix}
 0 & 0 & 0 & 0 \\
@@ -523,6 +543,7 @@ Qubit表現では、不適切な演算により禁止状態 $|11\rangle$ が生�
 $$
 X_{2i} \otimes X_{2i+1} : |10\rangle \to |01\rangle \quad \text{（物理的）}
 $$
+
 $$
 X_{2i} \otimes X_{2i+1} : |01\rangle \to |10\rangle \quad \text{（物理的）}
 $$
@@ -669,7 +690,6 @@ $$
 
 **定理（Stinespring, 1955; Choi, 1975）**:
 
-
 任意の完全正値トレース保存（CPTP）写像 $\mathcal{E}: \mathcal{B}(\mathcal{H}_S) \to \mathcal{B}(\mathcal{H}_S)$ に対して、十分大きな補助ヒルベルト空間 $\mathcal{H}_E$ とユニタリ演算子 $\hat{U}_{SE}: \mathcal{H}_S \otimes \mathcal{H}_E \to \mathcal{H}_S \otimes \mathcal{H}_E$ が存在し、以下が成立する：
 
 $$
@@ -687,6 +707,7 @@ Stinespring表現は一意ではない：
 3. **初期状態の選択**: 環境の初期状態を変えることも可能
 
 **実装における選択**：
+
 - 環境次元は最小限（補助qubit数を最小化）
 - ユニタリは物理的に解釈可能（系-環境相互作用を反映）
 - 初期状態は $|0\rangle_E$（実装の標準）
@@ -972,6 +993,7 @@ n \geq \left( \frac{C_k T^{k+1}}{\epsilon} \right)^{1/k}
 $$
 
 典型的な分子系（$N=4$、$T=100$ fs）では：
+
 - 1次分解：$n \sim 10^3$ ステップ（誤差 $10^{-4}$）
 - 2次分解：$n \sim 10^2$ ステップ（誤差 $10^{-4}$）
 
@@ -982,20 +1004,25 @@ $$
 N分子系に対する総Lindblad演算子数：
 
 1. **TTA過程**：隣接ペアごとに2個
+
    - 線形鎖：$(N-1) \times 2 = 2N - 2$ 個
-   
+
 2. **蛍光発光**：分子ごとに1個
+
    - 総数：$N$ 個
-   
+
 3. **燐光発光**：分子ごとに1個
+
    - 総数：$N$ 個
-   
+
 4. **内部転換**：分子ごとに1個
+
    - 総数：$N$ 個
-   
+
 5. **項間交差（S→T）**：分子ごとに1個
+
    - 総数：$N$ 個
-   
+
 6. **項間交差（T→S）**：分子ごとに1個
    - 総数：$N$ 個
 
@@ -1181,8 +1208,9 @@ e^{-i\phi/2} & 0 \\
 $$
 
 Qiskit実装：
+
 ```python
-circuit.rz(2*theta1, qubit[2*i+1])
+circuit.rz(2 * theta1, qubit[2 * i + 1])
 ```
 
 **第3項**：$e^{-i\theta_2 Z \otimes Z}$ （$\theta_2 = c_2 t / \hbar$）
@@ -1200,10 +1228,11 @@ R_{ZZ}(\phi) = \text{CNOT}_{2i, 2i+1} \cdot R_Z(\phi)_{2i+1} \cdot \text{CNOT}_{
 $$
 
 Qiskit実装：
+
 ```python
-circuit.cx(qubit[2*i], qubit[2*i+1])
-circuit.rz(2*theta2, qubit[2*i+1])
-circuit.cx(qubit[2*i], qubit[2*i+1])
+circuit.cx(qubit[2 * i], qubit[2 * i + 1])
+circuit.rz(2 * theta2, qubit[2 * i + 1])
+circuit.cx(qubit[2 * i], qubit[2 * i + 1])
 ```
 
 #### 4.1.5 完全な量子回路
@@ -1217,6 +1246,7 @@ q[2i+1] ─ RZ(α) ┼─ RZ(β) ─── ┼ ────────
 ```
 
 ここで、
+
 $$
 \alpha = 2c_1 t/\hbar, \quad \beta = 2c_2 t/\hbar
 $$
@@ -1327,20 +1357,22 @@ e^{-i\theta XX} \quad \text{where } \theta = \frac{V_{ij}t}{4\hbar}
 $$
 
 Qiskit実装（RXXゲート）：
+
 ```python
-circuit.rxx(2*theta, qubit[2*i+1], qubit[2*j+1])
+circuit.rxx(2 * theta, qubit[2 * i + 1], qubit[2 * j + 1])
 ```
 
 **項2**: $\frac{V_{ij}}{4} Z_{2i} \otimes X_{2i+1} \otimes X_{2j+1}$
 
 制御XXゲート（control on qubit $2i$）：
+
 ```python
 # 制御-XX ゲートの実装
-circuit.cx(qubit[2*i], ancilla)  # ancillaへ制御情報を移す
+circuit.cx(qubit[2 * i], ancilla)  # ancillaへ制御情報を移す
 # 条件付きRXX
-circuit.crxx(2*theta, ancilla, qubit[2*i+1], qubit[2*j+1])
+circuit.crxx(2 * theta, ancilla, qubit[2 * i + 1], qubit[2 * j + 1])
 # 逆CNOT
-circuit.cx(qubit[2*i], ancilla)
+circuit.cx(qubit[2 * i], ancilla)
 ```
 
 **項3、4**: 同様に実装
@@ -1365,7 +1397,6 @@ q[2j+1] ──RXX─┴──┼──┴──●──RXX──┴──┼─
 N分子線形鎖では、$N-1$ 個の隣接ペアに対して独立に上記回路を適用する。
 
 ---
-
 
 ## 5. TTA過程のStinespring Dilation完全定式化
 
@@ -1528,6 +1559,7 @@ TTA過程は、系の状態 $|01\rangle |01\rangle$ を検出し、条件付き�
 **ステップ2**: 遷移の実行
 
 検出された場合、補助qubitの状態に応じて以下の遷移を実行：
+
 - 補助qubit $|01\rangle_E$: $|0101\rangle \to |1000\rangle$
 - 補助qubit $|10\rangle_E$: $|0101\rangle \to |0010\rangle$
 
@@ -1564,7 +1596,7 @@ System qubits:
 q[2i]   ───●───●───●───X───●───X───●───●───●───
            │   │   │   │   │   │   │   │   │
 q[2i+1] ───●───┼───┼───●───┼───●───┼───┼───●───
-               │   │       │       │   │   
+               │   │       │       │   │
 q[2j]   ───────●───┼───────┼───────┼───●───────
                    │       │       │
 q[2j+1] ───────────●───────●───────●───────────
@@ -1597,20 +1629,20 @@ Stinespring dilationによる実装は、以下の性質を自動的に保証す
 ```python
 def verify_CPTP_properties(rho, tolerance=1e-10):
     """CPTP性の数値検証"""
-    
+
     # トレース保存
     trace = np.trace(rho)
     assert abs(trace - 1.0) < tolerance, f"Trace = {trace}"
-    
+
     # エルミート性
-    hermiticity_error = np.linalg.norm(rho - rho.conj().T, 'fro')
+    hermiticity_error = np.linalg.norm(rho - rho.conj().T, "fro")
     assert hermiticity_error < tolerance, f"Hermiticity error = {hermiticity_error}"
-    
+
     # 正定値性
     eigenvalues = np.linalg.eigvalsh(rho)
     min_eigenvalue = np.min(eigenvalues)
     assert min_eigenvalue >= -tolerance, f"Min eigenvalue = {min_eigenvalue}"
-    
+
     return True
 ```
 
@@ -1627,24 +1659,23 @@ $$
 ```python
 def check_physical_subspace(statevector, N_molecules, tolerance=1e-10):
     """物理的部分空間の検証"""
-    
+
     # |11⟩を含む状態の確率を計算
     unphys_prob = 0.0
-    for idx in range(2**(2*N_molecules)):
-        binary = format(idx, f'0{2*N_molecules}b')
-        
+    for idx in range(2 ** (2 * N_molecules)):
+        binary = format(idx, f"0{2*N_molecules}b")
+
         # 各分子で|11⟩が含まれるかチェック
         for mol in range(N_molecules):
-            if binary[2*mol:2*mol+2] == '11':
-                unphys_prob += abs(statevector[idx])**2
+            if binary[2 * mol : 2 * mol + 2] == "11":
+                unphys_prob += abs(statevector[idx]) ** 2
                 break
-    
+
     assert unphys_prob < tolerance, f"Unphysical state prob = {unphys_prob}"
     return unphys_prob
 ```
 
 ---
-
 
 ## 6. 放射減衰過程の量子回路実装
 
@@ -1739,10 +1770,12 @@ $$
 #### 6.1.5 完全なゲート分解
 
 ```python
-def apply_fluorescence_evolution(circuit, mol_qubits, env_qubit, Gamma_fl, dt, hbar=1.0):
+def apply_fluorescence_evolution(
+    circuit, mol_qubits, env_qubit, Gamma_fl, dt, hbar=1.0
+):
     """
     蛍光発光の時間発展をStinespring dilationで実装
-    
+
     Parameters:
     -----------
     circuit : QuantumCircuit
@@ -1760,42 +1793,42 @@ def apply_fluorescence_evolution(circuit, mol_qubits, env_qubit, Gamma_fl, dt, h
     """
     q0, q1 = mol_qubits
     e = env_qubit
-    
+
     # パラメータ
     theta = np.sqrt(Gamma_fl * dt / hbar)
-    
+
     # ステップ1: |10⟩状態の検出
     # q0=1, q1=0 の条件
-    
+
     # q1を反転（|10⟩ → |11⟩）
     circuit.x(q1)
-    
+
     # 制御-制御ゲート: q0=1, q1=1 の時、補助qubitを励起
     # これは Toffoli の変形
-    
+
     # 簡易版：制御-Ryゲート
     circuit.h(e)  # Hadamard on environment
-    
+
     # Controlled rotation (概念的)
     # if q0=1 and q1=1:
     #     Ry(2*arcsin(theta)) on e
-    
+
     # 多重制御Ryゲートの実装（Toffoliを用いた分解）
     circuit.ccx(q0, q1, e)  # Toffoli: if both 1, flip e
-    
+
     # 確率的遷移のための回転
-    circuit.ry(2*np.arcsin(theta), e)
-    
+    circuit.ry(2 * np.arcsin(theta), e)
+
     # q1を戻す
     circuit.x(q1)
-    
+
     # ステップ2: 条件付き遷移
     # e=1 の時、|10⟩ → |00⟩
     circuit.cx(e, q0)  # e=1 なら q0 を反転
-    
+
     # ステップ3: K0項の実装（非遷移）
     # この項は恒等演算に近いため、省略可能（または位相ゲートとして実装）
-    
+
     pass  # 完全な実装は省略
 ```
 
@@ -1848,30 +1881,32 @@ $$
 燐光過程の量子回路（蛍光と類似、状態検出が異なる）：
 
 ```python
-def apply_phosphorescence_evolution(circuit, mol_qubits, env_qubit, Gamma_ph, dt, hbar=1.0):
+def apply_phosphorescence_evolution(
+    circuit, mol_qubits, env_qubit, Gamma_ph, dt, hbar=1.0
+):
     """
     燐光発光の時間発展をStinespring dilationで実装
     """
     q0, q1 = mol_qubits
     e = env_qubit
-    
+
     theta = np.sqrt(Gamma_ph * dt / hbar)
-    
+
     # ステップ1: |01⟩状態の検出
     # q0=0, q1=1 の条件
-    
+
     circuit.x(q0)  # q0を反転（|01⟩ → |11⟩）
-    
+
     # 制御-制御ゲート
     circuit.ccx(q0, q1, e)
-    circuit.ry(2*np.arcsin(theta), e)
-    
+    circuit.ry(2 * np.arcsin(theta), e)
+
     circuit.x(q0)  # q0を戻す
-    
+
     # ステップ2: 条件付き遷移
     # e=1 の時、|01⟩ → |00⟩
     circuit.cx(e, q1)
-    
+
     pass
 ```
 
@@ -1884,10 +1919,12 @@ def apply_phosphorescence_evolution(circuit, mol_qubits, env_qubit, Gamma_ph, dt
 N分子系では、各分子に対して独立に蛍光・燐光過程を実装：
 
 ```python
-def apply_all_radiative_decay(circuit, N_molecules, env_qubits, Gamma_fl, Gamma_ph, dt, hbar=1.0):
+def apply_all_radiative_decay(
+    circuit, N_molecules, env_qubits, Gamma_fl, Gamma_ph, dt, hbar=1.0
+):
     """
     全分子の放射減衰過程
-    
+
     Parameters:
     -----------
     circuit : QuantumCircuit
@@ -1902,14 +1939,14 @@ def apply_all_radiative_decay(circuit, N_molecules, env_qubits, Gamma_fl, Gamma_
     hbar : float
     """
     for i in range(N_molecules):
-        mol_qubits = (2*i, 2*i+1)
-        
+        mol_qubits = (2 * i, 2 * i + 1)
+
         # 蛍光
-        env_fl = env_qubits[2*i]
+        env_fl = env_qubits[2 * i]
         apply_fluorescence_evolution(circuit, mol_qubits, env_fl, Gamma_fl, dt, hbar)
-        
+
         # 燐光
-        env_ph = env_qubits[2*i+1]
+        env_ph = env_qubits[2 * i + 1]
         apply_phosphorescence_evolution(circuit, mol_qubits, env_ph, Gamma_ph, dt, hbar)
 ```
 
@@ -1924,7 +1961,6 @@ def apply_all_radiative_decay(circuit, N_molecules, env_qubits, Gamma_fl, Gamma_
 実装では、計算効率と量子回路深さのトレードオフを考慮して選択。
 
 ---
-
 
 ## 7. 無放射遷移過程の量子回路実装
 
@@ -1972,7 +2008,7 @@ $$
 def apply_IC_evolution(circuit, mol_qubits, env_qubit, k_IC, dt, hbar=1.0):
     """
     内部転換（IC）の時間発展をStinespring dilationで実装
-    
+
     Parameters:
     -----------
     circuit : QuantumCircuit
@@ -1988,13 +2024,13 @@ def apply_IC_evolution(circuit, mol_qubits, env_qubit, k_IC, dt, hbar=1.0):
     """
     q0, q1 = mol_qubits
     e = env_qubit
-    
+
     theta = np.sqrt(k_IC * dt / hbar)
-    
+
     # 状態検出と遷移（蛍光と同じ）
     circuit.x(q1)
     circuit.ccx(q0, q1, e)
-    circuit.ry(2*np.arcsin(theta), e)
+    circuit.ry(2 * np.arcsin(theta), e)
     circuit.x(q1)
     circuit.cx(e, q0)
 ```
@@ -2062,15 +2098,15 @@ def apply_ISC_S_to_T_evolution(circuit, mol_qubits, env_qubit, k_ISC_ST, dt, hba
     """
     q0, q1 = mol_qubits
     e = env_qubit
-    
+
     theta = np.sqrt(k_ISC_ST * dt / hbar)
-    
+
     # ステップ1: |10⟩状態の検出
     circuit.x(q1)
     circuit.ccx(q0, q1, e)
-    circuit.ry(2*np.arcsin(theta), e)
+    circuit.ry(2 * np.arcsin(theta), e)
     circuit.x(q1)
-    
+
     # ステップ2: 条件付き遷移
     # e=1 の時、|10⟩ → |01⟩
     # これは q0 と q1 の swap
@@ -2118,13 +2154,13 @@ def apply_ISC_T_to_S_evolution(circuit, mol_qubits, env_qubit, k_ISC_TS, dt, hba
     """
     q0, q1 = mol_qubits
     e = env_qubit
-    
+
     theta = np.sqrt(k_ISC_TS * dt / hbar)
-    
+
     # 状態検出と遷移（燐光と同じ）
     circuit.x(q0)
     circuit.ccx(q0, q1, e)
-    circuit.ry(2*np.arcsin(theta), e)
+    circuit.ry(2 * np.arcsin(theta), e)
     circuit.x(q0)
     circuit.cx(e, q1)
 ```
@@ -2136,10 +2172,21 @@ def apply_ISC_T_to_S_evolution(circuit, mol_qubits, env_qubit, k_ISC_TS, dt, hba
 #### 7.4.1 全分子・全過程の実装
 
 ```python
-def apply_all_nonradiative_transitions(circuit, N_molecules, env_qubits_IC, env_qubits_ISC_ST, env_qubits_ISC_TS, k_IC, k_ISC_ST, k_ISC_TS, dt, hbar=1.0):
+def apply_all_nonradiative_transitions(
+    circuit,
+    N_molecules,
+    env_qubits_IC,
+    env_qubits_ISC_ST,
+    env_qubits_ISC_TS,
+    k_IC,
+    k_ISC_ST,
+    k_ISC_TS,
+    dt,
+    hbar=1.0,
+):
     """
     全分子の無放射遷移過程
-    
+
     Parameters:
     -----------
     circuit : QuantumCircuit
@@ -2156,16 +2203,20 @@ def apply_all_nonradiative_transitions(circuit, N_molecules, env_qubits_IC, env_
     hbar : float
     """
     for i in range(N_molecules):
-        mol_qubits = (2*i, 2*i+1)
-        
+        mol_qubits = (2 * i, 2 * i + 1)
+
         # 内部転換
         apply_IC_evolution(circuit, mol_qubits, env_qubits_IC[i], k_IC, dt, hbar)
-        
+
         # ISC S→T
-        apply_ISC_S_to_T_evolution(circuit, mol_qubits, env_qubits_ISC_ST[i], k_ISC_ST, dt, hbar)
-        
+        apply_ISC_S_to_T_evolution(
+            circuit, mol_qubits, env_qubits_ISC_ST[i], k_ISC_ST, dt, hbar
+        )
+
         # ISC T→S
-        apply_ISC_T_to_S_evolution(circuit, mol_qubits, env_qubits_ISC_TS[i], k_ISC_TS, dt, hbar)
+        apply_ISC_T_to_S_evolution(
+            circuit, mol_qubits, env_qubits_ISC_TS[i], k_ISC_TS, dt, hbar
+        )
 ```
 
 #### 7.4.2 補助qubitの最適化
@@ -2188,7 +2239,6 @@ def apply_all_nonradiative_transitions(circuit, N_molecules, env_qubits_IC, env_
 
 ---
 
-
 ## 8. 完全な量子回路の構築
 
 ### 8.1 全Lindblad演算子の統合
@@ -2197,15 +2247,15 @@ def apply_all_nonradiative_transitions(circuit, N_molecules, env_qubits_IC, env_
 
 N分子線形鎖系に対する総Lindblad演算子数：
 
-| 過程 | 演算子数 | 補助qubit（最小） | 補助qubit（並列） |
-|------|---------|----------------|---------------|
-| TTA | $2(N-1)$ | 2 | $2(N-1)$ |
-| 蛍光 | $N$ | 1 | $N$ |
-| 燐光 | $N$ | 1 | $N$ |
-| IC | $N$ | 1 | $N$ |
-| ISC S→T | $N$ | 1 | $N$ |
-| ISC T→S | $N$ | 1 | $N$ |
-| **合計** | $6N-2$ | **7** | **6N-2** |
+| 過程     | 演算子数 | 補助qubit（最小） | 補助qubit（並列） |
+| -------- | -------- | ----------------- | ----------------- |
+| TTA      | $2(N-1)$ | 2                 | $2(N-1)$          |
+| 蛍光     | $N$      | 1                 | $N$               |
+| 燐光     | $N$      | 1                 | $N$               |
+| IC       | $N$      | 1                 | $N$               |
+| ISC S→T  | $N$      | 1                 | $N$               |
+| ISC T→S  | $N$      | 1                 | $N$               |
+| **合計** | $6N-2$   | **7**             | **6N-2**          |
 
 例：$N=4$ 分子 → 最小7個、並列22個の補助qubit
 
@@ -2218,6 +2268,7 @@ N分子線形鎖系に対する総Lindblad演算子数：
 3. **総qubit数**: $2N + 7$ 〜 $8N-2$ 個
 
 4分子系の例：
+
 - 最小構成：$8 + 7 = 15$ qubits
 - 並列構成：$8 + 22 = 30$ qubits
 
@@ -2244,6 +2295,7 @@ $$
 #### 8.2.2 演算子の適用順序
 
 **前半（$\Delta t / 2$）**:
+
 1. オンサイトエネルギー $\hat{H}_0$
 2. エネルギー移動 $\hat{H}_{\text{transfer}}$
 3. TTA過程
@@ -2254,10 +2306,12 @@ $$
 8. ISC T→S
 
 **ユニタリ部分（$\Delta t$）**:
+
 1. オンサイトエネルギー $\hat{H}_0$
 2. エネルギー移動 $\hat{H}_{\text{transfer}}$
 
 **後半（$\Delta t / 2$, 逆順）**:
+
 1. ISC T→S
 2. ISC S→T
 3. 内部転換
@@ -2273,108 +2327,153 @@ $$
 from qiskit import QuantumCircuit, QuantumRegister
 import numpy as np
 
+
 def build_complete_trotter_step(N_molecules, params, dt, use_parallel_env=False):
     """
     完全な1トロッターステップの量子回路を構築
-    
+
     Parameters:
     -----------
     N_molecules : int
         分子数
     params : dict
-        物理パラメータ {'E_T', 'E_S', 'V', 'gamma_TTA', 'Gamma_fl', 
+        物理パラメータ {'E_T', 'E_S', 'V', 'gamma_TTA', 'Gamma_fl',
                         'Gamma_ph', 'k_IC', 'k_ISC_ST', 'k_ISC_TS'}
     dt : float
         時間刻み
     use_parallel_env : bool
         並列実装（補助qubit多数使用）か逐次実装か
-    
+
     Returns:
     --------
     circuit : QuantumCircuit
     """
     # System qubits
     n_system_qubits = 2 * N_molecules
-    
+
     # Environment qubits
     if use_parallel_env:
         n_env_qubits = 6 * N_molecules - 2
     else:
         n_env_qubits = 7  # 最小構成
-    
+
     # QuantumCircuit
-    q_system = QuantumRegister(n_system_qubits, 'sys')
-    q_env = QuantumRegister(n_env_qubits, 'env')
+    q_system = QuantumRegister(n_system_qubits, "sys")
+    q_env = QuantumRegister(n_env_qubits, "env")
     circuit = QuantumCircuit(q_system, q_env)
-    
+
     hbar = 1.0
-    
+
     # パラメータ抽出
-    E_T = params['E_T']
-    E_S = params['E_S']
-    V = params['V']
-    gamma_TTA = params['gamma_TTA']
-    Gamma_fl = params['Gamma_fl']
-    Gamma_ph = params['Gamma_ph']
-    k_IC = params['k_IC']
-    k_ISC_ST = params['k_ISC_ST']
-    k_ISC_TS = params['k_ISC_TS']
-    
+    E_T = params["E_T"]
+    E_S = params["E_S"]
+    V = params["V"]
+    gamma_TTA = params["gamma_TTA"]
+    Gamma_fl = params["Gamma_fl"]
+    Gamma_ph = params["Gamma_ph"]
+    k_IC = params["k_IC"]
+    k_ISC_ST = params["k_ISC_ST"]
+    k_ISC_TS = params["k_ISC_TS"]
+
     # ===== 前半: dt/2 =====
-    
+
     # (1) Lindblad terms (dt/2)
-    apply_all_lindblad_terms(circuit, N_molecules, q_system, q_env, 
-                             gamma_TTA, Gamma_fl, Gamma_ph, k_IC, k_ISC_ST, k_ISC_TS,
-                             dt/2, hbar, use_parallel_env)
-    
+    apply_all_lindblad_terms(
+        circuit,
+        N_molecules,
+        q_system,
+        q_env,
+        gamma_TTA,
+        Gamma_fl,
+        Gamma_ph,
+        k_IC,
+        k_ISC_ST,
+        k_ISC_TS,
+        dt / 2,
+        hbar,
+        use_parallel_env,
+    )
+
     # (2) Hamiltonian evolution (dt)
     apply_hamiltonian_evolution(circuit, N_molecules, q_system, E_T, E_S, V, dt, hbar)
-    
+
     # ===== 後半: dt/2 (逆順) =====
-    
-    apply_all_lindblad_terms_reverse(circuit, N_molecules, q_system, q_env,
-                                     gamma_TTA, Gamma_fl, Gamma_ph, k_IC, k_ISC_ST, k_ISC_TS,
-                                     dt/2, hbar, use_parallel_env)
-    
+
+    apply_all_lindblad_terms_reverse(
+        circuit,
+        N_molecules,
+        q_system,
+        q_env,
+        gamma_TTA,
+        Gamma_fl,
+        Gamma_ph,
+        k_IC,
+        k_ISC_ST,
+        k_ISC_TS,
+        dt / 2,
+        hbar,
+        use_parallel_env,
+    )
+
     return circuit
 
-def apply_all_lindblad_terms(circuit, N_molecules, q_system, q_env, 
-                              gamma_TTA, Gamma_fl, Gamma_ph, k_IC, k_ISC_ST, k_ISC_TS,
-                              dt, hbar, use_parallel):
+
+def apply_all_lindblad_terms(
+    circuit,
+    N_molecules,
+    q_system,
+    q_env,
+    gamma_TTA,
+    Gamma_fl,
+    Gamma_ph,
+    k_IC,
+    k_ISC_ST,
+    k_ISC_TS,
+    dt,
+    hbar,
+    use_parallel,
+):
     """全Lindblad項の適用"""
-    
+
     env_idx = 0
-    
+
     # TTA
     for i in range(N_molecules - 1):
-        mol_i_qubits = (q_system[2*i], q_system[2*i+1])
-        mol_j_qubits = (q_system[2*i+2], q_system[2*i+3])
-        
+        mol_i_qubits = (q_system[2 * i], q_system[2 * i + 1])
+        mol_j_qubits = (q_system[2 * i + 2], q_system[2 * i + 3])
+
         if use_parallel:
-            env_qubits = (q_env[env_idx], q_env[env_idx+1])
+            env_qubits = (q_env[env_idx], q_env[env_idx + 1])
             env_idx += 2
         else:
             env_qubits = (q_env[0], q_env[1])
-        
-        apply_TTA_evolution(circuit, mol_i_qubits, mol_j_qubits, env_qubits, gamma_TTA, dt, hbar)
-    
+
+        apply_TTA_evolution(
+            circuit, mol_i_qubits, mol_j_qubits, env_qubits, gamma_TTA, dt, hbar
+        )
+
     # 単一分子過程
     for i in range(N_molecules):
-        mol_qubits = (q_system[2*i], q_system[2*i+1])
-        
+        mol_qubits = (q_system[2 * i], q_system[2 * i + 1])
+
         if use_parallel:
-            e_fl = q_env[env_idx]; env_idx += 1
-            e_ph = q_env[env_idx]; env_idx += 1
-            e_IC = q_env[env_idx]; env_idx += 1
-            e_ISC_ST = q_env[env_idx]; env_idx += 1
-            e_ISC_TS = q_env[env_idx]; env_idx += 1
+            e_fl = q_env[env_idx]
+            env_idx += 1
+            e_ph = q_env[env_idx]
+            env_idx += 1
+            e_IC = q_env[env_idx]
+            env_idx += 1
+            e_ISC_ST = q_env[env_idx]
+            env_idx += 1
+            e_ISC_TS = q_env[env_idx]
+            env_idx += 1
         else:
             e_fl = q_env[2]
             e_ph = q_env[3]
             e_IC = q_env[4]
             e_ISC_ST = q_env[5]
             e_ISC_TS = q_env[6]
-        
+
         apply_fluorescence_evolution(circuit, mol_qubits, e_fl, Gamma_fl, dt, hbar)
         apply_phosphorescence_evolution(circuit, mol_qubits, e_ph, Gamma_ph, dt, hbar)
         apply_IC_evolution(circuit, mol_qubits, e_IC, k_IC, dt, hbar)
@@ -2387,10 +2486,12 @@ def apply_all_lindblad_terms(circuit, N_molecules, q_system, q_env,
 #### 8.3.1 多ステップ時間発展
 
 ```python
-def full_time_evolution_simulation(N_molecules, params, T_total, N_steps, initial_state='all_triplet'):
+def full_time_evolution_simulation(
+    N_molecules, params, T_total, N_steps, initial_state="all_triplet"
+):
     """
     完全な時間発展シミュレーション
-    
+
     Parameters:
     -----------
     N_molecules : int
@@ -2401,87 +2502,91 @@ def full_time_evolution_simulation(N_molecules, params, T_total, N_steps, initia
         トロッターステップ数
     initial_state : str
         初期状態 ('all_triplet', 'all_singlet', 'custom')
-    
+
     Returns:
     --------
     results : dict
         {'times': [], 'populations': {'N_S0': [], 'N_T1': [], 'N_S1': []}}
     """
     dt = T_total / N_steps
-    
+
     # 量子回路構築
-    circuit_step = build_complete_trotter_step(N_molecules, params, dt, use_parallel_env=False)
-    
+    circuit_step = build_complete_trotter_step(
+        N_molecules, params, dt, use_parallel_env=False
+    )
+
     # 初期状態準備
     n_system_qubits = 2 * N_molecules
     n_env_qubits = 7
     total_qubits = n_system_qubits + n_env_qubits
-    
+
     circuit_init = QuantumCircuit(total_qubits)
-    
-    if initial_state == 'all_triplet':
+
+    if initial_state == "all_triplet":
         # |T_1⟩ = |01⟩ for all molecules
         for i in range(N_molecules):
-            circuit_init.x(2*i+1)  # Set qubit 2i+1 to |1⟩
-    elif initial_state == 'all_singlet':
+            circuit_init.x(2 * i + 1)  # Set qubit 2i+1 to |1⟩
+    elif initial_state == "all_singlet":
         # |S_1⟩ = |10⟩ for all molecules
         for i in range(N_molecules):
-            circuit_init.x(2*i)  # Set qubit 2i to |1⟩
-    
+            circuit_init.x(2 * i)  # Set qubit 2i to |1⟩
+
     # シミュレーション
     from qiskit.quantum_info import Statevector
+
     state = Statevector(circuit_init)
-    
-    results = {'times': [], 'populations': {'N_S0': [], 'N_T1': [], 'N_S1': []}}
-    
+
+    results = {"times": [], "populations": {"N_S0": [], "N_T1": [], "N_S1": []}}
+
     for step in range(N_steps + 1):
         t = step * dt
-        results['times'].append(t)
-        
+        results["times"].append(t)
+
         # 個体数計算
         pops = calculate_populations_from_statevector(state, N_molecules)
-        results['populations']['N_S0'].append(pops['N_S0'])
-        results['populations']['N_T1'].append(pops['N_T1'])
-        results['populations']['N_S1'].append(pops['N_S1'])
-        
+        results["populations"]["N_S0"].append(pops["N_S0"])
+        results["populations"]["N_T1"].append(pops["N_T1"])
+        results["populations"]["N_S1"].append(pops["N_S1"])
+
         if step < N_steps:
             # 1ステップ進化
             state = state.evolve(circuit_step)
-    
+
     return results
+
 
 def calculate_populations_from_statevector(statevector, N_molecules):
     """状態ベクトルから個体数を計算"""
-    
+
     state_array = statevector.data
     n_system_qubits = 2 * N_molecules
-    
+
     N_S0 = 0.0
     N_T1 = 0.0
     N_S1 = 0.0
-    
+
     # すべての計算基底状態について
     for idx in range(len(state_array)):
-        prob = np.abs(state_array[idx])**2
-        
+        prob = np.abs(state_array[idx]) ** 2
+
         # 系qubitのみ抽出（環境qubitは無視）
         # idx を binary に変換し、系qubitの状態を判定
-        binary_full = format(idx, f'0{len(state_array).bit_length()}b')
+        binary_full = format(idx, f"0{len(state_array).bit_length()}b")
         binary_system = binary_full[:n_system_qubits]
-        
+
         # 各分子の状態を判定
         for mol in range(N_molecules):
-            q0_bit = int(binary_system[2*mol])
-            q1_bit = int(binary_system[2*mol+1])
-            
+            q0_bit = int(binary_system[2 * mol])
+            q1_bit = int(binary_system[2 * mol + 1])
+
             if q0_bit == 0 and q1_bit == 0:
                 N_S0 += prob
             elif q0_bit == 0 and q1_bit == 1:
                 N_T1 += prob
             elif q0_bit == 1 and q1_bit == 0:
                 N_S1 += prob
-    
-    return {'N_S0': N_S0, 'N_T1': N_T1, 'N_S1': N_S1}
+
+    return {"N_S0": N_S0, "N_T1": N_T1, "N_S1": N_S1}
 ```
 
 ---
@@ -2573,43 +2678,46 @@ $$
 def convergence_test(N_molecules, params, T_total, dt_list):
     """
     Trotter分解の収束性テスト
-    
+
     Parameters:
     -----------
     dt_list : list of float
         テストする時間刻みのリスト
-    
+
     Returns:
     --------
     convergence_data : dict
         {'dt': [], 'final_state_fidelity': [], 'error_estimate': []}
     """
     results_list = []
-    
+
     for dt in dt_list:
         N_steps = int(T_total / dt)
         result = full_time_evolution_simulation(N_molecules, params, T_total, N_steps)
         results_list.append(result)
-    
+
     # 最も細かい時間刻みを「真の解」とみなす
     reference = results_list[-1]
-    
-    convergence_data = {'dt': [], 'error_N_S1': []}
-    
+
+    convergence_data = {"dt": [], "error_N_S1": []}
+
     for i, dt in enumerate(dt_list[:-1]):
-        convergence_data['dt'].append(dt)
-        
+        convergence_data["dt"].append(dt)
+
         # 終状態での誤差
-        error = abs(results_list[i]['populations']['N_S1'][-1] - reference['populations']['N_S1'][-1])
-        convergence_data['error_N_S1'].append(error)
-    
+        error = abs(
+            results_list[i]["populations"]["N_S1"][-1]
+            - reference["populations"]["N_S1"][-1]
+        )
+        convergence_data["error_N_S1"].append(error)
+
     # 収束次数の計算（log-log plot の傾き）
     if len(dt_list) >= 3:
-        log_dt = np.log(convergence_data['dt'])
-        log_error = np.log(convergence_data['error_N_S1'])
+        log_dt = np.log(convergence_data["dt"])
+        log_error = np.log(convergence_data["error_N_S1"])
         convergence_order = np.polyfit(log_dt, log_error, 1)[0]
         print(f"収束次数: {convergence_order:.2f} (理論値: 2.0)")
-    
+
     return convergence_data
 ```
 
@@ -2635,12 +2743,12 @@ $$
 
 #### 9.3.2 実用的な推奨値
 
-| 精度目標 | 時間刻み $\Delta t$ | ステップ数（$T=100$ fs） | 総ゲート数（4分子） |
-|---------|-------------------|---------------------|----------------|
-| $10^{-2}$ | 1 fs | 100 | $4.3 \times 10^4$ |
-| $10^{-3}$ | 0.3 fs | 333 | $1.4 \times 10^5$ |
-| $10^{-4}$ | 0.1 fs | 1000 | $4.3 \times 10^5$ |
-| $10^{-5}$ | 0.03 fs | 3333 | $1.4 \times 10^6$ |
+| 精度目標  | 時間刻み $\Delta t$ | ステップ数（$T=100$ fs） | 総ゲート数（4分子） |
+| --------- | ------------------- | ------------------------ | ------------------- |
+| $10^{-2}$ | 1 fs                | 100                      | $4.3 \times 10^4$   |
+| $10^{-3}$ | 0.3 fs              | 333                      | $1.4 \times 10^5$   |
+| $10^{-4}$ | 0.1 fs              | 1000                     | $4.3 \times 10^5$   |
+| $10^{-5}$ | 0.03 fs             | 3333                     | $1.4 \times 10^6$   |
 
 **推奨**: 精度 $10^{-3}$ 〜 $10^{-4}$ が実用的（$\Delta t \approx 0.1$ fs）
 
@@ -2658,70 +2766,82 @@ from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
 from qiskit.quantum_info import Statevector
 import matplotlib.pyplot as plt
 
+
 def main():
     """
     4分子線形鎖の完全量子ダイナミクスシミュレーション
     """
     # パラメータ設定
     N_molecules = 4
-    
+
     params = {
-        'E_T': 1.5,  # eV
-        'E_S': 3.0,  # eV
-        'V': 0.01,   # eV
-        'gamma_TTA': 0.05,  # eV/hbar
-        'Gamma_fl': 1e-7,   # eV/hbar
-        'Gamma_ph': 1e-12,  # eV/hbar
-        'k_IC': 5e-8,       # eV/hbar
-        'k_ISC_ST': 1e-8,   # eV/hbar
-        'k_ISC_TS': 1e-11   # eV/hbar
+        "E_T": 1.5,  # eV
+        "E_S": 3.0,  # eV
+        "V": 0.01,  # eV
+        "gamma_TTA": 0.05,  # eV/hbar
+        "Gamma_fl": 1e-7,  # eV/hbar
+        "Gamma_ph": 1e-12,  # eV/hbar
+        "k_IC": 5e-8,  # eV/hbar
+        "k_ISC_ST": 1e-8,  # eV/hbar
+        "k_ISC_TS": 1e-11,  # eV/hbar
     }
-    
+
     # 時間発展パラメータ
     T_total = 100.0  # fs
     N_steps = 1000
-    
+
     # シミュレーション実行
-    results = full_time_evolution_simulation(N_molecules, params, T_total, N_steps, initial_state='all_triplet')
-    
+    results = full_time_evolution_simulation(
+        N_molecules, params, T_total, N_steps, initial_state="all_triplet"
+    )
+
     # 結果のプロット
     plot_population_dynamics(results)
-    
+
     # 検証
     verify_physical_constraints(results)
-    
+
     print("シミュレーション完了")
+
 
 def plot_population_dynamics(results):
     """個体数ダイナミクスのプロット"""
-    
-    times = results['times']
-    N_S0 = results['populations']['N_S0']
-    N_T1 = results['populations']['N_T1']
-    N_S1 = results['populations']['N_S1']
-    
+
+    times = results["times"]
+    N_S0 = results["populations"]["N_S0"]
+    N_T1 = results["populations"]["N_T1"]
+    N_S1 = results["populations"]["N_S1"]
+
     plt.figure(figsize=(10, 6))
-    plt.plot(times, N_S0, label='$N_{S_0}$', color='blue')
-    plt.plot(times, N_T1, label='$N_{T_1}$', color='red')
-    plt.plot(times, N_S1, label='$N_{S_1}$', color='green')
-    plt.xlabel('Time (fs)')
-    plt.ylabel('Population')
-    plt.title('Molecular Triplet State Dynamics (Qubit + Qiskit)')
+    plt.plot(times, N_S0, label="$N_{S_0}$", color="blue")
+    plt.plot(times, N_T1, label="$N_{T_1}$", color="red")
+    plt.plot(times, N_S1, label="$N_{S_1}$", color="green")
+    plt.xlabel("Time (fs)")
+    plt.ylabel("Population")
+    plt.title("Molecular Triplet State Dynamics (Qubit + Qiskit)")
     plt.legend()
     plt.grid(True)
-    plt.savefig('population_dynamics_qubit_qiskit.png', dpi=300)
+    plt.savefig("population_dynamics_qubit_qiskit.png", dpi=300)
     plt.show()
+
 
 def verify_physical_constraints(results):
     """物理的制約の検証"""
-    
-    for i, t in enumerate(results['times']):
-        N_total = results['populations']['N_S0'][i] + results['populations']['N_T1'][i] + results['populations']['N_S1'][i]
-        
-        assert abs(N_total - 4.0) < 1e-6, f"粒子数保存則違反 at t={t}: N_total={N_total}"
-    
+
+    for i, t in enumerate(results["times"]):
+        N_total = (
+            results["populations"]["N_S0"][i]
+            + results["populations"]["N_T1"][i]
+            + results["populations"]["N_S1"][i]
+        )
+
+        assert (
+            abs(N_total - 4.0) < 1e-6
+        ), f"粒子数保存則違反 at t={t}: N_total={N_total}"
+
     print("✓ 粒子数保存則: OK")
     print("✓ 物理的制約: 満足")
+
 
 if __name__ == "__main__":
     main()
@@ -2747,7 +2867,6 @@ if __name__ == "__main__":
 
 ---
 
-
 ## 11. 精度保証と検証手法
 
 ### 11.1 CPTP性の検証
@@ -2765,11 +2884,11 @@ def verify_positivity(rho, tolerance=1e-10):
     """正定値性の検証"""
     eigenvalues = np.linalg.eigvalsh(rho)
     min_eigenvalue = np.min(eigenvalues)
-    
+
     if min_eigenvalue < -tolerance:
         print(f"警告: 負の固有値検出 λ_min = {min_eigenvalue:.2e}")
         return False
-    
+
     return True
 ```
 
@@ -2793,11 +2912,11 @@ $$
 def verify_trace_preservation(rho, tolerance=1e-10):
     """トレース保存の検証"""
     trace = np.trace(rho)
-    
+
     if abs(trace - 1.0) > tolerance:
         print(f"警告: トレース異常 Tr[ρ] = {trace:.10f}")
         return False
-    
+
     return True
 ```
 
@@ -2812,12 +2931,12 @@ $$
 ```python
 def verify_hermiticity(rho, tolerance=1e-10):
     """エルミート性の検証"""
-    hermiticity_error = np.linalg.norm(rho - rho.conj().T, 'fro')
-    
+    hermiticity_error = np.linalg.norm(rho - rho.conj().T, "fro")
+
     if hermiticity_error > tolerance:
         print(f"警告: エルミート性違反 ||ρ - ρ†|| = {hermiticity_error:.2e}")
         return False
-    
+
     return True
 ```
 
@@ -2831,31 +2950,31 @@ Qubit表現では、各分子の $|11\rangle$ 状態は物理的に意味を持�
 def verify_physical_subspace_preservation(statevector, N_molecules, tolerance=1e-10):
     """
     物理的部分空間の保存を検証
-    
+
     Returns:
     --------
     is_valid : bool
     leakage_prob : float
         非物理状態への確率漏れ
     """
-    state_array = statevector.data if hasattr(statevector, 'data') else statevector
+    state_array = statevector.data if hasattr(statevector, "data") else statevector
     n_qubits = 2 * N_molecules
-    
+
     leakage_prob = 0.0
-    
+
     for idx in range(len(state_array)):
-        binary = format(idx, f'0{len(state_array).bit_length()}b')[:n_qubits]
-        
+        binary = format(idx, f"0{len(state_array).bit_length()}b")[:n_qubits]
+
         # 各分子で |11⟩ をチェック
         for mol in range(N_molecules):
-            if binary[2*mol:2*mol+2] == '11':
-                leakage_prob += abs(state_array[idx])**2
+            if binary[2 * mol : 2 * mol + 2] == "11":
+                leakage_prob += abs(state_array[idx]) ** 2
                 break
-    
+
     if leakage_prob > tolerance:
         print(f"警告: 非物理状態への漏れ = {leakage_prob:.2e}")
         return False, leakage_prob
-    
+
     return True, leakage_prob
 ```
 
@@ -2870,14 +2989,16 @@ $$
 ```python
 def verify_particle_number_conservation(populations, N_molecules, tolerance=1e-10):
     """粒子数保存則の検証"""
-    
-    for i, pops in enumerate(zip(populations['N_S0'], populations['N_T1'], populations['N_S1'])):
+
+    for i, pops in enumerate(
+        zip(populations["N_S0"], populations["N_T1"], populations["N_S1"])
+    ):
         N_total = sum(pops)
-        
+
         if abs(N_total - N_molecules) > tolerance:
             print(f"警告: ステップ {i} で粒子数保存違反 N_total = {N_total:.10f}")
             return False
-    
+
     return True
 ```
 
@@ -2898,28 +3019,29 @@ $$
 ```python
 def calculate_von_neumann_entropy(rho, tolerance=1e-15):
     """von Neumannエントロピーの計算"""
-    
+
     eigenvalues = np.linalg.eigvalsh(rho)
-    
+
     # 正の固有値のみ使用（数値誤差で負になることを防ぐ）
     eigenvalues = eigenvalues[eigenvalues > tolerance]
-    
+
     entropy = -np.sum(eigenvalues * np.log(eigenvalues))
-    
+
     return entropy
+
 
 def verify_entropy_increase(rho_list, tolerance=1e-8):
     """エントロピー非減少の検証"""
-    
+
     entropies = [calculate_von_neumann_entropy(rho) for rho in rho_list]
-    
+
     for i in range(len(entropies) - 1):
-        dS = entropies[i+1] - entropies[i]
-        
+        dS = entropies[i + 1] - entropies[i]
+
         if dS < -tolerance:
             print(f"警告: ステップ {i} でエントロピー減少 ΔS = {dS:.2e}")
             return False
-    
+
     return True
 ```
 
@@ -2933,7 +3055,7 @@ Qubit実装とQudit実装（MQT-Qudits）を同一パラメータで実行し、
 def compare_with_qudit_implementation(results_qubit, results_qudit, tolerance=1e-3):
     """
     Qubit実装とQudit実装の結果を比較
-    
+
     Parameters:
     -----------
     results_qubit : dict
@@ -2942,37 +3064,39 @@ def compare_with_qudit_implementation(results_qubit, results_qudit, tolerance=1e
         Qudit実装の結果
     tolerance : float
         許容誤差
-    
+
     Returns:
     --------
     max_error : float
     """
-    times_qubit = np.array(results_qubit['times'])
-    times_qudit = np.array(results_qudit['times'])
-    
+    times_qubit = np.array(results_qubit["times"])
+    times_qudit = np.array(results_qudit["times"])
+
     # 時間軸を合わせる（補間）
     from scipy.interpolate import interp1d
-    
-    N_S1_qubit_interp = interp1d(times_qubit, results_qubit['populations']['N_S1'], kind='linear')
-    
+
+    N_S1_qubit_interp = interp1d(
+        times_qubit, results_qubit["populations"]["N_S1"], kind="linear"
+    )
+
     # 共通時間点での誤差計算
     common_times = times_qudit[times_qudit <= times_qubit[-1]]
-    
+
     errors = []
     for t in common_times:
         N_S1_qubit = N_S1_qubit_interp(t)
-        N_S1_qudit = results_qudit['populations']['N_S1'][list(times_qudit).index(t)]
-        
+        N_S1_qudit = results_qudit["populations"]["N_S1"][list(times_qudit).index(t)]
+
         error = abs(N_S1_qubit - N_S1_qudit)
         errors.append(error)
-    
+
     max_error = np.max(errors)
     mean_error = np.mean(errors)
-    
+
     print(f"Qubit vs Qudit 比較:")
     print(f"  最大誤差: {max_error:.2e}")
     print(f"  平均誤差: {mean_error:.2e}")
-    
+
     if max_error < tolerance:
         print(f"  ✓ 許容誤差内 (< {tolerance})")
         return True
@@ -3003,7 +3127,7 @@ $$
 def compare_with_experimental_data(simulation_results, experimental_data):
     """
     シミュレーション結果と実験データの比較
-    
+
     Parameters:
     -----------
     simulation_results : dict
@@ -3011,31 +3135,35 @@ def compare_with_experimental_data(simulation_results, experimental_data):
         {'times': array, 'intensity': array}
     """
     from scipy.optimize import curve_fit
-    
+
     # シミュレーションから蛍光強度を計算
     Gamma_fl = 1e-7  # eV/hbar
-    I_sim = Gamma_fl * np.array(simulation_results['populations']['N_S1'])
-    t_sim = np.array(simulation_results['times'])
-    
+    I_sim = Gamma_fl * np.array(simulation_results["populations"]["N_S1"])
+    t_sim = np.array(simulation_results["times"])
+
     # 実験データと比較（スケーリング因子を含む）
     def fit_function(t, scale):
         return scale * np.interp(t, t_sim, I_sim)
-    
-    popt, _ = curve_fit(fit_function, experimental_data['times'], experimental_data['intensity'])
-    
+
+    popt, _ = curve_fit(
+        fit_function, experimental_data["times"], experimental_data["intensity"]
+    )
+
     scale_factor = popt[0]
-    
+
     # フィッティング品質（R²）
-    I_fit = fit_function(experimental_data['times'], scale_factor)
-    residuals = experimental_data['intensity'] - I_fit
+    I_fit = fit_function(experimental_data["times"], scale_factor)
+    residuals = experimental_data["intensity"] - I_fit
     ss_res = np.sum(residuals**2)
-    ss_tot = np.sum((experimental_data['intensity'] - np.mean(experimental_data['intensity']))**2)
+    ss_tot = np.sum(
+        (experimental_data["intensity"] - np.mean(experimental_data["intensity"])) ** 2
+    )
     r_squared = 1 - (ss_res / ss_tot)
-    
+
     print(f"実験データとの比較:")
     print(f"  スケーリング因子: {scale_factor:.2e}")
     print(f"  R² = {r_squared:.4f}")
-    
+
     return r_squared
 ```
 
@@ -3050,22 +3178,27 @@ def compare_with_experimental_data(simulation_results, experimental_data):
 #### 12.1.1 主要な成果
 
 1. **Qubit表現の完全定式化**
+
    - 3準位分子系を2-qubitでエンコードする厳密な方法
    - 物理的部分空間の定義と保存則の理論的保証
 
 2. **Stinespring Dilationの完全実装**
+
    - 全てのLindblad演算子をユニタリ量子回路に変換
    - 補助qubitを用いた厳密な非ユニタリ過程の表現
 
 3. **量子回路の完全分解**
+
    - ハミルトニアン項のPauli演算子分解
    - TTA、蛍光、燐光、IC、ISCの完全な量子ゲート実装
 
 4. **鈴木トロッター分解による時間発展**
+
    - 2次対称分解による高精度時間発展
    - 誤差評価と収束性の定量的解析
 
 5. **Qiskit実装の完全コード**
+
    - Python/Qiskitによる実装可能な完全なコード例
    - 初期状態設定、時間発展、観測量計算、結果可視化
 
@@ -3075,19 +3208,19 @@ def compare_with_experimental_data(simulation_results, experimental_data):
 
 ### 12.2 Qubit実装とQudit実装の比較まとめ
 
-| 項目 | Qubit実装（本文書） | Qudit実装 |
-|------|------------------|----------|
-| **表現の自然性** | 中程度（エンコーディング必要） | 高い（直接的） |
-| **状態空間次元**（N=4） | $2^8 = 256$ (物理的: 81) | $3^4 = 81$ |
-| **Qubit/Qutrit数** | 8 + 7〜22 (補助) | 4 + 補助qutrit |
-| **ゲート数/ステップ** | 約430個 | 約55個 |
-| **ゲート効率** | 約1/8 | 高効率 |
-| **ハードウェア可用性** | 広く利用可能（IBM, Google等） | 実験段階 |
-| **フレームワーク成熟度** | Qiskit（成熟） | MQT-Qudits（開発中） |
-| **実装の複雑さ** | 高（制御ゲート多用） | 中程度 |
-| **スケーラビリティ** | 制限的（ゲート数増大） | 高い |
-| **エラー訂正** | 確立された手法 | 研究段階 |
-| **推奨用途** | 現在のハードウェアでの実装 | 将来のquditハードウェア向け |
+| 項目                     | Qubit実装（本文書）            | Qudit実装                   |
+| ------------------------ | ------------------------------ | --------------------------- |
+| **表現の自然性**         | 中程度（エンコーディング必要） | 高い（直接的）              |
+| **状態空間次元**（N=4）  | $2^8 = 256$ (物理的: 81)       | $3^4 = 81$                  |
+| **Qubit/Qutrit数**       | 8 + 7〜22 (補助)               | 4 + 補助qutrit              |
+| **ゲート数/ステップ**    | 約430個                        | 約55個                      |
+| **ゲート効率**           | 約1/8                          | 高効率                      |
+| **ハードウェア可用性**   | 広く利用可能（IBM, Google等）  | 実験段階                    |
+| **フレームワーク成熟度** | Qiskit（成熟）                 | MQT-Qudits（開発中）        |
+| **実装の複雑さ**         | 高（制御ゲート多用）           | 中程度                      |
+| **スケーラビリティ**     | 制限的（ゲート数増大）         | 高い                        |
+| **エラー訂正**           | 確立された手法                 | 研究段階                    |
+| **推奨用途**             | 現在のハードウェアでの実装     | 将来のquditハードウェア向け |
 
 ### 12.3 実装の意義
 
@@ -3146,37 +3279,37 @@ def compare_with_experimental_data(simulation_results, experimental_data):
 
 ### 開放量子系理論
 
-1. Breuer, H.-P., & Petruccione, F. (2002). *The Theory of Open Quantum Systems*. Oxford University Press.
+1. Breuer, H.-P., & Petruccione, F. (2002). _The Theory of Open Quantum Systems_. Oxford University Press.
 
-2. Gorini, V., Kossakowski, A., & Sudarshan, E. C. G. (1976). "Completely positive dynamical semigroups of N-level systems." *Journal of Mathematical Physics*, **17**(5), 821-825.
+2. Gorini, V., Kossakowski, A., & Sudarshan, E. C. G. (1976). "Completely positive dynamical semigroups of N-level systems." _Journal of Mathematical Physics_, **17**(5), 821-825.
 
-3. Lindblad, G. (1976). "On the generators of quantum dynamical semigroups." *Communications in Mathematical Physics*, **48**(2), 119-130.
+3. Lindblad, G. (1976). "On the generators of quantum dynamical semigroups." _Communications in Mathematical Physics_, **48**(2), 119-130.
 
-4. Carmichael, H. J. (1999). *Statistical Methods in Quantum Optics 1: Master Equations and Fokker-Planck Equations*. Springer.
+4. Carmichael, H. J. (1999). _Statistical Methods in Quantum Optics 1: Master Equations and Fokker-Planck Equations_. Springer.
 
 5. Preskill, J. (1998). "Lecture Notes on Quantum Computation." Caltech Lecture Notes.
 
 ### Stinespring Dilation
 
-6. Stinespring, W. F. (1955). "Positive functions on C*-algebras." *Proceedings of the American Mathematical Society*, **6**(2), 211-216.
+6. Stinespring, W. F. (1955). "Positive functions on C*-algebras." *Proceedings of the American Mathematical Society\*, **6**(2), 211-216.
 
-7. Choi, M.-D. (1975). "Completely positive linear maps on complex matrices." *Linear Algebra and Its Applications*, **10**(3), 285-290.
+7. Choi, M.-D. (1975). "Completely positive linear maps on complex matrices." _Linear Algebra and Its Applications_, **10**(3), 285-290.
 
-8. Kraus, K. (1983). *States, Effects, and Operations: Fundamental Notions of Quantum Theory*. Springer.
+8. Kraus, K. (1983). _States, Effects, and Operations: Fundamental Notions of Quantum Theory_. Springer.
 
 ### 量子回路と量子アルゴリズム
 
-9. Nielsen, M. A., & Chuang, I. L. (2010). *Quantum Computation and Quantum Information* (10th Anniversary ed.). Cambridge University Press.
+9. Nielsen, M. A., & Chuang, I. L. (2010). _Quantum Computation and Quantum Information_ (10th Anniversary ed.). Cambridge University Press.
 
-10. Lloyd, S. (1996). "Universal Quantum Simulators." *Science*, **273**(5278), 1073-1078.
+10. Lloyd, S. (1996). "Universal Quantum Simulators." _Science_, **273**(5278), 1073-1078.
 
-11. Barenco, A., et al. (1995). "Elementary gates for quantum computation." *Physical Review A*, **52**(5), 3457-3467.
+11. Barenco, A., et al. (1995). "Elementary gates for quantum computation." _Physical Review A_, **52**(5), 3457-3467.
 
-12. Childs, A. M., et al. (2019). "Theory of Trotter error with commutator scaling." *Physical Review X*, **9**(1), 011011.
+12. Children, A. M., et al. (2019). "Theory of Trotter error with commutator scaling." _Physical Review X_, **9**(1), 011011.
 
 ### Qiskit関連
 
-13. Qiskit Development Team (2021). *Qiskit: An Open-source Framework for Quantum Computing*. https://qiskit.org/
+13. Qiskit Development Team (2021). _Qiskit: An Open-source Framework for Quantum Computing_. https://qiskit.org/
 
 14. Aleksandrowicz, G., et al. (2019). "Qiskit: An Open-Source Framework for Quantum Computing." Zenodo. https://doi.org/10.5281/zenodo.2562111
 
@@ -3184,13 +3317,13 @@ def compare_with_experimental_data(simulation_results, experimental_data):
 
 ### 分子励起状態とTTA
 
-16. Smith, M. B., & Michl, J. (2010). "Singlet fission." *Chemical Reviews*, **110**(11), 6891-6936.
+16. Smith, M. B., & Michl, J. (2010). "Singlet fission." _Chemical Reviews_, **110**(11), 6891-6936.
 
-17. Singh-Rachford, T. N., & Castellano, F. N. (2010). "Photon upconversion based on sensitized triplet–triplet annihilation." *Coordination Chemistry Reviews*, **254**(21-22), 2560-2573.
+17. Singh-Rachford, T. N., & Castellano, F. N. (2010). "Photon upconversion based on sensitized triplet–triplet annihilation." _Coordination Chemistry Reviews_, **254**(21-22), 2560-2573.
 
-18. Congreve, D. N., et al. (2013). "External quantum efficiency above 100% in a singlet-exciton-fission–based organic photovoltaic cell." *Science*, **340**(6130), 334-337.
+18. Congreve, D. N., et al. (2013). "External quantum efficiency above 100% in a singlet-exciton-fission–based organic photovoltaic cell." _Science_, **340**(6130), 334-337.
 
-19. Turro, N. J., Ramamurthy, V., & Scaiano, J. C. (2010). *Modern Molecular Photochemistry of Organic Molecules*. University Science Books.
+19. Turro, N. J., Ramamurthy, V., & Scaiano, J. C. (2010). _Modern Molecular Photochemistry of Organic Molecules_. University Science Books.
 
 ### 本プロジェクトの関連文書
 
@@ -3208,27 +3341,27 @@ def compare_with_experimental_data(simulation_results, experimental_data):
 
 ## 付録A: 数式記号一覧
 
-| 記号 | 意味 |
-|------|------|
-| $\hat{\rho}$ | 密度演算子 |
-| $\hat{H}_{\text{system}}$ | 系のハミルトニアン |
-| $\hat{L}_\alpha$ | Lindblad演算子 |
-| $\gamma_\alpha$ | 散逸速度定数 |
-| $\mathcal{D}[\hat{L}]$ | Lindblad超演算子 |
-| $\hat{U}_{SE}$ | Stinespringユニタリ演算子 |
-| $\hat{K}_\alpha$ | Kraus演算子 |
-| $\|S_0\rangle, \|T_1\rangle, \|S_1\rangle$ | 分子電子状態 |
-| $\|00\rangle, \|01\rangle, \|10\rangle$ | Qubit表現 |
-| $E_T, E_S$ | 三重項・一重項エネルギー |
-| $V_{ij}$ | エネルギー移動積分 |
-| $\gamma_{\text{TTA}}$ | TTA速度定数 |
-| $\Gamma_{\text{fl}}, \Gamma_{\text{ph}}$ | 蛍光・燐光速度定数 |
-| $k_{\text{IC}}$ | 内部転換速度定数 |
-| $k_{\text{ISC}}$ | 項間交差速度定数 |
-| $\Delta t$ | 時間刻み |
-| $N$ | 分子数 |
-| $\hbar$ | 換算プランク定数 |
-| $X, Y, Z$ | Pauli演算子 |
+| 記号                                       | 意味                      |
+| ------------------------------------------ | ------------------------- |
+| $\hat{\rho}$                               | 密度演算子                |
+| $\hat{H}_{\text{system}}$                  | 系のハミルトニアン        |
+| $\hat{L}_\alpha$                           | Lindblad演算子            |
+| $\gamma_\alpha$                            | 散逸速度定数              |
+| $\mathcal{D}[\hat{L}]$                     | Lindblad超演算子          |
+| $\hat{U}_{SE}$                             | Stinespringユニタリ演算子 |
+| $\hat{K}_\alpha$                           | Kraus演算子               |
+| $\|S_0\rangle, \|T_1\rangle, \|S_1\rangle$ | 分子電子状態              |
+| $\|00\rangle, \|01\rangle, \|10\rangle$    | Qubit表現                 |
+| $E_T, E_S$                                 | 三重項・一重項エネルギー  |
+| $V_{ij}$                                   | エネルギー移動積分        |
+| $\gamma_{\text{TTA}}$                      | TTA速度定数               |
+| $\Gamma_{\text{fl}}, \Gamma_{\text{ph}}$   | 蛍光・燐光速度定数        |
+| $k_{\text{IC}}$                            | 内部転換速度定数          |
+| $k_{\text{ISC}}$                           | 項間交差速度定数          |
+| $\Delta t$                                 | 時間刻み                  |
+| $N$                                        | 分子数                    |
+| $\hbar$                                    | 換算プランク定数          |
+| $X, Y, Z$                                  | Pauli演算子               |
 
 ---
 
@@ -3237,12 +3370,14 @@ def compare_with_experimental_data(simulation_results, experimental_data):
 実装時に確認すべき項目：
 
 ### 初期設定
+
 - [ ] 分子数 $N$ の設定
 - [ ] 物理パラメータの定義（$E_T, E_S, V, \gamma_{\text{TTA}}, \ldots$）
 - [ ] 時間発展パラメータ（$T_{\text{total}}, N_{\text{steps}}$）
 - [ ] Qubit数の確認（系: $2N$、補助: 7〜$6N-2$）
 
 ### 量子回路構築
+
 - [ ] QuantumCircuit の初期化
 - [ ] 初期状態の設定（例：全分子三重項状態）
 - [ ] オンサイトエネルギー項の実装
@@ -3252,11 +3387,13 @@ def compare_with_experimental_data(simulation_results, experimental_data):
 - [ ] 無放射遷移（IC・ISC）の実装
 
 ### 時間発展
+
 - [ ] Trotter分解の順序（2次対称）
 - [ ] 各ステップでの時間発展演算子適用
 - [ ] 補助qubitのリセット（再利用の場合）
 
 ### 観測と検証
+
 - [ ] 各ステップでの個体数計算
 - [ ] トレース保存の検証
 - [ ] 物理的部分空間の検証
@@ -3264,6 +3401,7 @@ def compare_with_experimental_data(simulation_results, experimental_data):
 - [ ] エントロピー非減少の確認
 
 ### 結果の可視化
+
 - [ ] 個体数ダイナミクスのプロット
 - [ ] 蛍光強度の計算と可視化
 - [ ] 誤差評価（Trotter誤差、収束性）
@@ -3290,4 +3428,3 @@ def compare_with_experimental_data(simulation_results, experimental_data):
 ---
 
 **END OF DOCUMENT**
-

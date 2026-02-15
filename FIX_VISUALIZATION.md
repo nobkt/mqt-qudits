@@ -132,21 +132,24 @@ Generate CustomTwo Gate:
 def compile_unitary_to_gates(U, qudit_indices):
     result = compiler.compile(U)
     gates = []
-    
+
     for gate in result.gate_sequence.gates:
         # Direct use of global indices
-        gates.append({
-            'type': gate.gate_type,
-            'qudit_indices': qudit_indices,
-            'params': gate.parameters  # ← Contains global indices!
-        })
-    
+        gates.append(
+            {
+                "type": gate.gate_type,
+                "qudit_indices": qudit_indices,
+                "params": gate.parameters,  # ← Contains global indices!
+            }
+        )
+
     return gates
 
+
 # In _add_gates_to_circuit:
-circuit.r(qudits[0], [params['level1'], params['level2'], ...])
-                      # ↑ level1=1, level2=3
-                      # ✗ FAILS: 3 >= 3
+circuit.r(qudits[0], [params["level1"], params["level2"], ...])
+# ↑ level1=1, level2=3
+# ✗ FAILS: 3 >= 3
 ```
 
 ### After Fix
@@ -154,46 +157,50 @@ circuit.r(qudits[0], [params['level1'], params['level2'], ...])
 ```python
 def compile_unitary_to_gates(U, qudit_indices):
     result = compiler.compile(U)
-    
+
     # NEW: Analyze subspace type
     subspace_type = self._analyze_subspace(
-        result.structure_info.active_subspace,
-        dimensions=[3, 3]
+        result.structure_info.active_subspace, dimensions=[3, 3]
     )
-    
+
     gates = []
-    
-    if subspace_type['type'] == 'multi_qudit':
+
+    if subspace_type["type"] == "multi_qudit":
         # Use CustomTwo for multi-qudit operations
-        gates.append({
-            'type': 'CustomTwo',
-            'qudit_indices': qudit_indices,
-            'params': {'unitary': U}  # Full unitary matrix
-        })
+        gates.append(
+            {
+                "type": "CustomTwo",
+                "qudit_indices": qudit_indices,
+                "params": {"unitary": U},  # Full unitary matrix
+            }
+        )
     else:
         # Use R gates with LOCAL indices for single-qudit
         for gate in result.gate_sequence.gates:
             params = gate.parameters.copy()
-            
+
             # Convert global → local indices
-            params['level1'] = subspace_type['global_to_local'][params['level1']]
-            params['level2'] = subspace_type['global_to_local'][params['level2']]
-            
-            gates.append({
-                'type': gate.gate_type,
-                'qudit_indices': [qudit_indices[subspace_type['qudit_idx']]],
-                'params': params  # ← Now contains local indices!
-            })
-    
+            params["level1"] = subspace_type["global_to_local"][params["level1"]]
+            params["level2"] = subspace_type["global_to_local"][params["level2"]]
+
+            gates.append(
+                {
+                    "type": gate.gate_type,
+                    "qudit_indices": [qudit_indices[subspace_type["qudit_idx"]]],
+                    "params": params,  # ← Now contains local indices!
+                }
+            )
+
     return gates
 
+
 # In _add_gates_to_circuit:
-if gate_type == 'CustomTwo':
-    circuit.cu_two(qudits, params['unitary'])  # ✓ Works!
-elif gate_type == 'R':
-    circuit.r(qudits[0], [params['level1'], params['level2'], ...])
-                          # ↑ Local indices (0-2)
-                          # ✓ Works!
+if gate_type == "CustomTwo":
+    circuit.cu_two(qudits, params["unitary"])  # ✓ Works!
+elif gate_type == "R":
+    circuit.r(qudits[0], [params["level1"], params["level2"], ...])
+    # ↑ Local indices (0-2)
+    # ✓ Works!
 ```
 
 ## Mathematical Correctness
@@ -203,22 +210,22 @@ elif gate_type == 'R':
 ```
 Original Problem:
   |ψ⟩ = α|01⟩ + β|10⟩
-  
+
   Cannot be written as:
     (Single-qudit gate on qudit 0) ⊗ I
     or
     I ⊗ (Single-qudit gate on qudit 1)
-  
+
   Requires: Two-qudit interaction
 
 Solution:
   CustomTwo gate preserves full 2×2 unitary:
-  
+
   U = [cos(θ)    -i·sin(θ)]
       [-i·sin(θ)  cos(θ)  ]
-  
+
   Applied to |01⟩, |10⟩ basis
-  
+
   Fidelity = 1.0 (exact)
   No approximations
   No heuristics
@@ -235,7 +242,7 @@ With Sparse Compiler (Before fix):
 
 With Sparse Compiler (After fix):
   Detect 2×2 → Generate CustomTwo (2×2) → ~10-50 basic gates
-  
+
   Improvement: ~95% gate reduction
   Correctness: Exact (fidelity = 1.0)
 ```
@@ -247,12 +254,14 @@ The fix correctly implements the principle:
 > **If multiple qudits are involved, use multi-qudit gates.**
 
 This ensures:
+
 1. ✅ Correctness (no assertion errors)
 2. ✅ Efficiency (sparse structure utilized)
 3. ✅ Rigor (exact decomposition, fidelity = 1.0)
 4. ✅ Maintainability (clear logic, well-tested)
 
 The sparse compiler's value is preserved:
+
 - Structure detection still works
 - CustomTwo is still optimized (2×2 or 3×3, not full 9×9)
 - LogEntQRCEXPass still decomposes efficiently

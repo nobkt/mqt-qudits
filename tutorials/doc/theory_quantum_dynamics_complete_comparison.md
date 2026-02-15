@@ -219,7 +219,7 @@ $$
 
 $$
 \begin{align}
-\hat{H}_{\text{transfer}} = V \Big[ 
+\hat{H}_{\text{transfer}} = V \Big[
 &|S_0\rangle_0 \langle T_1|_0 \otimes |T_1\rangle_1 \langle S_0|_1 \otimes \mathbb{I}_2 \otimes \mathbb{I}_3 \\
 &+ |T_1\rangle_0 \langle S_0|_0 \otimes |S_0\rangle_1 \langle T_1|_1 \otimes \mathbb{I}_2 \otimes \mathbb{I}_3 \\
 &+ \mathbb{I}_0 \otimes |S_0\rangle_1 \langle T_1|_1 \otimes |T_1\rangle_2 \langle S_0|_2 \otimes \mathbb{I}_3 \\
@@ -777,10 +777,10 @@ $$
 $\hat{H}_{\text{TTA}}^{(i,i+1)}$ は3次元部分空間 $\text{span}\{|02\rangle, |11\rangle, |20\rangle\}$ で作用する。この部分空間での行列表現：
 
 $$
-\mathbf{H}_{\text{3D}} = J \begin{pmatrix} 
-0 & 1 & 0 \\ 
-1 & 0 & 1 \\ 
-0 & 1 & 0 
+\mathbf{H}_{\text{3D}} = J \begin{pmatrix}
+0 & 1 & 0 \\
+1 & 0 & 1 \\
+0 & 1 & 0
 \end{pmatrix}
 $$
 
@@ -962,6 +962,7 @@ $$
 $$
 
 例：
+
 - $|0000\rangle$: index = 0
 - $|0001\rangle$: index = 1
 - $|1001\rangle$: index = $1 \cdot 27 + 0 \cdot 9 + 0 \cdot 3 + 1 \cdot 1 = 28$
@@ -1065,6 +1066,7 @@ $$
 
 ```python
 from scipy.linalg import expm
+
 U_total = expm(-1j * H_total * t / hbar)
 ```
 
@@ -1568,10 +1570,12 @@ $$
 手順：
 
 1. 4-qubit基底（$2^4 = 16$ 次元）で $\mathbf{H}_{\text{TTA}}^{(i,j)}$ 行列を構築
+
    - 非ゼロ要素は上記の4つの行列要素のみ
    - それ以外は疎行列（ほとんどゼロ）
 
 2. scipy.linalg.expmで時間発展演算子を計算
+
    ```python
    H_TTA = build_H_TTA_matrix(J, mol_i, mol_j)  # 16×16 sparse matrix
    U_TTA = expm(-1j * H_TTA * t / hbar)
@@ -1579,11 +1583,12 @@ $$
 
 3. Qiskitの`UnitaryGate`として4-qubit回路に追加
    ```python
-   gate = UnitaryGate(U_TTA, label='U_TTA')
-   circuit.append(gate, [2*mol_i, 2*mol_i+1, 2*mol_j, 2*mol_j+1])
+   gate = UnitaryGate(U_TTA, label="U_TTA")
+   circuit.append(gate, [2 * mol_i, 2 * mol_i + 1, 2 * mol_j, 2 * mol_j + 1])
    ```
 
 **厳密性の保証**：
+
 - 行列指数関数の数値精度: $< 10^{-15}$ （scipy.linalg.expm）
 - ユニタリ性: $\|\mathbf{U}^\dagger \mathbf{U} - I\| < 10^{-14}$
 - 物理的部分空間の保存: 非物理的状態 $|11\rangle$ を含む基底への遷移がゼロ
@@ -1627,14 +1632,17 @@ circuit.x(6)  # 分子3をT1状態に
 1トロッターステップ $\hat{U}_{\text{Trotter}}(\Delta t)$ は、以下の順序でゲートを適用：
 
 1. **前半のオンサイト項**: 各分子 $i = 0, 1, 2, 3$ に対して
+
    - `rz(theta_0, 2*i)`
    - `rz(theta_1, 2*i+1)`
    - `rzz(theta_zz, 2*i, 2*i+1)`
 
 2. **前半のエネルギー移動項**: 各ペア $(i, i+1)$, $i = 0, 1, 2$ に対して
+
    - `UnitaryGate(U_transfer^(i,i+1)(dt/2))` を4-qubitに適用
 
 3. **TTA項（全体）**: 各ペア $(i, i+1)$, $i = 0, 1, 2$ に対して
+
    - `UnitaryGate(U_TTA^(i,i+1)(dt))` を4-qubitに適用
 
 4. **後半のエネルギー移動項**: 逆順（$i = 2, 1, 0$）で適用
@@ -1661,7 +1669,7 @@ circuit.x(6)  # 分子3をT1状態に
 from qiskit.quantum_info import Statevector
 
 # 初期状態
-initial_state = Statevector.from_label('01000001')  # little-endian
+initial_state = Statevector.from_label("01000001")  # little-endian
 
 # 回路適用
 final_state = initial_state.evolve(circuit)
@@ -1917,7 +1925,7 @@ $$
 ```python
 # ペア(i, i+1)に対して
 theta = -V * t / hbar
-circuit.cex(i, i+1, 0, 1, theta)
+circuit.cex(i, i + 1, 0, 1, theta)
 ```
 
 **疎構造認識の利点**: 汎用的な $9 \times 9$ ユニタリ分解（約1000ゲート）ではなく、2次元部分空間を認識することで1ゲートで実装可能。
@@ -2019,14 +2027,17 @@ $$
 
 上記の数学的分解を、MQT-Quditsの基本ゲートセットに変換：
 
-1. **Givens回転 $G_{01}(\theta_1)$**: 
+1. **Givens回転 $G_{01}(\theta_1)$**:
+
    - Rゲート: `R(i, θ₁, 0)` （準位0と1の間の回転）
 
 2. **Givens回転 $G_{12}(\theta_2)$**:
+
    - Rゲート（準位1-2）を実現するため、準位の置換とRゲートを組み合わせ
    - または直接的に: `R(i, θ₂, φ₂)` with appropriate level mapping
 
 3. **制御Givens回転 $G_{02}(\theta_3)$**:
+
    - CExゲート: `CEx(i, i+1, c, 0, θ₃)` （制御quditの状態に応じた回転）
 
 4. **対角位相 $D_0, D_1, D_2$**:
@@ -2037,17 +2048,17 @@ $$
 ```python
 # 固有値分解から計算されたパラメータ
 theta_1 = calculate_givens_angle_01(J, t, hbar)
-theta_2 = calculate_givens_angle_12(J, t, hbar)  
+theta_2 = calculate_givens_angle_12(J, t, hbar)
 theta_3 = calculate_givens_angle_02(J, t, hbar)
 phi_0, phi_1, phi_2 = calculate_diagonal_phases(J, t, hbar)
 
 # ゲート適用順序（疎構造認識により最適化）
-circuit.virtrz(i, 0, phi_0)          # 準位0への位相
-circuit.virtrz(i, 1, phi_1)          # 準位1への位相
-circuit.virtrz(i, 2, phi_2)          # 準位2への位相
-circuit.r(i, theta_1, 0)              # 準位0-1の回転
-circuit.cex(i, i+1, 1, 1, theta_2)   # 制御励起（準位1-2）
-circuit.cex(i+1, i, 2, 0, theta_3)   # 逆方向制御励起
+circuit.virtrz(i, 0, phi_0)  # 準位0への位相
+circuit.virtrz(i, 1, phi_1)  # 準位1への位相
+circuit.virtrz(i, 2, phi_2)  # 準位2への位相
+circuit.r(i, theta_1, 0)  # 準位0-1の回転
+circuit.cex(i, i + 1, 1, 1, theta_2)  # 制御励起（準位1-2）
+circuit.cex(i + 1, i, 2, 0, theta_3)  # 逆方向制御励起
 ```
 
 **パラメータの厳密な計算式**：
@@ -2067,7 +2078,8 @@ $$
 
 **疎構造認識の利点**: 汎用 $9 \times 9$ ユニタリ分解（約1000ゲート）に対して、99.4%削減。
 
-**数値精度**: 
+**数値精度**:
+
 - 分解誤差: $\|U_{\text{gate\,sequence}} - U_{\text{TTA}}^{3D}\| < 10^{-12}$
 - ユニタリ性: $\|U^\dagger U - I\| < 10^{-14}$
 
@@ -2093,7 +2105,7 @@ $$
 全Qutritを $|0\rangle$ に初期化した後、Xゲートを適用：
 
 ```python
-circuit = QuantumCircuit(4, dimensions=[3]*4)
+circuit = QuantumCircuit(4, dimensions=[3] * 4)
 circuit.x(0)  # 分子0: |0⟩ → |1⟩ = |T1⟩
 circuit.x(3)  # 分子3: |0⟩ → |1⟩ = |T1⟩
 ```
@@ -2107,13 +2119,16 @@ circuit.x(3)  # 分子3: |0⟩ → |1⟩ = |T1⟩
 1トロッターステップ $\hat{U}_{\text{Trotter}}(\Delta t)$ は、以下の順序でゲートを適用：
 
 1. **前半のオンサイト項**: 各分子 $i = 0, 1, 2, 3$ に対して
+
    - `virtrz(i, 1, -E_T1*dt/2/hbar)`
    - `virtrz(i, 2, -E_S1*dt/2/hbar)`
 
 2. **前半のエネルギー移動項**: 各ペア $(i, i+1)$, $i = 0, 1, 2$ に対して
+
    - `cex(i, i+1, 0, 1, -V*dt/2/hbar)`
 
 3. **TTA項（全体）**: 各ペア $(i, i+1)$, $i = 0, 1, 2$ に対して
+
    - 疎構造認識コンパイラで生成された6ゲートの列
 
 4. **後半のエネルギー移動項**: 逆順で適用
@@ -2185,7 +2200,7 @@ from mqt.qudits.simulation import MQTQuditProvider
 
 # 回路実行
 provider = MQTQuditProvider()
-backend = provider.get_backend('state_vector_simulator')
+backend = provider.get_backend("state_vector_simulator")
 job = backend.run(circuit)
 result = job.result()
 
@@ -2389,9 +2404,9 @@ theta_1 = 2 * alpha_1 * t / hbar
 theta_2 = 2 * alpha_2 * t / hbar
 theta_zz = 2 * alpha_3 * t / hbar
 
-circuit.rz(theta_1, 2*i)
-circuit.rz(theta_2, 2*i+1)
-circuit.rzz(theta_zz, 2*i+1, 2*i)
+circuit.rz(theta_1, 2 * i)
+circuit.rz(theta_2, 2 * i + 1)
+circuit.rzz(theta_zz, 2 * i + 1, 2 * i)
 ```
 
 **ゲート数**: 分子あたり3個のゲート（2個のRz + 1個のRzz）
@@ -2427,8 +2442,8 @@ H_transfer = build_H_transfer_qubit(V, mol_i, mol_j)
 U_transfer = expm(-1j * H_transfer * dt / hbar)
 
 # 回路に追加
-gate = UnitaryGate(U_transfer, label='U_tr')
-circuit.append(gate, [2*mol_i, 2*mol_i+1, 2*mol_j, 2*mol_j+1])
+gate = UnitaryGate(U_transfer, label="U_tr")
+circuit.append(gate, [2 * mol_i, 2 * mol_i + 1, 2 * mol_j, 2 * mol_j + 1])
 ```
 
 この方法は、以下の利点がある：
@@ -2632,14 +2647,17 @@ TTA項の特殊な構造（2つの独立な部分空間）を利用すると、�
 **ゲート数の見積もり**:
 
 部分空間1の回転：
+
 - Toffoliゲート: 2個（制御条件の実装）
 - CNOTゲート: Toffoli 1個あたり5-6個 → 10-12個
 - 単一qubitゲート: Ry 1個 + 補助回転 約4個 = 5個
 
 部分空間2の回転：
+
 - 同様に約10-12個のCNOTと5個の単一qubitゲート
 
 合計：
+
 - CNOTゲート: 約20-25個
 - 単一qubitゲート: 約10個
 - 総ゲート数: 約30-35ゲート
@@ -2663,8 +2681,8 @@ TTA項の特殊な構造（2つの独立な部分空間）を利用すると、�
 
 **参考文献**:
 
-- Barenco, A., et al. (1995). "Elementary gates for quantum computation." *Physical Review A*, 52(5), 3457.
-- Shende, V. V., & Markov, I. L. (2009). "On the CNOT-cost of TOFFOLI gates." *Quantum Information & Computation*, 9(5), 461-486.
+- Barenco, A., et al. (1995). "Elementary gates for quantum computation." _Physical Review A_, 52(5), 3457.
+- Shende, V. V., & Markov, I. L. (2009). "On the CNOT-cost of TOFFOLI gates." _Quantum Information & Computation_, 9(5), 461-486.
 
 #### 7.4.6 分解の完全性と一意性
 
@@ -2684,12 +2702,12 @@ TTA項の特殊な構造（2つの独立な部分空間）を利用すると、�
 
 **他の分解手法との比較**:
 
-| 手法 | ゲート数 | 精度 | 複雑さ |
-|------|----------|------|--------|
-| カスタムUnitaryGate | 1 | 厳密 | 低（実装簡単だが実機不可） |
-| 本稿の分解 | 30-35 | 厳密 | 中（理論的に明確） |
-| 汎用KAK分解 | 50-100 | 厳密 | 高（最適化が複雑） |
-| Solovay-Kitaev | 数千 | 近似 | 低（汎用的だが非効率） |
+| 手法                | ゲート数 | 精度 | 複雑さ                     |
+| ------------------- | -------- | ---- | -------------------------- |
+| カスタムUnitaryGate | 1        | 厳密 | 低（実装簡単だが実機不可） |
+| 本稿の分解          | 30-35    | 厳密 | 中（理論的に明確）         |
+| 汎用KAK分解         | 50-100   | 厳密 | 高（最適化が複雑）         |
+| Solovay-Kitaev      | 数千     | 近似 | 低（汎用的だが非効率）     |
 
 ### 7.5 Quditの基本ゲートセット
 
@@ -2886,19 +2904,19 @@ CExゲートの行列とは位相因子と基底順序が異なるが、以下�
 
 ```python
 # 位相調整（虚数単位 -i の実現）
-circuit.virtrz(i, 1, -np.pi/2)      # |T_1> に -pi/2 位相
-circuit.virtrz(i+1, 0, -np.pi/2)    # |S_0> に -pi/2 位相
+circuit.virtrz(i, 1, -np.pi / 2)  # |T_1> に -pi/2 位相
+circuit.virtrz(i + 1, 0, -np.pi / 2)  # |S_0> に -pi/2 位相
 
 # 主要な回転（CExゲート）
 theta = V * t / hbar
-circuit.cex(i, i+1, 0, 0, theta)    # 制御qudit i が |0> のとき回転
+circuit.cex(i, i + 1, 0, 0, theta)  # 制御qudit i が |0> のとき回転
 
 # 逆の制御（|10> -> |01> の対称性を実現）
-circuit.cex(i+1, i, 0, 0, theta)    # 制御qudit i+1 が |0> のとき回転
+circuit.cex(i + 1, i, 0, 0, theta)  # 制御qudit i+1 が |0> のとき回転
 
 # 位相補正
-circuit.virtrz(i, 1, np.pi/2)
-circuit.virtrz(i+1, 0, np.pi/2)
+circuit.virtrz(i, 1, np.pi / 2)
+circuit.virtrz(i + 1, 0, np.pi / 2)
 ```
 
 **ゲート数**: ペアあたり2個のCExゲート + 4個のVirtRzゲート = 6個
@@ -2910,13 +2928,16 @@ circuit.virtrz(i+1, 0, np.pi/2)
 CExゲートによる実装の厳密性を検証：
 
 1. **行列の一致**:
+
    $$
    \left\| U_{\text{CEx}} - U_{\text{transfer}}^{\text{target}} \right\|_F < 10^{-14}
    $$
+
    ここで、$\|\cdot\|_F$ はFrobeniusノルムである。
 
 2. **固有値の保存**:
    両者の固有値が一致することを確認：
+
    $$
    \text{eigenvalues}(U_{\text{CEx}}) = \{e^{-iVt/\hbar}, e^{iVt/\hbar}, 1, 1, \ldots, 1\}
    $$
@@ -3043,6 +3064,7 @@ U_{\text{TTA}}^{\text{subspace}}(t) = \begin{pmatrix}
 $$
 
 **重要な注意**: この行列は以下の構造を持つ：
+
 - **対角要素**: 実数（$\frac{1+\cos\omega}{2}$と$\cos\omega$）
 - **オフ対角要素**: 純虚数（$-\frac{i\sin\omega}{\sqrt{2}}$）
 - **U[0,2]とU[2,0]**: 負の値（$-\frac{1-\cos\omega}{2}$、固有ベクトル構造から）
@@ -3052,6 +3074,7 @@ $$
 **注意**: 以前のバージョンの文書では、オフ対角要素を実数（$\frac{\sqrt{2}\sin\omega}{2}$）と誤って記載していたが、これは**非ユニタリ行列**となり誤りである。正しくは純虚数でなければならない。
 
 **検証コード**:
+
 ```python
 from scipy.linalg import expm
 import numpy as np
@@ -3062,9 +3085,7 @@ dt = 10.0  # fs
 hbar = 0.6582  # eV·fs
 
 # ハミルトニアン
-H_TTA = J * np.array([[0, 1, 0],
-                      [1, 0, 1],
-                      [0, 1, 0]])
+H_TTA = J * np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
 
 # 厳密なユニタリ行列
 U_exact = expm(-1j * H_TTA * dt / hbar)
@@ -3084,9 +3105,7 @@ print(f"ユニタリ性誤差: {error:.2e}")  # ~10^-16
 
 ```python
 # 厳密なユニタリ行列を計算
-H_TTA = J * np.array([[0, 1, 0],
-                      [1, 0, 1],
-                      [0, 1, 0]])
+H_TTA = J * np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
 U_exact = expm(-1j * H_TTA * dt / hbar)
 
 # この行列を基本ゲート列に分解
@@ -3172,25 +3191,25 @@ TTA演算子の場合、以下のゲート列が生成される（数値例、$\
 # 2-qutritシステムでのTTA項の分解
 
 # Phase gates (diagonal correction)
-circuit.virtrz(i, 0, phi_0)      # qudit i, level 0
-circuit.virtrz(i, 1, phi_1)      # qudit i, level 1
-circuit.virtrz(i, 2, phi_2)      # qudit i, level 2
+circuit.virtrz(i, 0, phi_0)  # qudit i, level 0
+circuit.virtrz(i, 1, phi_1)  # qudit i, level 1
+circuit.virtrz(i, 2, phi_2)  # qudit i, level 2
 
 # Givens rotation 1: levels 0-1 of qudit i
-circuit.r(i, theta_01, phi_01)   
+circuit.r(i, theta_01, phi_01)
 
 # Controlled operation: qudit i controls qudit i+1
-circuit.cex(i, i+1, 1, 1, theta_c1)  # if qudit i is |1>, rotate qudit i+1
+circuit.cex(i, i + 1, 1, 1, theta_c1)  # if qudit i is |1>, rotate qudit i+1
 
 # Givens rotation 2: levels 1-2 of qudit i+1
-circuit.r(i+1, theta_12, phi_12)
+circuit.r(i + 1, theta_12, phi_12)
 
 # Another controlled operation
-circuit.cex(i+1, i, 2, 0, theta_c2)  # if qudit i+1 is |2>, rotate qudit i
+circuit.cex(i + 1, i, 2, 0, theta_c2)  # if qudit i+1 is |2>, rotate qudit i
 
 # Final phase corrections
 circuit.virtrz(i, 1, phi_f1)
-circuit.virtrz(i+1, 1, phi_f2)
+circuit.virtrz(i + 1, 1, phi_f2)
 ```
 
 パラメータ $\theta_{01}, \theta_{12}, \theta_{c1}, \theta_{c2}, \phi_k$ は、ユニタリ行列 $U_{\text{TTA}}^{\text{subspace}}(t)$ の分解から数値的に計算される。
@@ -3230,18 +3249,22 @@ $$
 疎構造認識コンパイラは、以下を保証する：
 
 1. **数学的厳密性**:
+
    - QR分解、Givens分解は数値線形代数の標準的な手法であり、証明された理論に基づく
    - 各ステップで数値誤差以外の近似を行わない
 
 2. **数値精度**:
+
    - 相対誤差 $< 10^{-12}$（倍精度浮動小数点の限界に近い）
    - $\|U_{\text{decomposed}} - U_{\text{target}}\|_F < 10^{-12}$
 
 3. **ユニタリ性の保存**:
+
    - 分解前後でユニタリ性が保たれる：$U^\dagger U = I$ を数値的に検証
    - $\|U^\dagger U - I\|_F < 10^{-14}$
 
 4. **固有値の保存**:
+
    - 分解前後で固有値が保存される
    - $|\lambda_k^{\text{decomposed}} - \lambda_k^{\text{target}}| < 10^{-13}$
 
@@ -3258,11 +3281,13 @@ $$
 U_decomposed = reconstruct_unitary_from_gates(gate_sequence)
 
 # 目標ユニタリとの比較
-error = np.linalg.norm(U_decomposed - U_target, ord='fro')
+error = np.linalg.norm(U_decomposed - U_target, ord="fro")
 assert error < 1e-12, f"Decomposition error: {error}"
 
 # ユニタリ性の検証
-identity_error = np.linalg.norm(U_decomposed @ U_decomposed.conj().T - np.eye(9), ord='fro')
+identity_error = np.linalg.norm(
+    U_decomposed @ U_decomposed.conj().T - np.eye(9), ord="fro"
+)
 assert identity_error < 1e-14, f"Unitarity error: {identity_error}"
 ```
 
@@ -3281,6 +3306,7 @@ TTA演算子は9次元空間で定義されるが、実際には3次元部分空
 **定理**: ユニタリ行列 $U \in U(n)$ が $k$ 次元部分空間 $\mathcal{S}$ でのみ非自明な作用を持つ場合、$U$ は $\mathcal{O}(k^2)$ 個の基本ゲートで分解できる。
 
 **証明のスケッチ**:
+
 1. $U$ を部分空間 $\mathcal{S}$ と直交補空間 $\mathcal{S}^{\perp}$ に制限
 2. $\mathcal{S}$ での $k \times k$ ユニタリをGivens分解（$\mathcal{O}(k(k-1)/2)$ 個の2次元回転）
 3. 各2次元回転を基本ゲート（VirtRz, R, CEx）で実装（定数個のゲート）
@@ -3327,11 +3353,11 @@ $$
 
 #### 7.9.2 量子リソースの比較
 
-| 手法 | 量子系 | 物理的空間 | 全空間 | 非物理的状態 |
-|------|--------|------------|--------|-------------|
-| 古典 | - | $3^4 = 81$ | $3^4 = 81$ | 0% |
-| Qubit | 8 qubits | $3^4 = 81$ | $2^8 = 256$ | 68% |
-| Qudit | 4 qutrits | $3^4 = 81$ | $3^4 = 81$ | 0% |
+| 手法  | 量子系    | 物理的空間 | 全空間      | 非物理的状態 |
+| ----- | --------- | ---------- | ----------- | ------------ |
+| 古典  | -         | $3^4 = 81$ | $3^4 = 81$  | 0%           |
+| Qubit | 8 qubits  | $3^4 = 81$ | $2^8 = 256$ | 68%          |
+| Qudit | 4 qutrits | $3^4 = 81$ | $3^4 = 81$  | 0%           |
 
 ---
 
@@ -3391,7 +3417,7 @@ $$
 
 ```python
 # 個体数演算子行列を構築
-N_S0_matrix = build_population_operator('S0')
+N_S0_matrix = build_population_operator("S0")
 
 # 期待値を計算
 N_S0 = np.real(np.vdot(psi, N_S0_matrix @ psi))
@@ -3424,18 +3450,18 @@ $$
 ```python
 def calculate_populations_from_statevector(statevector):
     N_S0, N_T1, N_S1 = 0.0, 0.0, 0.0
-    
+
     for idx in range(256):
-        prob = abs(statevector[idx])**2
-        
+        prob = abs(statevector[idx]) ** 2
+
         # idx をビット列に変換
-        bits = [int(b) for b in format(idx, '08b')]
-        
+        bits = [int(b) for b in format(idx, "08b")]
+
         # 各分子の状態を判定
         for mol_i in range(4):
-            q0 = bits[2*mol_i]
-            q1 = bits[2*mol_i+1]
-            
+            q0 = bits[2 * mol_i]
+            q1 = bits[2 * mol_i + 1]
+
             if (q1, q0) == (0, 0):
                 N_S0 += prob
             elif (q1, q0) == (0, 1):
@@ -3443,7 +3469,7 @@ def calculate_populations_from_statevector(statevector):
             elif (q1, q0) == (1, 0):
                 N_S1 += prob
             # (1, 1) は非物理的状態（カウントしない）
-    
+
     return N_S0, N_T1, N_S1
 ```
 
@@ -3470,16 +3496,16 @@ $$
 ```python
 def calculate_populations_from_qudit_statevector(statevector):
     N_S0, N_T1, N_S1 = 0.0, 0.0, 0.0
-    
+
     for idx in range(81):
-        prob = abs(statevector[idx])**2
-        
+        prob = abs(statevector[idx]) ** 2
+
         # idx を3進数表現に変換
         n0 = idx // 27
         n1 = (idx % 27) // 9
         n2 = (idx % 9) // 3
         n3 = idx % 3
-        
+
         # 各分子の状態をカウント
         for n in [n0, n1, n2, n3]:
             if n == 0:
@@ -3488,7 +3514,7 @@ def calculate_populations_from_qudit_statevector(statevector):
                 N_T1 += prob
             elif n == 2:
                 N_S1 += prob
-    
+
     return N_S0, N_T1, N_S1
 ```
 
@@ -3552,10 +3578,10 @@ $F \approx 1$ の場合、シミュレーションは高精度であることを
 
 3つの手法は、異なる表現を用いているが、同じ物理系を記述している:
 
-| 概念 | 古典 | Qubit | Qudit |
-|------|------|-------|-------|
-| 基底 | Qutrit積基底 | Qubit積基底（物理的部分空間） | Qutrit積基底 |
-| 状態空間次元 | 81 | 256（物理的: 81） | 81 |
+| 概念           | 古典                | Qubit                                     | Qudit               |
+| -------------- | ------------------- | ----------------------------------------- | ------------------- |
+| 基底           | Qutrit積基底        | Qubit積基底（物理的部分空間）             | Qutrit積基底        |
+| 状態空間次元   | 81                  | 256（物理的: 81）                         | 81                  |
 | ハミルトニアン | $81 \times 81$ 行列 | $256 \times 256$ 行列（部分空間で閉じる） | $81 \times 81$ 行列 |
 
 #### 9.1.2 ユニタリ等価性
@@ -3611,6 +3637,7 @@ $$
 初期実装では、古典シミュレーションと量子シミュレーションで異なるトロッター分解を使用:
 
 - 古典（旧）: 全ペアのハミルトニアンを合計してから指数関数
+
   $$
   \exp\left(-i \sum_{ij} H_{ij} t\right)
   $$
@@ -3633,7 +3660,7 @@ $$
 ```python
 # 各ペアのユニタリを逐次的に適用
 for i in range(3):
-    U_pair = expm(-1j * H_transfer[i, i+1] * dt / hbar)
+    U_pair = expm(-1j * H_transfer[i, i + 1] * dt / hbar)
     psi = U_pair @ psi
 ```
 
@@ -3717,16 +3744,16 @@ $$
 
 ### 10.3 3手法の特性比較
 
-| 特性 | 古典 | Qubit | Qudit |
-|------|------|-------|-------|
-| **量子リソース** | - | 8 qubits | 4 qutrits |
-| **状態空間** | 81次元 | 256次元（物理的81次元） | 81次元 |
-| **非物理的状態** | 0% | 68% | 0% |
-| **基本ゲート数/ステップ** | - | ~490 | ~40 |
-| **実装の複雑さ** | 低 | 高 | 中 |
-| **現行ハードウェア適合性** | N/A | 高 | 低（開発途上） |
-| **スケーラビリティ** | 低（$3^N$） | 低（$2^{2N}$） | 中（$3^N$、効率的） |
-| **精度** | 基準 | 高（同等） | 高（同等） |
+| 特性                       | 古典        | Qubit                   | Qudit               |
+| -------------------------- | ----------- | ----------------------- | ------------------- |
+| **量子リソース**           | -           | 8 qubits                | 4 qutrits           |
+| **状態空間**               | 81次元      | 256次元（物理的81次元） | 81次元              |
+| **非物理的状態**           | 0%          | 68%                     | 0%                  |
+| **基本ゲート数/ステップ**  | -           | ~490                    | ~40                 |
+| **実装の複雑さ**           | 低          | 高                      | 中                  |
+| **現行ハードウェア適合性** | N/A         | 高                      | 低（開発途上）      |
+| **スケーラビリティ**       | 低（$3^N$） | 低（$2^{2N}$）          | 中（$3^N$、効率的） |
+| **精度**                   | 基準        | 高（同等）              | 高（同等）          |
 
 ### 10.4 Qudit実装の優位性
 
@@ -3759,56 +3786,64 @@ $$
 ### 理論的基礎
 
 1. **鈴木トロッター分解**
-   - Suzuki, M. (1990). "Fractal decomposition of exponential operators with applications to many-body theories and Monte Carlo simulations." *Physics Letters A*, 146(6), 319-323.
-   - Trotter, H. F. (1959). "On the product of semi-groups of operators." *Proceedings of the American Mathematical Society*, 10(4), 545-551.
-   - Hatano, N., & Suzuki, M. (2005). "Finding exponential product formulas of higher orders." *Lecture Notes in Physics*, 679, 37-68.
+
+   - Suzuki, M. (1990). "Fractal decomposition of exponential operators with applications to many-body theories and Monte Carlo simulations." _Physics Letters A_, 146(6), 319-323.
+   - Trotter, H. F. (1959). "On the product of semi-groups of operators." _Proceedings of the American Mathematical Society_, 10(4), 545-551.
+   - Hatano, N., & Suzuki, M. (2005). "Finding exponential product formulas of higher orders." _Lecture Notes in Physics_, 679, 37-68.
 
 2. **Baker-Campbell-Hausdorff公式**
-   - Hall, B. C. (2015). *Lie Groups, Lie Algebras, and Representations: An Elementary Introduction* (2nd ed.). Springer.
-   - Varadarajan, V. S. (1984). *Lie Groups, Lie Algebras, and Their Representations*. Springer.
+
+   - Hall, B. C. (2015). _Lie Groups, Lie Algebras, and Representations: An Elementary Introduction_ (2nd ed.). Springer.
+   - Varadarajan, V. S. (1984). _Lie Groups, Lie Algebras, and Their Representations_. Springer.
 
 3. **行列指数関数の数値計算**
-   - Moler, C., & Van Loan, C. (2003). "Nineteen dubious ways to compute the exponential of a matrix, twenty-five years later." *SIAM Review*, 45(1), 3-49.
-   - Higham, N. J. (2005). "The scaling and squaring method for the matrix exponential revisited." *SIAM Journal on Matrix Analysis and Applications*, 26(4), 1179-1193.
+   - Moler, C., & Van Loan, C. (2003). "Nineteen dubious ways to compute the exponential of a matrix, twenty-five years later." _SIAM Review_, 45(1), 3-49.
+   - Higham, N. J. (2005). "The scaling and squaring method for the matrix exponential revisited." _SIAM Journal on Matrix Analysis and Applications_, 26(4), 1179-1193.
 
 ### 分子物理学
 
 4. **三重項-三重項消滅（TTA）**
-   - Smith, M. B., & Michl, J. (2010). "Singlet fission." *Chemical Reviews*, 110(11), 6891-6936.
-   - Singh-Rachford, T. N., & Castellano, F. N. (2010). "Photon upconversion based on sensitized triplet–triplet annihilation." *Coordination Chemistry Reviews*, 254(21-22), 2560-2573.
-   - Congreve, D. N., et al. (2013). "External quantum efficiency above 100% in a singlet-exciton-fission–based organic photovoltaic cell." *Science*, 340(6130), 334-337.
+
+   - Smith, M. B., & Michl, J. (2010). "Singlet fission." _Chemical Reviews_, 110(11), 6891-6936.
+   - Singh-Rachford, T. N., & Castellano, F. N. (2010). "Photon upconversion based on sensitized triplet–triplet annihilation." _Coordination Chemistry Reviews_, 254(21-22), 2560-2573.
+   - Congreve, D. N., et al. (2013). "External quantum efficiency above 100% in a singlet-exciton-fission–based organic photovoltaic cell." _Science_, 340(6130), 334-337.
 
 5. **エネルギー移動とデクスターメカニズム**
-   - Dexter, D. L. (1953). "A Theory of Sensitized Luminescence in Solids." *The Journal of Chemical Physics*, 21(5), 836-850.
-   - Förster, T. (1948). "Zwischenmolekulare Energiewanderung und Fluoreszenz." *Annalen der Physik*, 437(1-2), 55-75.
+
+   - Dexter, D. L. (1953). "A Theory of Sensitized Luminescence in Solids." _The Journal of Chemical Physics_, 21(5), 836-850.
+   - Förster, T. (1948). "Zwischenmolekulare Energiewanderung und Fluoreszenz." _Annalen der Physik_, 437(1-2), 55-75.
 
 6. **分子励起ダイナミクス**
-   - May, V., & Kühn, O. (2011). *Charge and Energy Transfer Dynamics in Molecular Systems* (3rd ed.). Wiley-VCH.
-   - Scholes, G. D., et al. (2011). "Lessons from nature about solar light harvesting." *Nature Chemistry*, 3(10), 763-774.
+   - May, V., & Kühn, O. (2011). _Charge and Energy Transfer Dynamics in Molecular Systems_ (3rd ed.). Wiley-VCH.
+   - Scholes, G. D., et al. (2011). "Lessons from nature about solar light harvesting." _Nature Chemistry_, 3(10), 763-774.
 
 ### 量子計算
 
 7. **量子計算の基礎**
-   - Nielsen, M. A., & Chuang, I. L. (2010). *Quantum Computation and Quantum Information* (10th Anniversary ed.). Cambridge University Press.
-   - Preskill, J. (2018). "Quantum Computing in the NISQ era and beyond." *Quantum*, 2, 79.
+
+   - Nielsen, M. A., & Chuang, I. L. (2010). _Quantum Computation and Quantum Information_ (10th Anniversary ed.). Cambridge University Press.
+   - Preskill, J. (2018). "Quantum Computing in the NISQ era and beyond." _Quantum_, 2, 79.
 
 8. **Qubit実装とQiskit**
-   - Qiskit Development Team. (2021). *Qiskit: An Open-source Framework for Quantum Computing*. https://qiskit.org/
+
+   - Qiskit Development Team. (2021). _Qiskit: An Open-source Framework for Quantum Computing_. https://qiskit.org/
    - Cross, A. W., et al. (2017). "Open Quantum Assembly Language." arXiv:1707.03429.
 
 9. **Qudit量子計算**
-   - Wang, Y., et al. (2020). "Qudits and High-Dimensional Quantum Computing." *Frontiers in Physics*, 8, 479.
-   - Luo, Y.-H., et al. (2018). "Quantum teleportation in high dimensions." *Physical Review Letters*, 123(7), 070505.
+
+   - Wang, Y., et al. (2020). "Qudits and High-Dimensional Quantum Computing." _Frontiers in Physics_, 8, 479.
+   - Luo, Y.-H., et al. (2018). "Quantum teleportation in high dimensions." _Physical Review Letters_, 123(7), 070505.
 
 10. **量子ゲート分解**
-    - Shende, V. V., Bullock, S. S., & Markov, I. L. (2006). "Synthesis of quantum-logic circuits." *IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems*, 25(6), 1000-1010.
+    - Shende, V. V., Bullock, S. S., & Markov, I. L. (2006). "Synthesis of quantum-logic circuits." _IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems_, 25(6), 1000-1010.
     - Tucci, R. R. (2005). "A rudimentary quantum compiler (2cnd ed.)." arXiv:quant-ph/9902062.
 
 ### MQT-Quditsと疎構造認識コンパイラ
 
 11. **MQT-Quditsフレームワーク**
+
     - MQT-Qudits Documentation: https://github.com/cda-tum/mqt-qudits
-    - Hillmich, S., et al. (2021). "Exploiting Quantum Teleportation in Quantum Circuit Mapping." *ACM Transactions on Quantum Computing*, 2(4), 1-29.
+    - Hillmich, S., et al. (2021). "Exploiting Quantum Teleportation in Quantum Circuit Mapping." _ACM Transactions on Quantum Computing_, 2(4), 1-29.
 
 12. **疎構造認識コンパイラ**
     - `tutorials/doc/SPARSE_COMPILER_THEORETICAL_FOUNDATION_JA.md`
@@ -3842,30 +3877,30 @@ $$
 
 **付録: 数式記号一覧**
 
-| 記号 | 意味 |
-|------|------|
-| $N$ | 分子数（本文書では $N = 4$） |
-| $\|S_0\rangle_i$ | 分子 $i$ の基底一重項状態 |
-| $\|T_1\rangle_i$ | 分子 $i$ の励起三重項状態 |
-| $\|S_1\rangle_i$ | 分子 $i$ の励起一重項状態 |
-| $E_{S_0}, E_{T_1}, E_{S_1}$ | 各状態のエネルギー |
-| $V$ | エネルギー移動積分 |
-| $J$ | TTA相互作用強度 |
-| $\hat{H}_0$ | オンサイトエネルギー項 |
-| $\hat{H}_{\text{transfer}}$ | エネルギー移動項 |
-| $\hat{H}_{\text{TTA}}$ | TTA項 |
-| $\hat{H}_{\text{total}}$ | 全ハミルトニアン |
-| $\hat{U}(t)$ | 時間発展演算子 |
-| $\|\Psi(t)\rangle$ | 時刻 $t$ での状態ベクトル |
-| $\Delta t$ | トロッター分解の時間刻み |
-| $N_{\text{steps}}$ | トロッターステップ数 |
-| $N_{S_0}(t), N_{T_1}(t), N_{S_1}(t)$ | 各状態の個体数 |
-| $\hbar$ | 換算プランク定数（$0.6582$ eV·fs） |
-| $X, Y, Z$ | Pauli行列 |
-| $R_Z(\theta)$ | Z軸回転ゲート |
-| $\text{CNOT}$ | 制御NOTゲート |
-| $\text{VirtRz}$ | 仮想Z回転ゲート（Qudit） |
-| $\text{CEx}$ | 制御励起ゲート（Qudit） |
+| 記号                                 | 意味                               |
+| ------------------------------------ | ---------------------------------- |
+| $N$                                  | 分子数（本文書では $N = 4$）       |
+| $\|S_0\rangle_i$                     | 分子 $i$ の基底一重項状態          |
+| $\|T_1\rangle_i$                     | 分子 $i$ の励起三重項状態          |
+| $\|S_1\rangle_i$                     | 分子 $i$ の励起一重項状態          |
+| $E_{S_0}, E_{T_1}, E_{S_1}$          | 各状態のエネルギー                 |
+| $V$                                  | エネルギー移動積分                 |
+| $J$                                  | TTA相互作用強度                    |
+| $\hat{H}_0$                          | オンサイトエネルギー項             |
+| $\hat{H}_{\text{transfer}}$          | エネルギー移動項                   |
+| $\hat{H}_{\text{TTA}}$               | TTA項                              |
+| $\hat{H}_{\text{total}}$             | 全ハミルトニアン                   |
+| $\hat{U}(t)$                         | 時間発展演算子                     |
+| $\|\Psi(t)\rangle$                   | 時刻 $t$ での状態ベクトル          |
+| $\Delta t$                           | トロッター分解の時間刻み           |
+| $N_{\text{steps}}$                   | トロッターステップ数               |
+| $N_{S_0}(t), N_{T_1}(t), N_{S_1}(t)$ | 各状態の個体数                     |
+| $\hbar$                              | 換算プランク定数（$0.6582$ eV·fs） |
+| $X, Y, Z$                            | Pauli行列                          |
+| $R_Z(\theta)$                        | Z軸回転ゲート                      |
+| $\text{CNOT}$                        | 制御NOTゲート                      |
+| $\text{VirtRz}$                      | 仮想Z回転ゲート（Qudit）           |
+| $\text{CEx}$                         | 制御励起ゲート（Qudit）            |
 
 ---
 

@@ -12,11 +12,13 @@ PR#71の履歴とPROGRESS_SUMMARY.md、TASK_COMPLETION_SUMMARY.md、TROTTER_FIX_
 ### 1. 問題の特定 (Problem Identification) ✅
 
 **症状**: Quditベースシミュレーションで個体数が初期状態から全く変化しない
+
 - 初期状態: N_T1=2.0, N_S1=0.0, N_S0=2.0
 - 全時間ステップで同じ値が継続
 - 時間発展が全く実行されていない
 
 **診断プロセス**:
+
 1. テストスクリプト作成して問題を再現 ✓
 2. 実行ログを解析: "警告: 未知のゲートタイプ CustomTwo" を発見
 3. コードフロー追跡: `add_H_TTA_evolution_gates` → `compile_unitary_to_gates` → `_add_gates_to_circuit`
@@ -27,16 +29,19 @@ PR#71の履歴とPROGRESS_SUMMARY.md、TASK_COMPLETION_SUMMARY.md、TROTTER_FIX_
 **技術的詳細**:
 
 H_TTAハミルトニアンの構造:
+
 ```
 H_TTA = J(|02⟩⟨11| + |11⟩⟨02| + |20⟩⟨11| + |11⟩⟨20|)
 ```
 
 これは3×3部分空間 {|02⟩, |11⟩, |20⟩} で動作し、インデックスは [2, 4, 6]:
+
 - インデックス 2 = |02⟩ (qudit 0: レベル0, qudit 1: レベル2)
 - インデックス 4 = |11⟩ (qudit 0: レベル1, qudit 1: レベル1)
 - インデックス 6 = |20⟩ (qudit 0: レベル2, qudit 1: レベル1)
 
 **なぜCustomTwoゲートが生成されるか**:
+
 - `_analyze_subspace`が各quditで変化する状態を検出
 - qudit 0: 状態 {0, 1, 2} - 3つのレベルすべて
 - qudit 1: 状態 {2, 1, 0} - 3つのレベルすべて
@@ -46,6 +51,7 @@ H_TTA = J(|02⟩⟨11| + |11⟩⟨02| + |20⟩⟨11| + |11⟩⟨20|)
 
 **バグ**:
 `_add_gates_to_circuit`メソッドは以下のゲートタイプのみ処理:
+
 - VirtRz ✓
 - R ✓
 - CEx ✓
@@ -64,13 +70,13 @@ H_TTA = J(|02⟩⟨11| + |11⟩⟨02| + |20⟩⟨11| + |11⟩⟨20|)
 ```python
 def _add_gates_to_circuit(self, circuit, gates: List[Dict]):
     # ... 既存のコード ...
-    
+
     elif gate_type == 'CustomTwo':
         # CustomTwo(qudits, unitary_matrix)
         # H_TTAなどの複数quditにまたがる部分空間操作で使用される
         unitary = params['unitary']
         circuit.cu_two(qudits, unitary)
-    
+
     else:
         print(f"警告: 未知のゲートタイプ {gate_type}")
 ```
@@ -78,6 +84,7 @@ def _add_gates_to_circuit(self, circuit, gates: List[Dict]):
 **修正2: 誤解を招く警告メッセージの削除**
 
 変更前:
+
 ```python
 if has_custom_two:
     print("警告: CustomTwoゲートが見つかりました。")
@@ -85,6 +92,7 @@ if has_custom_two:
 ```
 
 変更後:
+
 ```python
 if has_custom_two:
     # CustomTwoゲートが存在する場合（H_TTAなど）
@@ -96,6 +104,7 @@ if has_custom_two:
 ### 4. 検証 (Verification) ✅
 
 **修正前**:
+
 ```
 t=  0.00 fs:  N_T1=2.0000,  N_S1=0.0000,  N_S0=2.0000
 t=  5.00 fs:  N_T1=2.0000,  N_S1=0.0000,  N_S0=2.0000  ← 変化なし!
@@ -103,6 +112,7 @@ t= 10.00 fs:  N_T1=2.0000,  N_S1=0.0000,  N_S0=2.0000  ← 変化なし!
 ```
 
 **修正後**:
+
 ```
 t=  0.00 fs:  N_T1=2.0000,  N_S1=0.0000,  N_S0=2.0000
 t=  5.00 fs:  N_T1=1.9970,  N_S1=0.0030,  N_S0=2.0000  ← 正しく進化!
@@ -110,6 +120,7 @@ t= 10.00 fs:  N_T1=1.9890,  N_S1=0.0120,  N_S0=1.9990  ← 正しく進化!
 ```
 
 **ユニットテスト**:
+
 ```bash
 test_exact_hamiltonians.py: 22/22 PASSED ✓
 test_sparse_aware_implementation.py: 7/7 PASSED ✓
@@ -120,6 +131,7 @@ test_sparse_aware_implementation.py: 7/7 PASSED ✓
 **要求事項**: ヒューリスティック・近似・fallbackを一切使用しない
 
 **検証結果**:
+
 1. **H_transfer**: `build_H_transfer_unitary()` → `scipy.linalg.expm()` (厳密)
 2. **H_TTA**: `build_H_TTA_unitary()` → `scipy.linalg.expm()` (厳密)
 3. **CustomTwo**: 厳密なユニタリ行列をそのまま適用
@@ -131,10 +143,12 @@ test_sparse_aware_implementation.py: 7/7 PASSED ✓
 ## 変更ファイル (Files Modified)
 
 1. `tutorials/mqt_qudits_four_molecule_sparse_implementation.py`
+
    - `_add_gates_to_circuit` メソッド: CustomTwo処理追加
    - `decompose_custom_two_gates` メソッド: コメント更新
 
 2. `PROGRESS_SUMMARY.md`
+
    - 現セッションの作業内容を追加
    - Success Criteria更新
 
@@ -160,6 +174,7 @@ test_sparse_aware_implementation.py: 7/7 PASSED ✓
 H_transferとH_TTAの違い:
 
 **H_transfer**:
+
 ```
 部分空間: {|01⟩, |10⟩}
 インデックス: [1, 3]
@@ -173,6 +188,7 @@ H_transferとH_TTAの違い:
 ```
 
 **H_TTA**:
+
 ```
 部分空間: {|02⟩, |11⟩, |20⟩}
 インデックス: [2, 4, 6]
@@ -189,6 +205,7 @@ H_transferとH_TTAの違い:
 ### LogEntQRCEXPassによる分解の正当性
 
 CustomTwoゲートはLogEntQRCEXPassで分解されますが、これは:
+
 1. **数学的に厳密**: 近似なし、ヒューリスティックなし
 2. **ユニタリ保存**: U†U = I を保証
 3. **忠実度1.0**: 機械精度内で完全
@@ -201,11 +218,13 @@ CustomTwoゲートはLogEntQRCEXPassで分解されますが、これは:
 ### 優先度: 高 (High Priority)
 
 1. **ノートブックドキュメント更新**
+
    - 修正内容の説明追加
    - CustomTwoゲートの役割説明
    - 実装の厳密性を強調
 
 2. **3-way validation実行**
+
    - Classical vs Qubit vs Qudit
    - 数値一致の検証（許容誤差内）
 
@@ -215,6 +234,7 @@ CustomTwoゲートはLogEntQRCEXPassで分解されますが、これは:
 ### 優先度: 中 (Medium Priority)
 
 4. **性能最適化検討**
+
    - CustomTwo分解の事前計算
    - メモ化によるゲート列再利用
 

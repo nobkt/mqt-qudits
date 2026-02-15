@@ -33,10 +33,12 @@ N_T1の誤差:
 ### 調査プロセス
 
 1. **テストスクリプト作成** (`/tmp/test_gate_unitary.py`)
+
    - ゲート列から実際のユニタリ行列を抽出
    - 期待されるユニタリと比較
 
 2. **バグ発見**
+
    - ゲート列が全く間違ったユニタリを生成
    - エラー: ||U_actual - U_expected|| = 2.97（1e-10以下であるべき）
 
@@ -80,6 +82,7 @@ U(t) = [U_H0(δt) · U_transfer(δt) · U_TTA(δt)]^N_steps
 ### 要求事項の確認
 
 問題文より：
+
 - ❌ **ヒューリスティックな処理やごまかしのためのfallbackは絶対にしない**
 - ✅ **理論を見返して不備がないかどうかの確認**
 - ✅ **致命的なバグの原因を徹底的に分析**
@@ -90,19 +93,18 @@ U(t) = [U_H0(δt) · U_transfer(δt) · U_TTA(δt)]^N_steps
 旧実装の157-181行を厳密なCustomTwoゲートアプローチに置き換えました：
 
 ```python
-def apply_H_TTA_basic_gates(circuit, qudit_i: int, qudit_j: int,
-                             J: float, dt: float, hbar: float):
+def apply_H_TTA_basic_gates(
+    circuit, qudit_i: int, qudit_j: int, J: float, dt: float, hbar: float
+):
     # 1. 厳密な3×3ユニタリを計算
-    H_TTA = J * np.array([[0, 1, 0],
-                          [1, 0, 1],
-                          [0, 1, 0]])
+    H_TTA = J * np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
     U_3x3 = expm(-1j * H_TTA * dt / hbar)
-    
+
     # 2. ユニタリ性を検証
     unitarity_error = np.linalg.norm(U_3x3 @ U_3x3.conj().T - np.eye(3))
     if unitarity_error > 1e-10:
         raise ValueError(f"ユニタリではない! Error: {unitarity_error:.2e}")
-    
+
     # 3. 9×9空間に埋め込み
     # 活性部分空間: {|02⟩, |11⟩, |20⟩} = インデックス {2, 4, 6}
     U_9x9 = np.eye(9, dtype=np.complex128)
@@ -110,7 +112,7 @@ def apply_H_TTA_basic_gates(circuit, qudit_i: int, qudit_j: int,
     for i, idx_i in enumerate(active_indices):
         for j, idx_j in enumerate(active_indices):
             U_9x9[idx_i, idx_j] = U_3x3[i, j]
-    
+
     # 4. CustomTwoゲートで厳密なユニタリを適用
     circuit.cu_two([qudit_i, qudit_j], U_9x9)
 ```
@@ -132,7 +134,7 @@ def apply_H_TTA_basic_gates(circuit, qudit_i: int, qudit_j: int,
 
 ```
 Test 1: 検証関数 ✅
-Test 2: 厳密なユニタリ計算 ✅  
+Test 2: 厳密なユニタリ計算 ✅
 Test 3: CustomTwoゲート作成 ✅
 Test 4: CustomTwoゲートのユニタリ正確性 ✅
   - 9×9 ユニタリ性エラー: 3.74e-16
@@ -142,10 +144,10 @@ Test 5: 非活性部分空間は恒等演算子 ✅
 
 ### 精度の比較
 
-| 実装 | ユニタリエラー | 予想されるシミュレーション精度 |
-|------|---------------|----------------------------|
-| 修正前（ヒューリスティック） | 2.97 | 最大誤差 ~0.6, 平均 ~0.2 |
-| 修正後（厳密） | 0.00 | 最大誤差 ~0.01, 平均 ~0.002 |
+| 実装                         | ユニタリエラー | 予想されるシミュレーション精度 |
+| ---------------------------- | -------------- | ------------------------------ |
+| 修正前（ヒューリスティック） | 2.97           | 最大誤差 ~0.6, 平均 ~0.2       |
+| 修正後（厳密）               | 0.00           | 最大誤差 ~0.01, 平均 ~0.002    |
 
 ---
 
@@ -164,15 +166,18 @@ H_TTA = J [[0, 1, 0],
 **固有値:** λ = {-√2·J, 0, +√2·J}
 
 **時間発展演算子:**
+
 ```
 U_TTA = exp(-iH·t/ℏ)
       = [[0.5*(1+cos(ω)),  -i*sin(ω)/√2,  -0.5*(1-cos(ω))],
          [-i*sin(ω)/√2,     cos(ω),        -i*sin(ω)/√2   ],
          [-0.5*(1-cos(ω)),  -i*sin(ω)/√2,   0.5*(1+cos(ω))]]
 ```
+
 ここで ω = √2·J·t/ℏ
 
 **重要な注意点:**
+
 - 非対角要素は**虚数**（実数ではない！）
 - U[0,2]とU[2,0]は**負**
 - 厳密性のためscipy.linalg.expmで計算する必要がある
@@ -191,6 +196,7 @@ U_TTA = exp(-iH·t/ℏ)
 ### 新規テストファイル
 
 1. **test_h_tta_fix.py**
+
    - 包括的な検証テストスイート
    - 修正の全側面を検証
    - 実行して修正が正しいことを確認可能
@@ -219,17 +225,20 @@ U_TTA = exp(-iH·t/ℏ)
 ### 推奨アクション
 
 1. **完全なノートブック実行:**
+
    ```bash
    cd tutorials
    jupyter nbconvert --to notebook --execute \
        quantum_dynamics_complete_comparison.ipynb
    ```
-   
+
    **期待される結果:**
+
    - Quditエラー ~0.01（Qubitと同等）
    - ゲート数は依然として効率的
 
 2. **任意の最適化:** LogEntQRCEXPassの1092ゲートが多すぎる場合：
+
    - 疎構造認識分解を実装
    - 活性部分空間 {|02⟩, |11⟩, |20⟩} のみに影響するゲートを使用
    - 厳密性を維持しながら~100ゲートに削減可能
@@ -259,6 +268,6 @@ U_TTA = exp(-iH·t/ℏ)
 
 ---
 
-**日付:** 2025年11月13日  
-**作成者:** GitHub Copilot Coding Agent  
+**日付:** 2025年11月13日
+**作成者:** GitHub Copilot Coding Agent
 **ステータス:** 修正完了、テスト済み、検証済み

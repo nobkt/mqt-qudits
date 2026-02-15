@@ -1,15 +1,19 @@
 # Circuit Visualization Improvement Summary
 
 ## Overview
+
 This PR improves the visualization of Qudit quantum circuits in the tutorial notebook `quantum_dynamics_complete_comparison.ipynb` by adding a `fold` parameter similar to Qiskit's `circuit_drawer`, making long circuits more readable through automatic wrapping.
 
 ## Problem Statement
+
 The original issue (in Japanese) requested:
+
 > "長い量子回路であっても、適切な図のサイズで必要に応じて折り返して表示するなどして、より見やすくなるように改修してください"
 
 Translation: "Even for long quantum circuits, improve it to be more readable by displaying with appropriate figure size and wrapping as needed"
 
 The example provided showed Qiskit's approach:
+
 ```python
 fig = circuit_drawer(step_circuit, output='mpl')
 plt.tight_layout()
@@ -22,11 +26,13 @@ display(fig)
 ### 1. Enhanced `tools/visualize_circuit.py`
 
 #### Added `fold` Parameter
+
 - Added `fold` parameter to `visualize_circuit()` function
 - Added `fold` parameter to `visualize_circuit_with_decomposition()` function
 - Works similarly to Qiskit's `circuit_drawer(fold=...)` parameter
 
 #### Implementation Details
+
 ```python
 def visualize_circuit(
     circuit: QuantumCircuit,
@@ -45,11 +51,13 @@ def visualize_circuit(
   - Automatically adjust figure size based on number of rows
 
 #### Behavior
+
 - **When `fold` is specified**: Circuit wraps after the specified number of gates
+
   - `fold=100`: Maximum 100 gates per row
   - Automatically creates multiple rows for longer circuits
   - Figure size adjusts to accommodate all rows
-  
+
 - **When `fold` is None**: Original automatic calculation is used
   - Based on `max_figure_width_inches` constraint
   - Maintains backward compatibility
@@ -59,12 +67,14 @@ def visualize_circuit(
 Updated Cell 14 in `tutorials/quantum_dynamics_complete_comparison.ipynb`:
 
 #### Key Changes
+
 1. **Added fold parameter**: `fold=100` for consistent wrapping like Qiskit
 2. **Added display import**: `from IPython.display import display`
 3. **Added display call**: `display(fig)` for better Jupyter rendering
 4. **Added explanatory comments**: Japanese comments explaining the fold parameter
 
 #### Code Pattern
+
 ```python
 from tools.visualize_circuit import visualize_circuit
 import matplotlib.pyplot as plt
@@ -84,34 +94,42 @@ display(fig)  # Jupyter Notebookでの表示を改善
 ## Testing Results
 
 ### Validation Tests
+
 ✅ **Syntax validation**: Python syntax is valid
 ✅ **Notebook structure**: All cells properly formatted
 ✅ **Feature presence**: All required features present
-  - fold parameter
-  - display(fig) call
-  - IPython.display import
-  - plt.tight_layout()
-  - plt.show()
+
+- fold parameter
+- display(fig) call
+- IPython.display import
+- plt.tight_layout()
+- plt.show()
 
 ### Layout Calculation Tests
+
 ✅ **Test 1**: 50 gates with fold=20
-  - Result: 3 rows (20, 20, 10 gates per row)
-  - Correct wrapping behavior
+
+- Result: 3 rows (20, 20, 10 gates per row)
+- Correct wrapping behavior
 
 ✅ **Test 2**: 150 gates with fold=50
-  - Result: 3 rows (50, 50, 50 gates per row)
-  - Correct wrapping behavior
+
+- Result: 3 rows (50, 50, 50 gates per row)
+- Correct wrapping behavior
 
 ✅ **Test 3**: 300 gates with fold=100 (Qiskit-style)
-  - Result: 3 rows (100, 100, 100 gates per row)
-  - Figure size: 30.5 x 33.0 inches
-  - Correct wrapping behavior
+
+- Result: 3 rows (100, 100, 100 gates per row)
+- Figure size: 30.5 x 33.0 inches
+- Correct wrapping behavior
 
 ✅ **Test 4**: Auto layout (no fold parameter)
-  - Original behavior preserved
-  - Backward compatibility maintained
+
+- Original behavior preserved
+- Backward compatibility maintained
 
 ### Security Check
+
 ✅ **CodeQL**: No security vulnerabilities found
 
 ## Benefits
@@ -125,6 +143,7 @@ display(fig)  # Jupyter Notebookでの表示を改善
 ## Files Changed
 
 1. **tools/visualize_circuit.py** (+71 lines)
+
    - Added fold parameter support
    - Enhanced layout calculation
    - Improved documentation
@@ -137,6 +156,7 @@ display(fig)  # Jupyter Notebookでの表示を改善
 ## Comparison: Before vs After
 
 ### Before
+
 ```python
 fig, ax = visualize_circuit(
     step_circuit_qudit,
@@ -145,11 +165,13 @@ fig, ax = visualize_circuit(
 plt.tight_layout()
 plt.show()
 ```
+
 - No control over wrapping
 - Automatic layout only
 - No display() call
 
 ### After
+
 ```python
 fig, ax = visualize_circuit(
     step_circuit_qudit,
@@ -160,6 +182,7 @@ plt.tight_layout()
 plt.show()
 display(fig)  # Better Jupyter rendering
 ```
+
 - Explicit control via `fold` parameter
 - Consistent with Qiskit's approach
 - Better Jupyter notebook display
@@ -167,6 +190,7 @@ display(fig)  # Better Jupyter rendering
 ## Conclusion
 
 This PR successfully addresses the issue by:
+
 1. Adding Qiskit-compatible `fold` parameter for circuit wrapping
 2. Improving Jupyter notebook visualization with `display(fig)`
 3. Maintaining backward compatibility

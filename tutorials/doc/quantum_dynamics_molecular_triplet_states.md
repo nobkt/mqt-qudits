@@ -242,6 +242,7 @@ $$
 $$
 
 ここで：
+
 - $\hat{a}_{\mathbf{k}\lambda}^\dagger$ は波数 $\mathbf{k}$、偏光 $\lambda$ の光子生成演算子
 - $g_{\mathbf{k}\lambda}$ は光-物質相互作用定数
 
@@ -250,6 +251,7 @@ g_{\mathbf{k}\lambda} = \sqrt{\frac{\hbar \omega_k}{2\epsilon_0 V}} \mathbf{d}_{
 $$
 
 ここで：
+
 - $\omega_k = |\mathbf{k}|c$ は光子角周波数
 - $V$ は量子化体積
 - $\mathbf{d}_{S_1 \to S_0}$ は遷移双極子モーメント
@@ -290,6 +292,7 @@ $$
 $$
 
 ここで：
+
 - $k_{\text{rad}} = A_{S_1 \to S_0}$ は放射速度定数
 - $k_{\text{nr}}$ は無放射失活速度定数
 
@@ -391,6 +394,7 @@ $$
 $$
 
 ここで：
+
 - $N_{S_0}, N_{T_1}, N_{S_1}$ は各状態の分子数密度
 - $k_{\text{exc}}$ は励起速度定数
 - $k_{\text{transfer}}$ は三重項エネルギー移動速度定数
@@ -430,6 +434,7 @@ $$
 $$
 
 ここで：
+
 - $n_{X}(\mathbf{r},t)$ は位置 $\mathbf{r}$、時刻 $t$ における状態 $X$ の数密度
 - $D_X$ は状態 $X$ の拡散定数
 - $\nabla^2$ はラプラシアン演算子
@@ -502,9 +507,11 @@ E_T |     ───── T₁ (励起三重項)
 ### 12.2 プロセスのまとめ
 
 1. **三重項エネルギー移動**: $|T_1\rangle_i |S_0\rangle_j \leftrightarrow |S_0\rangle_i |T_1\rangle_j$
+
    - 速度定数: $k_{\text{transfer}} \propto |V_{ij}|^2$
 
 2. **三重項-三重項消滅**: $|T_1\rangle_i |T_1\rangle_j \to |S_1\rangle_i |S_0\rangle_j$ or $|S_0\rangle_i |S_1\rangle_j$
+
    - 速度定数: $k_{\text{TTA}} \propto |J_{ij}|^2$
    - エネルギー条件: $2E_T \approx E_S$
 
@@ -535,6 +542,6 @@ E_T |     ───── T₁ (励起三重項)
 
 ---
 
-**文書作成日**: 2025-10-14  
-**分野**: 量子ダイナミクス、分子光物理学、励起状態ダイナミクス  
+**文書作成日**: 2025-10-14
+**分野**: 量子ダイナミクス、分子光物理学、励起状態ダイナミクス
 **対象**: MQT Qudits フレームワークにおける量子系シミュレーション

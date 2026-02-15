@@ -17,11 +17,13 @@ G(i,j;c,s) = I + (c-1)(|i⟩⟨i| + |j⟩⟨j|) + s|i⟩⟨j| - s*|j⟩⟨i|
 ```
 
 ここで:
+
 - I: 単位行列
 - c, s: 複素数（制約: |c|² + |s|² = 1）
 - |i⟩, |j⟩: 標準基底ベクトル
 
 **行列表現**:
+
 ```
      列 0   ...   i   ...   j   ...  d-1
 行0  [1            0       0           ]
@@ -38,6 +40,7 @@ d-1  [              0       0       1 ]
 **定理1.2**: G(i,j;c,s) はユニタリである（G†G = I）。
 
 **証明**:
+
 ```
 G†G を計算すると、非自明な部分は (i,i), (i,j), (j,i), (j,j) 要素のみ。
 
@@ -55,6 +58,7 @@ s = e^(iβ) sin(θ)
 より標準的なパラメータ化:
 
 **定義1.3** (パラメータ化されたGivens回転):
+
 ```
 c = cos(θ/2) e^(iφ/2)
 s = sin(θ/2) e^(-iφ/2)
@@ -69,6 +73,7 @@ s = sin(θ/2) e^(-iφ/2)
 適切なc, sを選ぶと、G†v の第j要素がゼロになる。
 
 **証明**:
+
 ```
 (G†v)[i] = c* a - s b
 (G†v)[j] = s* a + c b
@@ -92,6 +97,7 @@ c = a* / r
 ```
 
 **検証**:
+
 ```
 s* a + c b = (b/r)* a + (a*/r) b
            = (b̄/r) a + (ā/r) b
@@ -201,18 +207,21 @@ Im(a*b) = 0 でない限りゼロにならない...
 **最終的な正しい公式**:
 
 G† の形を以下にする:
+
 ```
 G† = [[c,   s ],
       [-s*, c*]]
 ```
 
 このとき:
+
 ```
 [[c,   s ],  [[a],  = [[c·a + s·b    ],
  [-s*, c*]]   [b]]    [-s*·a + c*·b  ]]
 ```
 
 第2要素をゼロにする:
+
 ```
 -s*·a + c*·b = 0
 c*·b = s*·a
@@ -241,11 +250,13 @@ c·a + s·b = (a*/r)·a + (b*/r)·b = (|a|² + |b|²)/r = r²/r = r ✓
 
 **定理2.1** (3×3ユニタリの分解):
 任意の 3×3 ユニタリ行列 U は以下のように分解できる:
+
 ```
 U = G1 G2 G3 D
 ```
 
 ここで:
+
 - G1 = G(0,1; c1, s1): 準位0と1の回転
 - G2 = G(0,2; c2, s2): 準位0と2の回転
 - G3 = G(1,2; c3, s3): 準位1と2の回転
@@ -294,7 +305,7 @@ Qをさらに3つのGivens回転に分解可能（次元の議論）。
 def givens_matrix(d, i, j, c, s):
     """
     Givens行列を構築
-    
+
     G[i,i] = c
     G[i,j] = s
     G[j,i] = -s*
@@ -314,11 +325,13 @@ def givens_matrix(d, i, j, c, s):
 
 **定理2.3** (分解の正確性):
 アルゴリズム2.2で得られたG1, G2, G3, D について:
+
 ```
 U = G1 G2 G3 D
 ```
 
 **証明**:
+
 ```
 U_final = G3† G2† G1† U = D
 
@@ -344,6 +357,7 @@ Givens行列 G から θ, φ を抽出:
 ```
 
 **証明**:
+
 ```
 c = cos(θ/2) e^(iφ/2)
 |c| = cos(θ/2)
@@ -361,24 +375,24 @@ arg(c) = φ/2
 ```python
 def compute_givens_safe(a, b, tolerance=1e-15):
     """数値的に安定したGivens計算"""
-    r = np.sqrt(abs(a)**2 + abs(b)**2)
-    
+    r = np.sqrt(abs(a) ** 2 + abs(b) ** 2)
+
     if r < tolerance:
         # 両方ゼロに近い場合
         return 1.0, 0.0, 0.0  # c, s, r
-    
+
     if abs(b) < tolerance:
         # bがゼロに近い場合（回転不要）
         return 1.0, 0.0, abs(a)  # c, s, r
-    
+
     if abs(a) < tolerance:
         # aがゼロに近い場合
         return 0.0, 1.0, abs(b)  # c, s, r
-    
+
     # 一般的なケース
     c = np.conj(a) / r
     s = np.conj(b) / r
-    
+
     return c, s, r
 ```
 
@@ -392,12 +406,12 @@ def ensure_unitary(G, tolerance=1e-10):
     # G†G = I をチェック
     identity = np.eye(G.shape[0])
     error = np.linalg.norm(G.conj().T @ G - identity)
-    
+
     if error > tolerance:
         # QR分解で再正規化
         Q, R = np.linalg.qr(G)
         return Q
-    
+
     return G
 ```
 
@@ -408,63 +422,63 @@ class RigorousGivensDecomposer:
     """
     数学的に厳密なGivens分解
     """
-    
+
     @staticmethod
     def decompose_3x3(U):
         """
         U = G1 G2 G3 D に分解
-        
+
         Returns:
             G1, G2, G3: Givens行列
             D: 対角ユニタリ
         """
         U_work = U.copy()
-        
+
         # G1: U[1,0]をゼロ化
         a, b = U_work[0, 0], U_work[1, 0]
         c1, s1, _ = compute_givens_safe(a, b)
         G1 = givens_matrix(3, 0, 1, c1, s1)
         U_work = G1.conj().T @ U_work
-        
+
         # G2: U[2,0]をゼロ化
         a, b = U_work[0, 0], U_work[2, 0]
         c2, s2, _ = compute_givens_safe(a, b)
         G2 = givens_matrix(3, 0, 2, c2, s2)
         U_work = G2.conj().T @ U_work
-        
+
         # G3: U[2,1]をゼロ化
         a, b = U_work[1, 1], U_work[2, 1]
         c3, s3, _ = compute_givens_safe(a, b)
         G3 = givens_matrix(3, 1, 2, c3, s3)
         U_work = G3.conj().T @ U_work
-        
+
         # D: 対角行列
         D = U_work
-        
+
         # 検証
         U_reconstructed = G1 @ G2 @ G3 @ D
         error = np.linalg.norm(U - U_reconstructed)
         assert error < 1e-10, f"分解誤差が大きい: {error}"
-        
+
         return G1, G2, G3, D
-    
+
     @staticmethod
     def extract_parameters(G, i, j):
         """
         Givens行列からパラメータを抽出
-        
+
         Returns:
             theta, phi
         """
         c = G[i, i]
-        
+
         # θの計算
         cos_theta_2 = np.clip(abs(c), 0.0, 1.0)
         theta = 2.0 * np.arccos(cos_theta_2)
-        
+
         # φの計算
         phi = 2.0 * np.angle(c)
-        
+
         return theta, phi
 ```
 
@@ -473,6 +487,7 @@ class RigorousGivensDecomposer:
 ### 重要な公式
 
 1. **Givens パラメータ**:
+
    ```
    c = a*/r
    s = b*/r
@@ -480,12 +495,14 @@ class RigorousGivensDecomposer:
    ```
 
 2. **Givens行列**:
+
    ```
    G[i,i] = c, G[i,j] = s
    G[j,i] = -s*, G[j,j] = c*
    ```
 
 3. **パラメータ抽出**:
+
    ```
    θ = 2 arccos(|G[i,i]|)
    φ = 2 arg(G[i,i]|)
@@ -506,6 +523,6 @@ class RigorousGivensDecomposer:
 
 ---
 
-**作成日**: 2025年10月20日  
-**作成者**: GitHub Copilot AI分析システム  
+**作成日**: 2025年10月20日
+**作成者**: GitHub Copilot AI分析システム
 **ステータス**: 完全な数学的理論

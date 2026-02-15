@@ -17,6 +17,8 @@ import numpy as np
 from scipy.linalg import expm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from typing import TYPE_CHECKING
+
 from gksl_math_utils import (
     build_H_total_boson,
     build_lindblad_operators,
@@ -26,11 +28,13 @@ from gksl_math_utils import (
     extend_lindblad_operators,
     partial_trace_phonon,
 )
-from gksl_physical_parameters import GKSLPhysicalParameters
 from stinespring_utils import (
     apply_stinespring_to_density_matrix,
     stinespring_unitary_from_lindblad,
 )
+
+if TYPE_CHECKING:
+    from gksl_physical_parameters import GKSLPhysicalParameters
 
 
 class QubitGKSLBosonSimulator:
@@ -43,12 +47,13 @@ class QubitGKSLBosonSimulator:
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
         if not params.with_boson:
-            raise ValueError("QubitGKSLBosonSimulator requires with_boson=True")
+            msg = "QubitGKSLBosonSimulator requires with_boson=True"
+            raise ValueError(msg)
         self.params = params
         self.N = params.N_molecules
 
         # Dimensions
-        self.dim_el = params.d ** params.N_molecules
+        self.dim_el = params.d**params.N_molecules
         self.dim_ph = (params.n_max + 1) ** params.N_molecules
         self.dim_total = self.dim_el * self.dim_ph
 
@@ -75,9 +80,7 @@ class QubitGKSLBosonSimulator:
         return U @ rho @ U.conj().T
 
     @staticmethod
-    def _apply_lindblad_stinespring(
-        rho: np.ndarray, L_op: np.ndarray, dt: float
-    ) -> np.ndarray:
+    def _apply_lindblad_stinespring(rho: np.ndarray, L_op: np.ndarray, dt: float) -> np.ndarray:
         """Apply a single Lindblad channel via Stinespring dilation."""
         U = stinespring_unitary_from_lindblad(L_op, dt)
         return apply_stinespring_to_density_matrix(rho, U)
@@ -93,8 +96,7 @@ class QubitGKSLBosonSimulator:
         for L_op, _gamma in self.lindblad_ops:
             rho = self._apply_lindblad_stinespring(rho, L_op, dt)
         # Half Hamiltonian
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
-        return rho
+        return self._apply_hamiltonian_step(rho, dt / 2)
 
     # ------------------------------------------------------------------
     # Initial state
@@ -104,23 +106,25 @@ class QubitGKSLBosonSimulator:
         """Prepare initial density matrix: electronic state ⊗ phonon vacuum |00...0⟩."""
         d = self.params.d
         N = self.N
-        dim_el = d ** N
+        dim_el = d**N
 
         # Electronic state
         psi_el = np.zeros(dim_el, dtype=np.complex128)
         if state_type == "edge_triplet":
             if N < 2:
-                raise ValueError("edge_triplet requires N_molecules >= 2")
+                msg = "edge_triplet requires N_molecules >= 2"
+                raise ValueError(msg)
             index = (d ** (N - 1)) + 1
             psi_el[index] = 1.0
         elif state_type == "all_triplet":
-            index = sum(1 * (d ** i) for i in range(N))
+            index = sum(1 * (d**i) for i in range(N))
             psi_el[index] = 1.0
         elif state_type == "all_singlet":
-            index = sum(2 * (d ** i) for i in range(N))
+            index = sum(2 * (d**i) for i in range(N))
             psi_el[index] = 1.0
         else:
-            raise ValueError(f"Unknown state type: {state_type}")
+            msg = f"Unknown state type: {state_type}"
+            raise ValueError(msg)
 
         # Phonon vacuum: |00...0⟩
         psi_ph = np.zeros(self.dim_ph, dtype=np.complex128)
@@ -167,20 +171,14 @@ class QubitGKSLBosonSimulator:
 
             times.append((step + 1) * dt)
             traces.append(float(np.real(np.trace(rho))))
-            populations.append(
-                compute_populations_from_density_matrix(rho_el, self.params)
-            )
+            populations.append(compute_populations_from_density_matrix(rho_el, self.params))
             entropies.append(compute_von_neumann_entropy(rho_el))
             purities.append(compute_purity(rho_el))
 
         elapsed = time_module.time() - start
 
         # Gate count estimate for qubit circuit in extended space
-        gates_per_step = (
-            self.n_el_qubits + self.n_ph_qubits
-            + len(self.params.neighbors) * 10
-            + self.n_ancilla * 6
-        )
+        gates_per_step = self.n_el_qubits + self.n_ph_qubits + len(self.params.neighbors) * 10 + self.n_ancilla * 6
 
         return {
             "times": times,

@@ -5,11 +5,13 @@
 Two issues were reported in `tutorials/quantum_dynamics_complete_comparison.ipynb`:
 
 ### Issue 1: Qubit Quantum Simulation Circuit Visualization Failure
+
 - Circuit visualization using Unitary gates not working properly
 - Circuit visualization for fully decomposed basic gates not working properly
 - IPython display-based visualization not functioning
 
 ### Issue 2: Qudit Quantum Simulation Gate Counting and Visualization Issues
+
 - Gate count per Trotter step for fully decomposed basic gates is only an **estimate**
 - Need accurate evaluation based on actual quantum circuit
 - Circuit diagram for fully decomposed basic gates not being visualized
@@ -21,6 +23,7 @@ Two issues were reported in `tutorials/quantum_dynamics_complete_comparison.ipyn
 **Cell ID: `qubit_circuit_viz`**
 
 Previous implementation:
+
 ```python
 from qiskit.visualization import circuit_drawer
 fig = circuit_drawer(step_circuit_unitary, output='mpl', fold=100)
@@ -28,6 +31,7 @@ plt.show()
 ```
 
 Fixed implementation:
+
 ```python
 from qiskit.visualization import circuit_drawer
 from IPython.display import display
@@ -38,11 +42,13 @@ plt.show()
 ```
 
 **Changes:**
+
 1. Import `display` function from `IPython.display`
 2. Change from `circuit_drawer()` to `circuit.draw()` method
 3. Call `display(fig)` before `plt.show()`
 
 **Target circuits:**
+
 - UnitaryGate version circuit
 - Basic gates decomposed version circuit
 - Decomposed UnitaryGate version circuit (newly added)
@@ -52,6 +58,7 @@ plt.show()
 **Cell ID: `qudit_gate_comparison`**
 
 Previous implementation (using estimation):
+
 ```python
 from comparison_helpers import estimate_qudit_customtwo_decomposition_cost
 
@@ -60,6 +67,7 @@ total_decomposed = sum(decomposed_gates.values())
 ```
 
 Fixed implementation (using actual decomposition):
+
 ```python
 from comparison_helpers import decompose_qudit_customtwo_gates_to_circuit
 
@@ -68,7 +76,7 @@ sparse_generator = qudit_simulator.time_evol.gate_generator
 
 # Actually perform decomposition
 decomposed_circuit = decompose_qudit_customtwo_gates_to_circuit(
-    step_circuit_qudit, 
+    step_circuit_qudit,
     sparse_generator
 )
 
@@ -85,6 +93,7 @@ qudit_circuit_decomposed = decomposed_circuit
 ```
 
 **Changes:**
+
 1. Removed estimation function `estimate_qudit_customtwo_decomposition_cost`
 2. Use actual decomposition function `decompose_qudit_customtwo_gates_to_circuit`
 3. Perform exact decomposition using `IntegratedSparseCompilerV2`
@@ -103,11 +112,13 @@ Previously performed the same CustomTwo gate decomposition twice. After fix, reu
 ### Qubit Visualization Technical Specs
 
 **Root cause:**
+
 - `circuit_drawer()` function is an older API with unclear return value handling
 - In Jupyter Notebook, figures may not display correctly without using `display()` function
 - `plt.show()` alone is insufficient
 
 **Solution:**
+
 - Use `circuit.draw(output='mpl')` method (recommended API)
 - Explicitly display using `IPython.display.display()`
 - Fallback to text output on error
@@ -115,11 +126,13 @@ Previously performed the same CustomTwo gate decomposition twice. After fix, reu
 ### Qudit Gate Counting Technical Specs
 
 **Root cause:**
+
 - `estimate_qudit_customtwo_decomposition_cost()` uses fixed values (6 gates/CustomTwo)
 - May differ from actual decomposition results
 - Estimates don't satisfy problem requirements
 
 **Solution:**
+
 - Use `decompose_qudit_customtwo_gates_to_circuit()` for actual decomposition
 - Internally uses `SparseAwareMQTGateGenerator._decompose_custom_two_exact()` method
 - Sparse structure-aware compilation using `IntegratedSparseCompilerV2` (recognizes 3×3 subspace)
@@ -128,20 +141,24 @@ Previously performed the same CustomTwo gate decomposition twice. After fix, reu
 ## Compliance Verification
 
 ### ✅ No Heuristic Processing Used
+
 - `IntegratedSparseCompilerV2` performs mathematically exact decomposition
 - Uses exact unitary matrices via `scipy.linalg.expm`
 - All decompositions are exact (no approximations)
 
 ### ✅ No Fallback Processing Used
+
 - Error handling exists, but not fallback with alternative calculations
 - On error, explicitly display error message and set `None`
 
 ### ✅ No Degradation of Current Functionality
+
 - Maintains existing code logic
 - Only adds new functionality
 - Uses tested sparse structure compiler
 
 ### ✅ Achieves Accurate Measurement
+
 - Changed from estimates to actual measurements
 - Accurate gate count based on actual quantum circuit
 - Visualization also uses actual decomposed circuit
@@ -164,11 +181,13 @@ Confirmed all changes are correctly applied.
 ## Impact Scope
 
 ### Changed Cells
+
 1. `qubit_circuit_viz` - Qubit circuit visualization
 2. `qudit_gate_comparison` - Qudit gate counting
 3. `qudit_circuit_build_comparison` - Redundancy removal
 
 ### Unchanged Cells
+
 - Simulation execution cells (Classical, Qubit, Qudit)
 - Comparison/visualization cells (`qudit_circuit_visualization_comparison` remains as-is)
 - Other analysis cells
@@ -178,11 +197,13 @@ Confirmed all changes are correctly applied.
 When running the fixed notebook:
 
 1. **Qubit Circuit Visualization Cell** displays three circuit diagrams correctly:
+
    - UnitaryGate version
    - Basic gates decomposed version
    - Decomposed UnitaryGate version
 
 2. **Qudit Gate Counting Cell**:
+
    - Performs actual decomposition
    - Displays accurate gate count
    - Saves results to `qudit_results`

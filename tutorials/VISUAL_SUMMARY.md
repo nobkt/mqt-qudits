@@ -36,7 +36,7 @@ Cell 5: [CODE] # 4. 物理パラメータの設定
 Cell 6: [CODE] # 5. 量子回路の構築とゲート実装
         └─ Outputs: Gate construction details, decomposition statistics
 Cell 7: [CODE] # 5.5. 量子回路の解析  ⭐ NEW!
-        └─ Outputs: 
+        └─ Outputs:
            【システム構成】
            【単一トロッターステップの回路サイズ】
            【ゲートタイプ別内訳】
@@ -59,16 +59,19 @@ Cell 14: [MD] ## 11. まとめ
 Section 5.5 provides a **structured text output** that matches the format of the qubit tutorial's circuit analysis section. It displays:
 
 1. **【システム構成】** (System Configuration)
+
    - Number of molecules
    - Number of Qudits required
    - State encoding scheme
 
 2. **【単一トロッターステップの回路サイズ】** (Single Trotter Step Circuit Size)
+
    - Total gate count
    - Circuit depth (if available)
    - Number of Qudits used
 
 3. **【ゲートタイプ別内訳】** (Gate Type Breakdown)
+
    - Count of each gate type
    - Sorted by frequency (most used first)
 
@@ -92,7 +95,9 @@ print()
 
 # 回路深さを計算（decomposed_circuitから）
 try:
-    circuit_depth = decomposed_circuit.depth() if hasattr(decomposed_circuit, 'depth') else "N/A"
+    circuit_depth = (
+        decomposed_circuit.depth() if hasattr(decomposed_circuit, "depth") else "N/A"
+    )
 except:
     circuit_depth = "N/A"
 
@@ -186,17 +191,20 @@ Section 6: Additional visualizations
 ## Impact Summary
 
 ### What Changed
+
 - ✅ Added 1 new code cell (Section 5.5)
 - ✅ Updated 1 section number (5.5 → 5.6)
 - ✅ Total: 2 cells modified
 
 ### What Stayed the Same
+
 - ✅ All existing functionality preserved
 - ✅ No changes to implementation code
 - ✅ No changes to visualization tools
 - ✅ No heuristic methods introduced
 
 ### Benefits
+
 - ✅ Matches qubit tutorial structure
 - ✅ Provides clear, structured output
 - ✅ Easy to compare qubit vs qudit implementations
@@ -211,11 +219,13 @@ Section 6: Additional visualizations
 ## Documentation Added
 
 1. `tutorials/NOTEBOOK_MODIFICATION_SUMMARY.md`
+
    - Comprehensive description of changes
    - Implementation details
    - Testing instructions
 
 2. `tutorials/OUTPUT_COMPARISON.md`
+
    - Side-by-side comparison
    - Expected output format
    - Analysis of differences

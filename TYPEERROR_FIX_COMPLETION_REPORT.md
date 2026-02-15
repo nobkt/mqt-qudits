@@ -14,8 +14,8 @@ The notebook defines `params.V` and `params.J` as **scalar values** (floats), bu
 
 ```python
 # Notebook (cell 3)
-self.V = 0.1        # scalar!
-self.J = 0.05       # scalar!
+self.V = 0.1  # scalar!
+self.J = 0.05  # scalar!
 
 # Implementation file (PhysicalParameters class)
 self.V = np.array([0.10, 0.10, 0.10])  # array
@@ -33,7 +33,11 @@ Made **minimal changes** to support both scalar and array formats:
 V = self.params.V[pair_idx]
 
 # After:
-V = self.params.V[pair_idx] if isinstance(self.params.V, (list, np.ndarray)) else self.params.V
+V = (
+    self.params.V[pair_idx]
+    if isinstance(self.params.V, (list, np.ndarray))
+    else self.params.V
+)
 ```
 
 ### Modified Locations (8 total)
@@ -46,6 +50,7 @@ V = self.params.V[pair_idx] if isinstance(self.params.V, (list, np.ndarray)) els
 ## Test Results
 
 ### 1. Existing Tests Continue to Pass ✓
+
 ```
 test_sparse_aware_implementation.py::test_gate_count_reduction PASSED
 test_sparse_aware_implementation.py::test_fidelity_preservation PASSED
@@ -59,6 +64,7 @@ test_sparse_aware_implementation.py::test_hamiltonian_construction PASSED
 ```
 
 ### 2. New Tests ✓
+
 ```
 test_scalar_array_params.py::test_scalar_parameters PASSED
 test_scalar_array_params.py::test_array_parameters PASSED
@@ -68,6 +74,7 @@ test_scalar_array_params.py::test_scalar_and_array_give_same_results PASSED
 ```
 
 ### 3. Final Integration Test ✓
+
 ```
 1. Testing with SCALAR V and J (notebook style)...
   ✓ Built unitary: (81, 81)
@@ -89,6 +96,7 @@ test_scalar_array_params.py::test_scalar_and_array_give_same_results PASSED
 ```
 
 ### 4. Security Scan ✓
+
 ```
 Analysis Result for 'python'. Found 0 alerts:
 - **python**: No alerts found.
@@ -117,8 +125,8 @@ The notebook now works without any modifications:
 # Notebook parameter definition (no changes needed)
 class PhysicalParameters:
     def __init__(self):
-        self.V = 0.1        # scalar works now
-        self.J = 0.05       # scalar works now
+        self.V = 0.1  # scalar works now
+        self.J = 0.05  # scalar works now
         # ... other parameters
 ```
 
@@ -127,12 +135,13 @@ Or continue using the array format (existing code compatibility):
 ```python
 # Array format (backward compatible)
 from mqt_qudits_four_molecule_sparse_implementation import PhysicalParameters
+
 params = PhysicalParameters()  # V and J are arrays
 ```
 
 ## Summary
 
-The root cause of the TypeError was identified and completely fixed with minimal changes. 
+The root cause of the TypeError was identified and completely fixed with minimal changes.
 No heuristics or workarounds were used, and there is no degradation of existing functionality.
 The notebook and implementation file now both work correctly with both scalar and array parameters.
 

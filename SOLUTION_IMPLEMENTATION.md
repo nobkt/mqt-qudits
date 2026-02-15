@@ -7,7 +7,8 @@ Successfully resolved the gate count explosion issue in the qudit tutorial, achi
 ## Problem Statement
 
 The 4-molecule linear chain quantum dynamics simulation showed:
-- **Qubit implementation**: 112 gates per Trotter step  
+
+- **Qubit implementation**: 112 gates per Trotter step
 - **Qudit implementation**: 6,182 gates per Trotter step (55× worse!)
 
 This contradicted expectations that qudits would be more efficient due to native 3-level (qutrit) representation matching the molecular states (S0, T1, S1).
@@ -19,11 +20,13 @@ This contradicted expectations that qudits would be more efficient due to native
 The excessive gate count originated from:
 
 1. **CustomTwo Gate Usage**
+
    - H_transfer: 3 CustomTwo gates (one per adjacent pair)
    - H_TTA: 3 CustomTwo gates (one per adjacent pair)
    - Total: 6 CustomTwo gates per Trotter step
 
 2. **Inefficient Decomposition**
+
    - CustomTwo gates decomposed via `LogEntQRCEXPass`
    - LogEntQRCEXPass treats 9×9 unitaries as fully dense
    - Produces ~1000 basic gates per CustomTwo
@@ -39,27 +42,32 @@ The excessive gate count originated from:
 ### 1. H_transfer: Direct Basic Gate Construction
 
 **Previous Approach:**
+
 ```python
 # Create 9×9 unitary
 U = np.eye(9, dtype=complex)
-U[1,1] = cos(θ); U[1,3] = -i·sin(θ)
-U[3,1] = -i·sin(θ); U[3,3] = cos(θ)
+U[1, 1] = cos(θ)
+U[1, 3] = -i·sin(θ)
+U[3, 1] = -i·sin(θ)
+U[3, 3] = cos(θ)
 circuit.cu_two([i, j], U)  # → LogEntQRCEXPass → ~1000 gates
 ```
 
 **New Approach:**
+
 ```python
 # Direct implementation with basic gates
-circuit.r(j, [0, 1, π/2, -π/2])  # Frame setup
-circuit.cx([i, j])                # Controlled exchange
-circuit.rz(j, [0, 1, -θ/2])      # Phase rotation
-circuit.cx([i, j])                # Controlled exchange  
-circuit.rz(j, [0, 1, θ/2])       # Phase rotation
-circuit.r(j, [0, 1, -π/2, -π/2]) # Frame restore
+circuit.r(j, [0, 1, π / 2, -π / 2])  # Frame setup
+circuit.cx([i, j])  # Controlled exchange
+circuit.rz(j, [0, 1, -θ / 2])  # Phase rotation
+circuit.cx([i, j])  # Controlled exchange
+circuit.rz(j, [0, 1, θ / 2])  # Phase rotation
+circuit.r(j, [0, 1, -π / 2, -π / 2])  # Frame restore
 # Result: 6 gates only!
 ```
 
 **Results:**
+
 - Per pair: 6 gates (vs ~1000 previously)
 - Total (3 pairs): 18 gates
 - **Reduction**: 99.4% (3000 → 18 gates)
@@ -67,17 +75,20 @@ circuit.r(j, [0, 1, -π/2, -π/2]) # Frame restore
 ### 2. H_TTA: Sparse Structure Preservation
 
 **Approach:**
+
 - Still uses CustomTwo but preserves 3×3 sparse structure
 - Only non-identity elements in {|02⟩, |11⟩, |20⟩} subspace
 - Log EntQRCEXPass decomposition more efficient for sparse matrices
 
 **Current Results:**
+
 - Per pair: ~100 gates (vs ~1000 for dense)
 - Total (3 pairs): ~300 gates
 - **Reduction**: 70% from dense decomposition
 
 **Future Optimization:**
-- Implement Givens-based direct construction  
+
+- Implement Givens-based direct construction
 - Expected: ~6-12 gates per pair
 - Potential total: ~18-36 gates
 
@@ -90,11 +101,13 @@ circuit.r(j, [0, 1, -π/2, -π/2]) # Frame restore
 Key changes:
 
 1. **`add_H_transfer_evolution_gates()`**:
+
    - Removed CustomTwo gate creation
    - Added direct basic gate sequence
    - Implements 2×2 subspace rotation explicitly
 
 2. **`add_H_TTA_evolution_gates()`**:
+
    - Maintains CustomTwo but with sparse structure
    - Only 3×3 active subspace is non-identity
    - Added documentation for future Givens implementation
@@ -107,10 +120,10 @@ Key changes:
 
 All implementations maintain strict mathematical rigor:
 
-✅ **No Heuristics**: Only exact mathematical decompositions  
-✅ **No Approximations**: All unitary transformations exact  
-✅ **Fidelity = 1.0**: Perfect quantum state preservation guaranteed  
-✅ **Proven Methods**: Based on PR#42-46 theoretical foundations  
+✅ **No Heuristics**: Only exact mathematical decompositions
+✅ **No Approximations**: All unitary transformations exact
+✅ **Fidelity = 1.0**: Perfect quantum state preservation guaranteed
+✅ **Proven Methods**: Based on PR#42-46 theoretical foundations
 
 ### Theory References
 
@@ -127,22 +140,23 @@ See `tutorials/doc/SPARSE_COMPILER_THEORETICAL_FOUNDATION_JA.md` for complete ma
 
 ### Gate Count Per Trotter Step
 
-| Component | Original | Optimized | Reduction |
-|-----------|----------|-----------|-----------|
-| H0 (diagonal) | 8 | 8 | 0% |
-| H_transfer (3 pairs) | ~3000 | 18 | 99.4% |
-| H_TTA (3 pairs) | ~3000 | ~300 | 90.0% |
-| **Total** | **~6182** | **~326** | **94.7%** |
+| Component            | Original  | Optimized | Reduction |
+| -------------------- | --------- | --------- | --------- |
+| H0 (diagonal)        | 8         | 8         | 0%        |
+| H_transfer (3 pairs) | ~3000     | 18        | 99.4%     |
+| H_TTA (3 pairs)      | ~3000     | ~300      | 90.0%     |
+| **Total**            | **~6182** | **~326**  | **94.7%** |
 
 ### Comparison to Qubit Implementation
 
-| Implementation | Gates/Step | Overhead |
-|----------------|------------|----------|
-| Qubit | 112 | baseline |
-| Qudit (original) | 6,182 | 55× worse |
-| Qudit (optimized) | 326 | 2.9× worse |
+| Implementation    | Gates/Step | Overhead   |
+| ----------------- | ---------- | ---------- |
+| Qubit             | 112        | baseline   |
+| Qudit (original)  | 6,182      | 55× worse  |
+| Qudit (optimized) | 326        | 2.9× worse |
 
 The 2.9× overhead is acceptable considering:
+
 - Qudits provide 3-level systems vs 2-level
 - Further optimization (Givens for H_TTA) could reduce to ~44 gates
 - Would achieve 2.5× **better** than qubit!
@@ -151,14 +165,15 @@ The 2.9× overhead is acceptable considering:
 
 With full Givens implementation for H_TTA:
 
-| Component | Current | With Givens | 
-|-----------|---------|-------------|
-| H0 | 8 | 8 |
-| H_transfer | 18 | 18 |
-| H_TTA | ~300 | ~18-36 |
-| **Total** | **~326** | **~44-62** |
+| Component  | Current  | With Givens |
+| ---------- | -------- | ----------- |
+| H0         | 8        | 8           |
+| H_transfer | 18       | 18          |
+| H_TTA      | ~300     | ~18-36      |
+| **Total**  | **~326** | **~44-62**  |
 
 This would achieve:
+
 - 99.3% reduction from original (6182 → 44)
 - 2.5× better than qubit (44 vs 112)
 - Validates qudit efficiency for 3-level systems!
@@ -189,7 +204,7 @@ CustomTwoゲートを基本ゲートに分解中...
 
 === 分解後のゲート構成 ===
 R      : 36 個
-CEx    : 18 個  
+CEx    : 18 個
 Rz     : 36 個
 VirtRz : 8 個
 [H_TTA decomposed gates]: ~228 個
@@ -202,6 +217,7 @@ VirtRz : 8 個
 ### For Users
 
 1. **Test the Implementation**
+
    - Run the notebook and verify gate counts
    - Compare with qubit implementation
    - Validate quantum dynamics results match
@@ -214,6 +230,7 @@ VirtRz : 8 個
 ### For Developers
 
 1. **H_TTA Givens Implementation**
+
    - Study `tools/givens_to_zyz_decomposer_v2.py`
    - Adapt for direct MQT gate construction
    - Test and validate fidelity
@@ -226,16 +243,19 @@ VirtRz : 8 個
 ## References
 
 ### Documentation
+
 - `tutorials/SPARSE_IMPLEMENTATION_SUMMARY.md`: Implementation summary
 - `tutorials/doc/PR46_COMPLETE_WORK_SUMMARY.md`: PR#46 complete work
 - `tutorials/doc/SPARSE_COMPILER_THEORETICAL_FOUNDATION_JA.md`: Theory
 
 ### Reference Implementations
+
 - `tutorials/mqt_qudits_four_molecule_implementation_optimized.py`: Original optimization
 - `tools/integrated_sparse_compiler_v2.py`: Sparse compiler tools
 - `tools/sparse_pass_prototype.py`: Prototype implementation
 
 ### Notebooks
+
 - `tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb`: Qudit (optimized)
 - `tutorials/qubit/four_molecule_linear_chain_quantum_dynamics_qubit.ipynb`: Qubit comparison
 
@@ -253,7 +273,7 @@ The solution demonstrates that qudits CAN be more efficient than qubits when spa
 
 ---
 
-**Date**: October 22, 2025  
-**Status**: Implementation Complete  
-**Gate Reduction**: 94.7% (6,182 → 326 gates)  
+**Date**: October 22, 2025
+**Status**: Implementation Complete
+**Gate Reduction**: 94.7% (6,182 → 326 gates)
 **Mathematical Rigor**: Maintained (Fidelity = 1.0)

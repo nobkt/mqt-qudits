@@ -37,18 +37,22 @@ AttributeError: 'SubspaceNoise' object has no attribute 'probability_depolarizin
 #### 1. mqt_qudits_noisy_simulator.py
 
 **変更前:**
+
 ```python
 from mqt.qudits.simulation.noise_tools import NoiseModel, SubspaceNoise, Noise
 
 # Create noise for all level transitions in a qutrit (0-1, 0-2, 1-2)
-subspace_noise = self.SubspaceNoise(depol_prob, dephasing_prob, 
-                                   [(0, 1), (0, 2), (1, 2)])
+subspace_noise = self.SubspaceNoise(
+    depol_prob, dephasing_prob, [(0, 1), (0, 2), (1, 2)]
+)
 noise_model.add_quantum_error_locally(subspace_noise, noise_gates)
 ```
 
 **変更後:**
+
 ```python
 from mqt.qudits.simulation.noise_tools import NoiseModel, Noise
+
 # Note: SubspaceNoise is not imported because the C++ backend (bindings.cpp)
 # expects Noise objects with direct probability_depolarizing and probability_dephasing
 # attributes. SubspaceNoise stores these in a dictionary and causes AttributeError.
@@ -60,16 +64,19 @@ noise_model.add_quantum_error_locally(noise, noise_gates)
 ```
 
 **その他の修正:**
+
 - `circuit.compose()`を`circuit.instructions.extend()`に変更（MQT-QuditsのQuantumCircuitにはcompose()メソッドが存在しないため）
 - docstringを更新して「SubspaceNoise」から「数学的Noise」に変更
 
 #### 2. quantum_dynamics_complete_comparison.ipynb
 
 **Cell 22の変更:**
+
 - "MQT-QuditsのSubspaceNoiseを使用" → "MQT-QuditsのNoiseクラスを使用"
 - "各準位遷移 (0↔1, 0↔2, 1↔2)" → "全準位に適用"
 
 **Cell 34の変更:**
+
 - "SubspaceNoise: 各準位遷移(0↔1, 0↔2, 1↔2)に対する脱分極・位相緩和" → "Noise: 全準位に適用される数学的ノイズモデル（脱分極・位相緩和）"
 
 ## 検証結果
@@ -108,12 +115,12 @@ No AttributeError about probability_depolarizing!
 
 ### Noise vs SubspaceNoise
 
-| 項目 | Noise | SubspaceNoise |
-|------|-------|---------------|
-| 属性 | `probability_depolarizing`, `probability_dephasing` | なし（辞書に格納） |
-| データ構造 | 直接属性 | `subspace_w_probs` 辞書 |
-| C++互換性 | ✅ 対応 | ❌ 非対応 |
-| 用途 | 数学的ノイズモデル | 物理的準位遷移ノイズ |
+| 項目       | Noise                                               | SubspaceNoise           |
+| ---------- | --------------------------------------------------- | ----------------------- |
+| 属性       | `probability_depolarizing`, `probability_dephasing` | なし（辞書に格納）      |
+| データ構造 | 直接属性                                            | `subspace_w_probs` 辞書 |
+| C++互換性  | ✅ 対応                                             | ❌ 非対応               |
+| 用途       | 数学的ノイズモデル                                  | 物理的準位遷移ノイズ    |
 
 ### なぜSubspaceNoiseは使えないのか
 
@@ -128,6 +135,7 @@ double depo = noiseTypesPair.second.attr("probability_depolarizing").cast<double
 ## 制約事項の遵守
 
 問題文の要求事項：
+
 - ✅ **src/以下は修正しない**: C++コードには一切変更なし
 - ✅ **コンパイル不要**: Pythonファイルとノートブックのみ変更
 - ✅ **ヒューリスティックなしfallbackなし**: `Noise`クラスは正式なノイズモデル

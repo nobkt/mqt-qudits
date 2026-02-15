@@ -13,11 +13,12 @@
 ユニタリ行列 $U \in \mathbb{C}^{n \times n}$ が疎構造を持つとは、以下の条件を満たすことをいう:
 
 $$
-\exists k \ll n, \exists \{i_1, i_2, \ldots, i_k\} \subset \{1, 2, \ldots, n\}: 
+\exists k \ll n, \exists \{i_1, i_2, \ldots, i_k\} \subset \{1, 2, \ldots, n\}:
 U = I \oplus U_{sub}
 $$
 
 ここで:
+
 - $I$ は $(n-k) \times (n-k)$ 単位行列
 - $U_{sub}$ は $k \times k$ ユニタリ行列
 - $\oplus$ は直和演算子
@@ -44,6 +45,7 @@ H_{transfer} = V (|0\rangle_i\langle 1| \otimes |1\rangle_j\langle 0| + h.c.)
 $$
 
 ここで:
+
 - $V$: 結合エネルギー (eV)
 - $i, j$: 隣接分子のインデックス
 - $|k\rangle$: 分子の励起状態 ($k = 0, 1, 2$)
@@ -100,6 +102,7 @@ H_{TTA} = J (|2\rangle_i\langle 1| \otimes |0\rangle_j\langle 1| + |0\rangle_i\l
 $$
 
 ここで:
+
 - $J$: 結合エネルギー (eV)
 
 **アクティブ部分空間**:
@@ -151,6 +154,7 @@ $$
 **出力**: $(is\_sparse, dimension, active\_indices)$
 
 1. **非ゼロ要素のカウント**:
+
    ```
    count = 0
    for i = 1 to n do
@@ -164,17 +168,20 @@ $$
    ```
 
 2. **疎性比率の計算**:
+
    ```
    ρ = count / n²
    ```
 
 3. **疎構造判定**:
+
    ```
    if ρ >= ρ_th then
        return (False, None, [])
    ```
 
 4. **アクティブ部分空間の特定**:
+
    ```
    active_indices = []
    for i = 1 to n do
@@ -200,11 +207,12 @@ $$
 
 アルゴリズム1.1は、すべての疎構造ユニタリ行列を正しく検出する。
 
-**証明**: 
+**証明**:
+
 - Step 1-2: 定義1.1の疎性比率を正確に計算
 - Step 3: 閾値判定により疎構造を判定
 - Step 4: アクティブ部分空間を正確に抽出
-$\square$
+  $\square$
 
 ## 2. 2×2ユニタリ行列の厳密分解
 
@@ -219,11 +227,12 @@ U = e^{i\alpha} R_z(\phi) R_y(\theta) R_z(\lambda)
 $$
 
 ここで:
+
 - $\alpha$: グローバル位相 $\in [0, 2\pi)$
 - $\theta \in [0, \pi]$
 - $\phi, \lambda \in [0, 2\pi)$
 
-**証明**: 
+**証明**:
 [PR#37の詳細理論を参照]
 $\square$
 
@@ -236,6 +245,7 @@ $\square$
 **出力**: $(\theta, \phi, \lambda, \alpha)$
 
 1. **$\theta$ の抽出**:
+
    ```
    if |U_00| < ε then
        θ = π
@@ -246,6 +256,7 @@ $\square$
    ```
 
 2. **$\phi$ と $\lambda$ の抽出**:
+
    ```
    if θ ≈ 0 then
        φ = 0
@@ -290,7 +301,7 @@ $$
 \max_{i,j} |U_{ij} - U_{zyz, ij}| > 0.1
 $$
 
-**証明**: 
+**証明**:
 第一条件は、$U$ と $U_{zyz}$ が同じ絶対値を持つ（位相のみ異なる）ことを示す。
 第二条件は、位相差が存在することを示す。
 この組み合わせは、グローバル位相差 $\pi$ の存在を意味する。
@@ -303,21 +314,21 @@ function check_phase_correction(U, U_zyz, ε):
     // Method 1: 絶対値チェック
     max_mag_diff = max_{i,j} ||U_ij| - |U_zyz, ij||
     max_elem_diff = max_{i,j} |U_ij - U_zyz, ij|
-    
+
     if max_mag_diff < ε and max_elem_diff > 0.1 then
         return π
-    
+
     // Method 2: 位相差チェック
     phase_diffs = []
     for all non-zero elements do
         append arg(U_ij / U_zyz, ij) to phase_diffs
-    
+
     mean_phase = mean(phase_diffs)
     std_phase = std(phase_diffs)
-    
+
     if |mean_phase - π| < 0.1 and std_phase < 0.1 then
         return π
-    
+
     return 0
 ```
 
@@ -336,6 +347,7 @@ U = Q R
 $$
 
 ここで:
+
 - $Q$: 3×3ユニタリ行列
 - $R$: 3×3上三角行列
 
@@ -362,6 +374,7 @@ G_{ij}(\theta, \phi) = \begin{pmatrix}
 $$
 
 ここで:
+
 - $c = e^{i\phi/2} \cos(\theta/2)$
 - $s = e^{i\phi/2} \sin(\theta/2)$
 - $i, j$ 行・列に非自明要素を持つ
@@ -374,10 +387,12 @@ $$
 G_{ij}^\dagger G_{ij} = I
 $$
 
-**証明**: 
+**証明**:
+
 $$
 c^* c + s^* s = \cos^2(\theta/2) + \sin^2(\theta/2) = 1
 $$
+
 $\square$
 
 ### 3.3 Givens回転からZYZ分解への変換
@@ -392,7 +407,7 @@ $$
 
 ここで、回転は2準位系 $\{|0\rangle, |1\rangle\}$ に作用する。
 
-**証明**: 
+**証明**:
 両辺のユニタリ行列を展開し、要素ごとに比較することで証明される。
 $\square$
 
@@ -403,15 +418,15 @@ function givens_to_zyz(θ, φ):
     // 2×2部分空間への埋め込み
     G = [[e^(iφ/2) cos(θ/2), e^(iφ/2) sin(θ/2)],
          [-e^(-iφ/2) sin(θ/2), e^(-iφ/2) cos(θ/2)]]
-    
+
     // ZYZ分解を実行（アルゴリズム2.1）
     (θ_zyz, φ_zyz, λ_zyz, α) = extract_zyz_params(G)
-    
+
     // グローバル位相補正（アルゴリズム2.2）
     U_zyz = e^(iα) R_z(φ_zyz) R_y(θ_zyz) R_z(λ_zyz)
     correction = check_phase_correction(G, U_zyz)
     α = α + correction
-    
+
     return (θ_zyz, φ_zyz, λ_zyz, α)
 ```
 
@@ -479,7 +494,8 @@ $$
 
 ただし、グローバル位相 $e^{i\alpha}$ は無視可能。
 
-**証明**: 
+**証明**:
+
 $$
 \begin{align}
 & \text{VirtRz}(\phi + \lambda) \cdot R(-\theta, 0) \cdot \text{VirtRz}(\phi - \lambda) \\
@@ -488,6 +504,7 @@ $$
 &= R_z(\phi) \cdot R_y(\theta) \cdot R_z(\lambda) \quad (\text{up to global phase})
 \end{align}
 $$
+
 $\square$
 
 ### 4.4 ゲートシーケンス最適化
@@ -514,14 +531,14 @@ $$
 function optimize_gate_sequence(gates, ε):
     optimized = []
     virtrz_accumulator = {} // level -> accumulated phase
-    
+
     for gate in gates do
         if gate.type == 'VirtRz' then
             level = gate.level
             if level not in virtrz_accumulator then
                 virtrz_accumulator[level] = 0
             virtrz_accumulator[level] += gate.phase
-        
+
         else if gate.type == 'R' then
             // Flush accumulated VirtRz for relevant levels
             for level in [gate.level1, gate.level2] do
@@ -530,16 +547,16 @@ function optimize_gate_sequence(gates, ε):
                     if |phase| > ε then
                         append VirtRz(phase, level) to optimized
                     virtrz_accumulator[level] = 0
-            
+
             // Append R gate (unless θ ≈ 0)
             if |gate.theta| > ε then
                 append gate to optimized
-    
+
     // Flush remaining VirtRz gates
     for level, phase in virtrz_accumulator do
         if |phase| > ε then
             append VirtRz(phase, level) to optimized
-    
+
     return optimized
 ```
 
@@ -592,12 +609,12 @@ $$
 
 **1トロッターステップあたり**:
 
-| コンポーネント | 現状（LogEntQRCEX） | 疎構造認識 | 削減率 |
-|---------------|-------------------|----------|--------|
-| $H_0$ (VirtRz × 4) | 4 | 4 | 0% |
-| $H_{transfer}$ × 3 | ~3,000 | 3 | 99.9% |
-| $H_{TTA}$ × 3 | ~3,000 | 18 | 99.4% |
-| **合計** | ~6,004 | 25 | 99.6% |
+| コンポーネント     | 現状（LogEntQRCEX） | 疎構造認識 | 削減率 |
+| ------------------ | ------------------- | ---------- | ------ |
+| $H_0$ (VirtRz × 4) | 4                   | 4          | 0%     |
+| $H_{transfer}$ × 3 | ~3,000              | 3          | 99.9%  |
+| $H_{TTA}$ × 3      | ~3,000              | 18         | 99.4%  |
+| **合計**           | ~6,004              | 25         | 99.6%  |
 
 **100ステップ**:
 
@@ -610,7 +627,7 @@ $$
 疎構造認識コンパイラを使用すると、4分子鎖シミュレーションで
 99.6%のゲート削減が達成される。
 
-**証明**: 
+**証明**:
 上記の表から直接導かれる。
 $\square$
 
@@ -672,7 +689,7 @@ $$
 
 ---
 
-**作成日**: 2025年10月21日  
-**著者**: GitHub Copilot AI Analysis System  
-**バージョン**: 1.0  
+**作成日**: 2025年10月21日
+**著者**: GitHub Copilot AI Analysis System
+**バージョン**: 1.0
 **参照**: PR#42-46実装コード、プロトタイプ検証結果

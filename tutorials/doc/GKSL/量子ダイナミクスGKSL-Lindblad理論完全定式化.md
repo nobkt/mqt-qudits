@@ -2,10 +2,10 @@
 
 ## 文書情報
 
-**作成日**: 2026年1月14日  
-**バージョン**: 1.0.0  
-**対象フレームワーク**: MQT-Qudits  
-**理論的基礎**: Gorini-Kossakowski-Sudarshan-Lindblad (GKSL) 方程式  
+**作成日**: 2026年1月14日
+**バージョン**: 1.0.0
+**対象フレームワーク**: MQT-Qudits
+**理論的基礎**: Gorini-Kossakowski-Sudarshan-Lindblad (GKSL) 方程式
 **適用系**: 分子三重項状態の量子ダイナミクス
 
 ---
@@ -36,12 +36,14 @@
 既存文書（`quantum_dynamics_molecular_triplet_states.md`、`qubit_quantum_dynamics_molecular_triplet_states_theory.md`、`theory_quantum_dynamics_complete_comparison.md`）で記述されたユニタリ量子ダイナミクスを拡張し、以下の**非ユニタリ過程**を完全に組み込む：
 
 1. **三重項-三重項消滅（TTA）の非ユニタリ表現**
+
    - 従来のユニタリハミルトニアン表現ではなく、Lindblad演算子による真の散逸過程として定式化
-   
+
 2. **放射減衰過程**
+
    - 励起一重項状態からの蛍光発光（$S_1 \to S_0 + h\nu_{\text{fl}}$）
    - 励起三重項状態からの燐光発光（$T_1 \to S_0 + h\nu_{\text{ph}}$）
-   
+
 3. **無放射遷移**
    - 内部転換（Internal Conversion, IC）
    - 項間交差（Intersystem Crossing, ISC）
@@ -82,18 +84,21 @@ $$
 本文書は以下の原則に従い、厳密性を最優先する：
 
 ✅ **許可される手法**:
+
 - GKSL-Lindblad方程式の数学的に厳密な導出
 - 量子開放系理論に基づく完全正値写像（Completely Positive Trace-Preserving, CPTP）
 - 実験的に測定可能なパラメータのみを使用
 - 数値積分における制御可能な誤差（オーダー評価可能）
 
 ❌ **禁止される手法**:
+
 - ヒューリスティックな近似や経験的パラメータ
 - 物理的根拠のないfallback処理
 - ごまかしや真実を隠蔽する記述
 - ユーザーへの迎合（真実ベースの厳密性を優先）
 
 ---
+
 ## 2. 開放量子系の理論的基礎
 
 ### 2.1 閉じた系と開いた系
@@ -115,6 +120,7 @@ $$
 $\hat{H}_{\text{total}}$ は系の全ハミルトニアンである。
 
 **性質**:
+
 - ユニタリ性: $\hat{U}^\dagger(t) \hat{U}(t) = \mathbb{I}$
 - 規格化保存: $\langle \Psi(t) | \Psi(t) \rangle = 1$
 - エネルギー保存: $\langle \hat{H}_{\text{total}} \rangle = \text{const.}$
@@ -159,23 +165,25 @@ $$
 物理的に許容される動力学写像は以下の条件を満たす：
 
 1. **線形性**（Linearity）:
+
    $$
    \mathcal{E}_t [a\hat{\rho}_1 + b\hat{\rho}_2] = a\mathcal{E}_t[\hat{\rho}_1] + b\mathcal{E}_t[\hat{\rho}_2]
    $$
 
 2. **トレース保存**（Trace Preserving）:
+
    $$
    \text{Tr} \left[ \mathcal{E}_t[\hat{\rho}] \right] = \text{Tr}[\hat{\rho}] = 1
    $$
 
 3. **完全正値性**（Complete Positivity）:
-   
+
    任意の拡大系 $\mathcal{H}_{\mathcal{S}} \otimes \mathcal{H}_{\text{aux}}$ に対して、
-   
+
    $$
    (\mathcal{E}_t \otimes \mathbb{I}_{\text{aux}})[\hat{\rho}_{\text{SE}}] \geq 0
    $$
-   
+
    すなわち、補助系との合成系に拡張しても正定値性が保たれる。
 
 **注**: 完全正値性は、単なる正値性（$\mathcal{E}_t[\hat{\rho}] \geq 0$）より強い条件である。これにより、量子もつれ状態に対しても物理的に正しい記述が保証される。
@@ -569,13 +577,13 @@ $$
 
 #### 5.4.3 重要な違い
 
-| 性質 | ユニタリ表現 | Lindblad表現（本文書） |
-|------|------------|-------------------|
-| 時間反転対称性 | あり（可逆） | なし（不可逆） |
-| エントロピー | 保存 | 非減少 |
-| エネルギー散逸 | なし | あり（フォノンへ） |
-| 実験との対応 | 間接的（$J$） | 直接的（$\gamma_{\text{TTA}}$） |
-| 逆過程 | 同じ速度で起こる | 起こらない（熱力学的に禁止） |
+| 性質           | ユニタリ表現     | Lindblad表現（本文書）          |
+| -------------- | ---------------- | ------------------------------- |
+| 時間反転対称性 | あり（可逆）     | なし（不可逆）                  |
+| エントロピー   | 保存             | 非減少                          |
+| エネルギー散逸 | なし             | あり（フォノンへ）              |
+| 実験との対応   | 間接的（$J$）    | 直接的（$\gamma_{\text{TTA}}$） |
+| 逆過程         | 同じ速度で起こる | 起こらない（熱力学的に禁止）    |
 
 #### 5.4.4 なぜLindblad表現が正しいか
 
@@ -989,17 +997,17 @@ $$
 
 有機分子系における典型的な値（実験値に基づく）：
 
-| パラメータ | 記号 | 典型値 | 単位 | 物理的意味 |
-|----------|-----|-------|-----|-----------|
-| 三重項エネルギー | $E_T$ | 1.5 | eV | 励起三重項の固有エネルギー |
-| 一重項エネルギー | $E_S$ | 3.0 | eV | 励起一重項の固有エネルギー |
-| エネルギー移動積分 | $V$ | 0.01 | eV | Dexter機構による |
-| TTA速度定数 | $\gamma_{\text{TTA}}$ | $10^{-3}-10^{-1}$ | eV/$\hbar$ | 拡散制御過程 |
-| 蛍光速度 | $\Gamma_{\text{fl}}$ | $10^{-7}$ | eV/$\hbar$ | 許容遷移 |
-| 燐光速度 | $\Gamma_{\text{ph}}$ | $10^{-12}-10^{-9}$ | eV/$\hbar$ | 禁制遷移 |
-| 内部転換速度 | $k_{\text{IC}}$ | $10^{-8}-10^{-7}$ | eV/$\hbar$ | エネルギーギャップ則 |
-| ISC S→T速度 | $k_{\text{ISC}}^{S \to T}$ | $10^{-8}-10^{-7}$ | eV/$\hbar$ | スピン-軌道結合 |
-| ISC T→S速度 | $k_{\text{ISC}}^{T \to S}$ | $10^{-13}-10^{-10}$ | eV/$\hbar$ | 大エネルギーギャップ |
+| パラメータ         | 記号                       | 典型値              | 単位       | 物理的意味                 |
+| ------------------ | -------------------------- | ------------------- | ---------- | -------------------------- |
+| 三重項エネルギー   | $E_T$                      | 1.5                 | eV         | 励起三重項の固有エネルギー |
+| 一重項エネルギー   | $E_S$                      | 3.0                 | eV         | 励起一重項の固有エネルギー |
+| エネルギー移動積分 | $V$                        | 0.01                | eV         | Dexter機構による           |
+| TTA速度定数        | $\gamma_{\text{TTA}}$      | $10^{-3}-10^{-1}$   | eV/$\hbar$ | 拡散制御過程               |
+| 蛍光速度           | $\Gamma_{\text{fl}}$       | $10^{-7}$           | eV/$\hbar$ | 許容遷移                   |
+| 燐光速度           | $\Gamma_{\text{ph}}$       | $10^{-12}-10^{-9}$  | eV/$\hbar$ | 禁制遷移                   |
+| 内部転換速度       | $k_{\text{IC}}$            | $10^{-8}-10^{-7}$   | eV/$\hbar$ | エネルギーギャップ則       |
+| ISC S→T速度        | $k_{\text{ISC}}^{S \to T}$ | $10^{-8}-10^{-7}$   | eV/$\hbar$ | スピン-軌道結合            |
+| ISC T→S速度        | $k_{\text{ISC}}^{T \to S}$ | $10^{-13}-10^{-10}$ | eV/$\hbar$ | 大エネルギーギャップ       |
 
 #### 8.3.2 無次元化パラメータ
 
@@ -1064,6 +1072,7 @@ $$
 $$
 
 例：
+
 - $N=2$: $9 \times 9 = 81$ 行列要素
 - $N=3$: $27 \times 27 = 729$ 行列要素
 - $N=4$: $81 \times 81 = 6561$ 行列要素
@@ -1119,6 +1128,7 @@ $$
 $$
 
 数値計算：
+
 - `scipy.linalg.expm` を使用
 - 小さな系（$N \leq 3$）で実用的
 
@@ -1131,6 +1141,7 @@ $$
 $$
 
 推奨ソルバー：
+
 - `scipy.integrate.odeint` (LSODA)
 - `scipy.integrate.solve_ivp` (RK45, BDF)
 
@@ -1368,25 +1379,30 @@ $$
 本文書では、分子励起状態の量子ダイナミクスを**GKSL-Lindblad方程式**により完全に定式化した。主要な成果は以下の通りである：
 
 1. **開放量子系理論の完全な導入**
+
    - CPTP写像、Kraus表現、GKSL定理の厳密な定式化
    - 数学的基礎から物理的応用までの一貫した理論展開
 
 2. **TTA過程の非ユニタリ表現**
+
    - 従来のユニタリハミルトニアン $\hat{H}_{\text{TTA}}$ を**Lindblad演算子** $\hat{L}_{\text{TTA}}$ に置き換え
    - 不可逆性、エントロピー増大、エネルギー散逸を正しく記述
    - 実験的測定値（速度定数 $\gamma_{\text{TTA}}$）との直接対応
 
 3. **放射減衰過程の完全定式化**
+
    - 蛍光（$S_1 \to S_0 + h\nu$）: Einstein A係数に基づく厳密な導出
    - 燐光（$T_1 \to S_0 + h\nu$）: スピン禁制遷移とスピン-軌道結合の詳細
    - 自然放出速度の第一原理計算との接続
 
 4. **無放射遷移の組み込み**
+
    - 内部転換（IC）: エネルギーギャップ則に従う速度定数
    - 項間交差（ISC）: スピン-軌道結合による $S \leftrightarrow T$ 遷移
    - フォノンバスへのエネルギー散逸の明示的記述
 
 5. **数値シミュレーション手法**
+
    - 超演算子形式による効率的な実装
    - 疎行列演算による大規模系への適用可能性
    - 熱力学第二法則、保存則の数値的検証手法
@@ -1398,17 +1414,17 @@ $$
 
 ### 11.2 従来の手法との比較
 
-| 特性 | 従来のユニタリ記述 | 本文書のGKSL-Lindblad記述 |
-|------|-------------------|------------------------|
-| TTA過程 | ユニタリハミルトニアン $\hat{H}_{\text{TTA}}$ | Lindblad演算子 $\hat{L}_{\text{TTA}}$ |
-| 時間反転対称性 | あり（可逆） | なし（不可逆） |
-| エントロピー | 保存（$dS/dt = 0$） | 増大（$dS/dt \geq 0$） |
-| エネルギー散逸 | なし | あり（フォノンへ） |
-| 放射減衰 | 含まれない | 蛍光・燐光を含む |
-| 無放射遷移 | 含まれない | IC・ISCを含む |
-| 実験との対応 | 間接的 | 直接的（速度定数） |
-| 熱力学第二法則 | 非整合 | 整合 |
-| 数値安定性 | 高（ユニタリ性保証） | 高（CPTP保証） |
+| 特性           | 従来のユニタリ記述                            | 本文書のGKSL-Lindblad記述             |
+| -------------- | --------------------------------------------- | ------------------------------------- |
+| TTA過程        | ユニタリハミルトニアン $\hat{H}_{\text{TTA}}$ | Lindblad演算子 $\hat{L}_{\text{TTA}}$ |
+| 時間反転対称性 | あり（可逆）                                  | なし（不可逆）                        |
+| エントロピー   | 保存（$dS/dt = 0$）                           | 増大（$dS/dt \geq 0$）                |
+| エネルギー散逸 | なし                                          | あり（フォノンへ）                    |
+| 放射減衰       | 含まれない                                    | 蛍光・燐光を含む                      |
+| 無放射遷移     | 含まれない                                    | IC・ISCを含む                         |
+| 実験との対応   | 間接的                                        | 直接的（速度定数）                    |
+| 熱力学第二法則 | 非整合                                        | 整合                                  |
+| 数値安定性     | 高（ユニタリ性保証）                          | 高（CPTP保証）                        |
 
 ### 11.3 今後の展望
 
@@ -1457,36 +1473,36 @@ $$
 
 ### 開放量子系理論
 
-1. Breuer, H.-P., & Petruccione, F. (2002). *The Theory of Open Quantum Systems*. Oxford University Press.
-2. Gorini, V., Kossakowski, A., & Sudarshan, E. C. G. (1976). "Completely positive dynamical semigroups of N-level systems." *Journal of Mathematical Physics*, 17(5), 821-825.
-3. Lindblad, G. (1976). "On the generators of quantum dynamical semigroups." *Communications in Mathematical Physics*, 48(2), 119-130.
-4. Carmichael, H. J. (1999). *Statistical Methods in Quantum Optics 1: Master Equations and Fokker-Planck Equations*. Springer.
+1. Breuer, H.-P., & Petruccione, F. (2002). _The Theory of Open Quantum Systems_. Oxford University Press.
+2. Gorini, V., Kossakowski, A., & Sudarshan, E. C. G. (1976). "Completely positive dynamical semigroups of N-level systems." _Journal of Mathematical Physics_, 17(5), 821-825.
+3. Lindblad, G. (1976). "On the generators of quantum dynamical semigroups." _Communications in Mathematical Physics_, 48(2), 119-130.
+4. Carmichael, H. J. (1999). _Statistical Methods in Quantum Optics 1: Master Equations and Fokker-Planck Equations_. Springer.
 
 ### 分子励起状態とTTA
 
-5. Smith, M. B., & Michl, J. (2010). "Singlet fission." *Chemical Reviews*, 110(11), 6891-6936.
-6. Singh-Rachford, T. N., & Castellano, F. N. (2010). "Photon upconversion based on sensitized triplet–triplet annihilation." *Coordination Chemistry Reviews*, 254(21-22), 2560-2573.
-7. Congreve, D. N., et al. (2013). "External quantum efficiency above 100% in a singlet-exciton-fission–based organic photovoltaic cell." *Science*, 340(6130), 334-337.
+5. Smith, M. B., & Michl, J. (2010). "Singlet fission." _Chemical Reviews_, 110(11), 6891-6936.
+6. Singh-Rachford, T. N., & Castellano, F. N. (2010). "Photon upconversion based on sensitized triplet–triplet annihilation." _Coordination Chemistry Reviews_, 254(21-22), 2560-2573.
+7. Congreve, D. N., et al. (2013). "External quantum efficiency above 100% in a singlet-exciton-fission–based organic photovoltaic cell." _Science_, 340(6130), 334-337.
 
 ### 光物理・光化学
 
-8. Turro, N. J., Ramamurthy, V., & Scaiano, J. C. (2010). *Modern Molecular Photochemistry of Organic Molecules*. University Science Books.
-9. Kasha, M. (1950). "Characterization of electronic transitions in complex molecules." *Discussions of the Faraday Society*, 9, 14-19.
-10. Birks, J. B. (1970). *Photophysics of Aromatic Molecules*. Wiley-Interscience.
+8. Turro, N. J., Ramamurthy, V., & Scaiano, J. C. (2010). _Modern Molecular Photochemistry of Organic Molecules_. University Science Books.
+9. Kasha, M. (1950). "Characterization of electronic transitions in complex molecules." _Discussions of the Faraday Society_, 9, 14-19.
+10. Birks, J. B. (1970). _Photophysics of Aromatic Molecules_. Wiley-Interscience.
 
 ### エネルギー移動
 
-11. Dexter, D. L. (1953). "A Theory of Sensitized Luminescence in Solids." *The Journal of Chemical Physics*, 21(5), 836-850.
-12. Förster, T. (1948). "Zwischenmolekulare Energiewanderung und Fluoreszenz." *Annalen der Physik*, 437(1-2), 55-75.
+11. Dexter, D. L. (1953). "A Theory of Sensitized Luminescence in Solids." _The Journal of Chemical Physics_, 21(5), 836-850.
+12. Förster, T. (1948). "Zwischenmolekulare Energiewanderung und Fluoreszenz." _Annalen der Physik_, 437(1-2), 55-75.
 
 ### 量子ダイナミクス
 
-13. May, V., & Kühn, O. (2011). *Charge and Energy Transfer Dynamics in Molecular Systems* (3rd ed.). Wiley-VCH.
-14. Nitzan, A. (2006). *Chemical Dynamics in Condensed Phases: Relaxation, Transfer, and Reactions in Condensed Molecular Systems*. Oxford University Press.
+13. May, V., & Kühn, O. (2011). _Charge and Energy Transfer Dynamics in Molecular Systems_ (3rd ed.). Wiley-VCH.
+14. Nitzan, A. (2006). _Chemical Dynamics in Condensed Phases: Relaxation, Transfer, and Reactions in Condensed Molecular Systems_. Oxford University Press.
 
 ### 量子計算への応用
 
-15. Nielsen, M. A., & Chuang, I. L. (2010). *Quantum Computation and Quantum Information* (10th Anniversary ed.). Cambridge University Press.
+15. Nielsen, M. A., & Chuang, I. L. (2010). _Quantum Computation and Quantum Information_ (10th Anniversary ed.). Cambridge University Press.
 16. MQT-Qudits Documentation: https://github.com/cda-tum/mqt-qudits
 
 ### 本プロジェクトの関連文書
@@ -1513,27 +1529,26 @@ $$
 
 **付録: 数式記号一覧**
 
-| 記号 | 意味 |
-|------|------|
-| $\|S_0\rangle$ | 基底一重項状態 |
-| $\|T_1\rangle$ | 励起三重項状態 |
-| $\|S_1\rangle$ | 励起一重項状態 |
-| $\hat{\rho}$ | 密度演算子 |
-| $\hat{H}$ | ハミルトニアン |
-| $\hat{L}_\alpha$ | Lindblad演算子 |
-| $\gamma_\alpha$ | 散逸速度定数 |
-| $\mathcal{D}[\hat{L}]$ | Lindblad超演算子 |
-| $\Gamma_{\text{fl}}$ | 蛍光発光速度 |
-| $\Gamma_{\text{ph}}$ | 燐光発光速度 |
-| $k_{\text{IC}}$ | 内部転換速度定数 |
-| $k_{\text{ISC}}$ | 項間交差速度定数 |
-| $\gamma_{\text{TTA}}$ | TTA速度定数 |
-| $\hbar$ | 換算プランク定数 |
-| $\mathcal{E}_t$ | 動力学写像 |
-| $\text{Tr}$ | トレース |
-| $S(\hat{\rho})$ | von Neumannエントロピー |
+| 記号                   | 意味                    |
+| ---------------------- | ----------------------- |
+| $\|S_0\rangle$         | 基底一重項状態          |
+| $\|T_1\rangle$         | 励起三重項状態          |
+| $\|S_1\rangle$         | 励起一重項状態          |
+| $\hat{\rho}$           | 密度演算子              |
+| $\hat{H}$              | ハミルトニアン          |
+| $\hat{L}_\alpha$       | Lindblad演算子          |
+| $\gamma_\alpha$        | 散逸速度定数            |
+| $\mathcal{D}[\hat{L}]$ | Lindblad超演算子        |
+| $\Gamma_{\text{fl}}$   | 蛍光発光速度            |
+| $\Gamma_{\text{ph}}$   | 燐光発光速度            |
+| $k_{\text{IC}}$        | 内部転換速度定数        |
+| $k_{\text{ISC}}$       | 項間交差速度定数        |
+| $\gamma_{\text{TTA}}$  | TTA速度定数             |
+| $\hbar$                | 換算プランク定数        |
+| $\mathcal{E}_t$        | 動力学写像              |
+| $\text{Tr}$            | トレース                |
+| $S(\hat{\rho})$        | von Neumannエントロピー |
 
 ---
 
 **END OF DOCUMENT**
-

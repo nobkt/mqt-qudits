@@ -1,43 +1,44 @@
 """Comprehensive tests for GKSL-Lindblad simulation modules."""
 
-import sys
+from __future__ import annotations
+
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import numpy as np
 import pytest
-
-from gksl_physical_parameters import GKSLPhysicalParameters
+from classical_gksl_simulator import ClassicalGKSLSimulator
 from gksl_math_utils import (
+    build_lindblad_operators,
     build_onsite_hamiltonian,
     build_transfer_hamiltonian,
-    build_lindblad_operators,
-    vectorize_density_matrix,
-    unvectorize_density_matrix,
-    compute_von_neumann_entropy,
-    compute_purity,
     compute_populations_from_density_matrix,
+    compute_purity,
+    compute_von_neumann_entropy,
+    unvectorize_density_matrix,
+    vectorize_density_matrix,
 )
+from gksl_physical_parameters import GKSLPhysicalParameters
 from gksl_validation import (
     PhysicsViolationError,
     validate_density_matrix,
     validate_particle_conservation,
 )
-from stinespring_utils import (
-    stinespring_unitary_from_lindblad,
-    apply_stinespring_to_density_matrix,
-)
-from classical_gksl_simulator import ClassicalGKSLSimulator
 from qubit_gksl_simulator import QubitGKSLSimulator
 from qudit_gksl_simulator import QuditGKSLSimulator
+from stinespring_utils import (
+    apply_stinespring_to_density_matrix,
+    stinespring_unitary_from_lindblad,
+)
 
 
 # ---------------------------------------------------------------------------
 # 1. TestGKSLPhysicalParameters
 # ---------------------------------------------------------------------------
 class TestGKSLPhysicalParameters:
-    def test_default_initialization(self):
+    def test_default_initialization(self) -> None:
         p = GKSLPhysicalParameters()
         assert p.E_T == 1.5
         assert p.E_S == 3.0
@@ -51,38 +52,38 @@ class TestGKSLPhysicalParameters:
         assert p.N_molecules == 4
         assert p.d == 3
 
-    def test_validate_valid(self):
+    def test_validate_valid(self) -> None:
         p = GKSLPhysicalParameters()
         errors = p.validate()
         assert errors == []
 
-    def test_validate_energy_ratio(self):
+    def test_validate_energy_ratio(self) -> None:
         p = GKSLPhysicalParameters(E_T=5.0, E_S=3.0)
         errors = p.validate()
         assert any("energy" in e.lower() or "E_T" in e or "E_S" in e for e in errors)
 
-    def test_validate_hierarchy(self):
+    def test_validate_hierarchy(self) -> None:
         p = GKSLPhysicalParameters(Gamma_fl=1e-8, Gamma_ph=1.0)
         errors = p.validate()
         assert len(errors) > 0
 
-    def test_hilbert_space_dim(self):
+    def test_hilbert_space_dim(self) -> None:
         p = GKSLPhysicalParameters()
         assert p.get_hilbert_space_dim() == 81  # 3^4
 
-    def test_hilbert_space_dim_boson(self):
+    def test_hilbert_space_dim_boson(self) -> None:
         p = GKSLPhysicalParameters(with_boson=True, n_max=2)
         dim = p.get_hilbert_space_dim()
         assert dim == 3**4 * 3**4  # 81 * 81 = 6561
 
-    def test_to_dict(self):
+    def test_to_dict(self) -> None:
         p = GKSLPhysicalParameters()
         d = p.to_dict()
         assert isinstance(d, dict)
         assert d["E_T"] == 1.5
         assert d["N_molecules"] == 4
 
-    def test_neighbors(self):
+    def test_neighbors(self) -> None:
         p = GKSLPhysicalParameters()
         nbrs = p.neighbors
         assert nbrs == [(0, 1), (1, 2), (2, 3)]
@@ -92,34 +93,34 @@ class TestGKSLPhysicalParameters:
 # 2. TestMathUtils
 # ---------------------------------------------------------------------------
 class TestMathUtils:
-    @pytest.fixture()
+    @pytest.fixture
     def params(self):
         return GKSLPhysicalParameters()
 
-    def test_hamiltonian_hermiticity(self, params):
+    def test_hamiltonian_hermiticity(self, params) -> None:
         H0 = build_onsite_hamiltonian(params)
         Ht = build_transfer_hamiltonian(params)
         assert np.allclose(H0, H0.conj().T, atol=1e-12)
         assert np.allclose(Ht, Ht.conj().T, atol=1e-12)
 
-    def test_hamiltonian_eigenvalues(self, params):
+    def test_hamiltonian_eigenvalues(self, params) -> None:
         H0 = build_onsite_hamiltonian(params)
         eigs = np.linalg.eigvalsh(H0)
         assert abs(eigs.min()) < 1e-10
         assert abs(eigs.max() - 4 * params.E_S) < 1e-10
 
-    def test_lindblad_count(self, params):
+    def test_lindblad_count(self, params) -> None:
         ops = build_lindblad_operators(params)
         assert len(ops) == 26
 
-    def test_vectorization_roundtrip(self):
+    def test_vectorization_roundtrip(self) -> None:
         dim = 4
         rho = np.random.randn(dim, dim) + 1j * np.random.randn(dim, dim)
         vec = vectorize_density_matrix(rho)
         rho2 = unvectorize_density_matrix(vec, dim)
         assert np.allclose(rho, rho2)
 
-    def test_entropy_pure_state(self):
+    def test_entropy_pure_state(self) -> None:
         dim = 4
         psi = np.zeros(dim, dtype=complex)
         psi[0] = 1.0
@@ -127,13 +128,13 @@ class TestMathUtils:
         S = compute_von_neumann_entropy(rho)
         assert abs(S) < 1e-10
 
-    def test_entropy_mixed_state(self):
+    def test_entropy_mixed_state(self) -> None:
         dim = 81
         rho = np.eye(dim, dtype=complex) / dim
         S = compute_von_neumann_entropy(rho)
         assert abs(S - np.log(dim)) < 1e-10
 
-    def test_purity_pure_state(self):
+    def test_purity_pure_state(self) -> None:
         dim = 81
         psi = np.zeros(dim, dtype=complex)
         psi[0] = 1.0
@@ -141,7 +142,7 @@ class TestMathUtils:
         P = compute_purity(rho)
         assert abs(P - 1.0) < 1e-10
 
-    def test_populations_conservation(self, params):
+    def test_populations_conservation(self, params) -> None:
         dim = params.get_hilbert_space_dim()
         psi = np.zeros(dim, dtype=complex)
         psi[28] = 1.0  # |1,0,0,1> edge_triplet
@@ -155,34 +156,34 @@ class TestMathUtils:
 # 3. TestClassicalGKSLSimulator
 # ---------------------------------------------------------------------------
 class TestClassicalGKSLSimulator:
-    @pytest.fixture()
+    @pytest.fixture
     def sim(self):
         return ClassicalGKSLSimulator(GKSLPhysicalParameters())
 
-    def test_initialization(self, sim):
+    def test_initialization(self, sim) -> None:
         assert sim.H_0.shape == (81, 81)
         assert sim.H_transfer.shape == (81, 81)
         assert sim.H_total.shape == (81, 81)
 
-    def test_trace_preservation(self, sim):
+    def test_trace_preservation(self, sim) -> None:
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for tr in result["trace"]:
             assert abs(tr - 1.0) < 1e-8
 
-    def test_particle_conservation(self, sim):
+    def test_particle_conservation(self, sim) -> None:
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for pop in result["populations"]:
             total = pop["N_S0"] + pop["N_T1"] + pop["N_S1"]
             assert abs(total - 4.0) < 1e-6
 
-    def test_initial_populations(self, sim):
+    def test_initial_populations(self, sim) -> None:
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         pop0 = result["populations"][0]
         assert abs(pop0["N_T1"] - 2.0) < 1e-10
         assert abs(pop0["N_S0"] - 2.0) < 1e-10
         assert abs(pop0["N_S1"] - 0.0) < 1e-10
 
-    def test_edge_triplet_for_two_molecules(self):
+    def test_edge_triplet_for_two_molecules(self) -> None:
         params = GKSLPhysicalParameters(N_molecules=2)
         sim = ClassicalGKSLSimulator(params)
         rho_0 = sim.prepare_initial_state("edge_triplet")
@@ -191,18 +192,18 @@ class TestClassicalGKSLSimulator:
         assert abs(pops["N_S0"] - 0.0) < 1e-10
         assert abs(pops["N_S1"] - 0.0) < 1e-10
 
-    def test_edge_triplet_requires_two_or_more_molecules(self):
+    def test_edge_triplet_requires_two_or_more_molecules(self) -> None:
         params = GKSLPhysicalParameters(N_molecules=1)
         sim = ClassicalGKSLSimulator(params)
         with pytest.raises(ValueError, match="N_molecules >= 2"):
             sim.prepare_initial_state("edge_triplet")
 
-    def test_entropy_non_negative(self, sim):
+    def test_entropy_non_negative(self, sim) -> None:
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for S in result["entropy"]:
             assert S >= -1e-10
 
-    def test_physical_evolution(self, sim):
+    def test_physical_evolution(self, sim) -> None:
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         pops = result["populations"]
         # Triplets should decay
@@ -215,27 +216,27 @@ class TestClassicalGKSLSimulator:
 # 4. TestQubitGKSLSimulator
 # ---------------------------------------------------------------------------
 class TestQubitGKSLSimulator:
-    @pytest.fixture()
+    @pytest.fixture
     def sim(self):
         return QubitGKSLSimulator(GKSLPhysicalParameters())
 
-    def test_initialization(self, sim):
+    def test_initialization(self, sim) -> None:
         assert sim.n_sys_qubits == 8
         assert sim.n_ancilla == 26
         assert sim.n_total_qubits == 34
 
-    def test_trace_preservation(self, sim):
+    def test_trace_preservation(self, sim) -> None:
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for tr in result["trace"]:
             assert abs(tr - 1.0) < 1e-4
 
-    def test_particle_conservation(self, sim):
+    def test_particle_conservation(self, sim) -> None:
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for pop in result["populations"]:
             total = pop["N_S0"] + pop["N_T1"] + pop["N_S1"]
             assert abs(total - 4.0) < 0.1
 
-    def test_edge_triplet_requires_two_or_more_molecules(self):
+    def test_edge_triplet_requires_two_or_more_molecules(self) -> None:
         params = GKSLPhysicalParameters(N_molecules=1)
         sim = QubitGKSLSimulator(params)
         with pytest.raises(ValueError, match="N_molecules >= 2"):
@@ -246,26 +247,26 @@ class TestQubitGKSLSimulator:
 # 5. TestQuditGKSLSimulator
 # ---------------------------------------------------------------------------
 class TestQuditGKSLSimulator:
-    @pytest.fixture()
+    @pytest.fixture
     def sim(self):
         return QuditGKSLSimulator(GKSLPhysicalParameters())
 
-    def test_initialization(self, sim):
+    def test_initialization(self, sim) -> None:
         assert sim.n_system_qudits == 4
         assert sim.n_ancilla_qubits == 26
 
-    def test_trace_preservation(self, sim):
+    def test_trace_preservation(self, sim) -> None:
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for tr in result["trace"]:
             assert abs(tr - 1.0) < 1e-4
 
-    def test_particle_conservation(self, sim):
+    def test_particle_conservation(self, sim) -> None:
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for pop in result["populations"]:
             total = pop["N_S0"] + pop["N_T1"] + pop["N_S1"]
             assert abs(total - 4.0) < 0.1
 
-    def test_qubit_qudit_consistency(self):
+    def test_qubit_qudit_consistency(self) -> None:
         params = GKSLPhysicalParameters()
         q2 = QubitGKSLSimulator(params)
         qd = QuditGKSLSimulator(params)
@@ -275,7 +276,7 @@ class TestQuditGKSLSimulator:
             assert abs(p2["N_T1"] - pd["N_T1"]) < 0.2
             assert abs(p2["N_S0"] - pd["N_S0"]) < 0.2
 
-    def test_edge_triplet_requires_two_or_more_molecules(self):
+    def test_edge_triplet_requires_two_or_more_molecules(self) -> None:
         params = GKSLPhysicalParameters(N_molecules=1)
         sim = QuditGKSLSimulator(params)
         with pytest.raises(ValueError, match="N_molecules >= 2"):
@@ -286,20 +287,18 @@ class TestQuditGKSLSimulator:
 # 6. TestBosonSimulators
 # ---------------------------------------------------------------------------
 class TestBosonSimulators:
-    @pytest.fixture()
+    @pytest.fixture
     def boson_params(self):
-        return GKSLPhysicalParameters(
-            N_molecules=2, with_boson=True, n_max=1
-        )
+        return GKSLPhysicalParameters(N_molecules=2, with_boson=True, n_max=1)
 
-    def test_classical_boson_small(self, boson_params):
+    def test_classical_boson_small(self, boson_params) -> None:
         from classical_gksl_boson_simulator import ClassicalGKSLBosonSimulator
 
         sim = ClassicalGKSLBosonSimulator(boson_params)
         result = sim.simulate(t_max=2.0, n_steps=3, initial_state="edge_triplet")
         assert len(result["times"]) >= 2
 
-    def test_trace_preservation_boson(self, boson_params):
+    def test_trace_preservation_boson(self, boson_params) -> None:
         from classical_gksl_boson_simulator import ClassicalGKSLBosonSimulator
 
         sim = ClassicalGKSLBosonSimulator(boson_params)
@@ -307,7 +306,7 @@ class TestBosonSimulators:
         for tr in result["trace"]:
             assert abs(tr - 1.0) < 1e-6
 
-    def test_qubit_qudit_boson_match(self, boson_params):
+    def test_qubit_qudit_boson_match(self, boson_params) -> None:
         from qubit_gksl_boson_simulator import QubitGKSLBosonSimulator
         from qudit_gksl_boson_simulator import QuditGKSLBosonSimulator
 
@@ -318,7 +317,7 @@ class TestBosonSimulators:
         for p2, pd in zip(r2["populations"], rd["populations"]):
             assert abs(p2["N_T1"] - pd["N_T1"]) < 0.3
 
-    def test_boson_matches_non_boson_when_g_eph_zero(self):
+    def test_boson_matches_non_boson_when_g_eph_zero(self) -> None:
         from classical_gksl_boson_simulator import ClassicalGKSLBosonSimulator
 
         params_non_boson = GKSLPhysicalParameters(N_molecules=2)
@@ -331,20 +330,14 @@ class TestBosonSimulators:
 
         sim_non_boson = ClassicalGKSLSimulator(params_non_boson)
         sim_boson = ClassicalGKSLBosonSimulator(params_boson)
-        result_non_boson = sim_non_boson.simulate(
-            t_max=2.0, n_steps=8, initial_state="edge_triplet"
-        )
-        result_boson = sim_boson.simulate(
-            t_max=2.0, n_steps=8, initial_state="edge_triplet"
-        )
+        result_non_boson = sim_non_boson.simulate(t_max=2.0, n_steps=8, initial_state="edge_triplet")
+        result_boson = sim_boson.simulate(t_max=2.0, n_steps=8, initial_state="edge_triplet")
 
-        for pop_non_boson, pop_boson in zip(
-            result_non_boson["populations"], result_boson["populations"]
-        ):
+        for pop_non_boson, pop_boson in zip(result_non_boson["populations"], result_boson["populations"]):
             for key in ("N_S0", "N_T1", "N_S1"):
                 assert abs(pop_non_boson[key] - pop_boson[key]) < 1e-6
 
-    def test_qubit_qudit_boson_edge_triplet_requires_two_or_more_molecules(self):
+    def test_qubit_qudit_boson_edge_triplet_requires_two_or_more_molecules(self) -> None:
         from qubit_gksl_boson_simulator import QubitGKSLBosonSimulator
         from qudit_gksl_boson_simulator import QuditGKSLBosonSimulator
 
@@ -367,21 +360,21 @@ class TestValidation:
         psi /= np.linalg.norm(psi)
         return np.outer(psi, psi.conj())
 
-    def test_valid_density_matrix(self):
+    def test_valid_density_matrix(self) -> None:
         rho = self._make_valid_rho(8)
         result = validate_density_matrix(rho)
         assert result["valid"]
 
-    def test_invalid_trace(self):
+    def test_invalid_trace(self) -> None:
         rho = np.eye(4, dtype=complex) * 0.5  # trace = 2
         with pytest.raises(PhysicsViolationError, match="[Tt]race"):
             validate_density_matrix(rho)
 
-    def test_particle_conservation_valid(self):
+    def test_particle_conservation_valid(self) -> None:
         pops = {"N_S0": 2.0, "N_T1": 1.5, "N_S1": 0.5}
         assert validate_particle_conservation(pops, N_molecules=4)
 
-    def test_particle_conservation_invalid(self):
+    def test_particle_conservation_invalid(self) -> None:
         pops = {"N_S0": 2.0, "N_T1": 1.5, "N_S1": 1.5}
         with pytest.raises(PhysicsViolationError):
             validate_particle_conservation(pops, N_molecules=4)
@@ -391,7 +384,7 @@ class TestValidation:
 # 8. TestStinespring
 # ---------------------------------------------------------------------------
 class TestStinespring:
-    @pytest.fixture()
+    @pytest.fixture
     def setup(self):
         params = GKSLPhysicalParameters()
         ops = build_lindblad_operators(params)
@@ -400,12 +393,12 @@ class TestStinespring:
         U = stinespring_unitary_from_lindblad(L, dt)
         return L, dt, U, params
 
-    def test_unitarity(self, setup):
+    def test_unitarity(self, setup) -> None:
         _L, _dt, U, _params = setup
         eye = np.eye(U.shape[0], dtype=complex)
         assert np.allclose(U.conj().T @ U, eye, atol=1e-10)
 
-    def test_trace_preservation(self, setup):
+    def test_trace_preservation(self, setup) -> None:
         _L, _dt, U, _params = setup
         dim = U.shape[0] // 2
         psi = np.zeros(dim, dtype=complex)
@@ -414,7 +407,7 @@ class TestStinespring:
         rho_out = apply_stinespring_to_density_matrix(rho, U)
         assert abs(np.trace(rho_out).real - 1.0) < 1e-10
 
-    def test_hermiticity(self, setup):
+    def test_hermiticity(self, setup) -> None:
         _L, _dt, U, _params = setup
         dim = U.shape[0] // 2
         psi = np.zeros(dim, dtype=complex)
@@ -428,11 +421,15 @@ class TestStinespring:
 # 9. TestPhysicalLimits – Unitary limit, fluorescence analytical, steady state
 # ---------------------------------------------------------------------------
 class TestPhysicalLimits:
-    def test_unitary_limit(self):
+    def test_unitary_limit(self) -> None:
         """Unitary limit: all gamma=0, entropy must stay zero (pure state)."""
         params = GKSLPhysicalParameters(
-            gamma_TTA=0, Gamma_fl=0, Gamma_ph=0,
-            k_IC=0, k_ISC_ST=0, k_ISC_TS=0,
+            gamma_TTA=0,
+            Gamma_fl=0,
+            Gamma_ph=0,
+            k_IC=0,
+            k_ISC_ST=0,
+            k_ISC_TS=0,
         )
         sim = ClassicalGKSLSimulator(params)
         result = sim.simulate(t_max=10.0, n_steps=20, initial_state="edge_triplet")
@@ -453,12 +450,17 @@ class TestPhysicalLimits:
         for tr in result["trace"]:
             assert abs(tr - 1.0) < 1e-12
 
-    def test_fluorescence_analytical(self):
+    def test_fluorescence_analytical(self) -> None:
         """Fluorescence-only: V=0, only Gamma_fl, compare with analytical exponential decay."""
         Gamma_fl = 0.01
         params = GKSLPhysicalParameters(
-            V=0, gamma_TTA=0, Gamma_fl=Gamma_fl, Gamma_ph=0,
-            k_IC=0, k_ISC_ST=0, k_ISC_TS=0,
+            V=0,
+            gamma_TTA=0,
+            Gamma_fl=Gamma_fl,
+            Gamma_ph=0,
+            k_IC=0,
+            k_ISC_ST=0,
+            k_ISC_TS=0,
         )
         sim = ClassicalGKSLSimulator(params)
         result = sim.simulate(t_max=50.0, n_steps=100, initial_state="all_singlet")
@@ -472,7 +474,7 @@ class TestPhysicalLimits:
                 f"t={t}: expected N_S1={expected_N_S1:.6f}, got {actual_N_S1:.6f}"
             )
 
-    def test_steady_state(self):
+    def test_steady_state(self) -> None:
         """Steady state: long-time evolution relaxes all molecules to ground state S0."""
         params = GKSLPhysicalParameters()
         sim = ClassicalGKSLSimulator(params)
@@ -483,21 +485,30 @@ class TestPhysicalLimits:
         assert pops_final["N_T1"] < 0.5, f"N_T1={pops_final['N_T1']:.4f} (expected < 0.5)"
         assert pops_final["N_S1"] < 0.5, f"N_S1={pops_final['N_S1']:.4f} (expected < 0.5)"
 
-    def test_validate_unitary_params(self):
+    def test_validate_unitary_params(self) -> None:
         """Validate that all-zero dissipation passes parameter validation."""
         params = GKSLPhysicalParameters(
-            gamma_TTA=0, Gamma_fl=0, Gamma_ph=0,
-            k_IC=0, k_ISC_ST=0, k_ISC_TS=0,
+            gamma_TTA=0,
+            Gamma_fl=0,
+            Gamma_ph=0,
+            k_IC=0,
+            k_ISC_ST=0,
+            k_ISC_TS=0,
         )
         errors = params.validate()
         # No weak-coupling violation when all dissipation is zero
         assert not any("Weak coupling" in e for e in errors)
 
-    def test_validate_zero_V_params(self):
+    def test_validate_zero_V_params(self) -> None:
         """Validate that V=0 with small dissipation passes (no spurious weak coupling error)."""
         params = GKSLPhysicalParameters(
-            V=0, gamma_TTA=0, Gamma_fl=0.01, Gamma_ph=0,
-            k_IC=0, k_ISC_ST=0, k_ISC_TS=0,
+            V=0,
+            gamma_TTA=0,
+            Gamma_fl=0.01,
+            Gamma_ph=0,
+            k_IC=0,
+            k_ISC_ST=0,
+            k_ISC_TS=0,
         )
         errors = params.validate()
         # V=0 is valid; weak coupling should compare against E_T, not V
@@ -526,19 +537,15 @@ class TestStinespringFidelity:
         evals_M = np.maximum(evals_M, 0.0)
         return float(np.real(np.sum(np.sqrt(evals_M))) ** 2)
 
-    def test_stinespring_fidelity_qudit(self):
+    def test_stinespring_fidelity_qudit(self) -> None:
         """Qudit Stinespring+Trotter fidelity vs classical ODE: F > 0.99 at small dt."""
         params = GKSLPhysicalParameters()
 
         sim_classical = ClassicalGKSLSimulator(params)
-        result_classical = sim_classical.simulate(
-            t_max=1.0, n_steps=20, initial_state="edge_triplet"
-        )
+        result_classical = sim_classical.simulate(t_max=1.0, n_steps=20, initial_state="edge_triplet")
 
         sim_qudit = QuditGKSLSimulator(params)
-        result_qudit = sim_qudit.simulate(
-            t_max=1.0, n_steps=20, initial_state="edge_triplet"
-        )
+        result_qudit = sim_qudit.simulate(t_max=1.0, n_steps=20, initial_state="edge_triplet")
 
         rho_classical = result_classical["rho_final"]
         rho_qudit = result_qudit["rho_final"]
@@ -546,18 +553,12 @@ class TestStinespringFidelity:
         F = self._quantum_fidelity(rho_classical, rho_qudit)
         assert F > 0.99, f"Fidelity = {F:.6f} (expected > 0.99)"
 
-    def test_classical_quantum_population_agreement_at_small_dt(self):
+    def test_classical_quantum_population_agreement_at_small_dt(self) -> None:
         """Classical ODE and Qubit/Qudit Stinespring populations agree at small dt."""
         params = GKSLPhysicalParameters()
-        classical = ClassicalGKSLSimulator(params).simulate(
-            t_max=1.0, n_steps=20, initial_state="edge_triplet"
-        )
-        qubit = QubitGKSLSimulator(params).simulate(
-            t_max=1.0, n_steps=20, initial_state="edge_triplet"
-        )
-        qudit = QuditGKSLSimulator(params).simulate(
-            t_max=1.0, n_steps=20, initial_state="edge_triplet"
-        )
+        classical = ClassicalGKSLSimulator(params).simulate(t_max=1.0, n_steps=20, initial_state="edge_triplet")
+        qubit = QubitGKSLSimulator(params).simulate(t_max=1.0, n_steps=20, initial_state="edge_triplet")
+        qudit = QuditGKSLSimulator(params).simulate(t_max=1.0, n_steps=20, initial_state="edge_triplet")
 
         for pop_classical, pop_qubit, pop_qudit in zip(
             classical["populations"], qubit["populations"], qudit["populations"]

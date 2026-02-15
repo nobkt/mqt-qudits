@@ -9,12 +9,14 @@ tutorials/quantum_dynamics_complete_comparison.ipynb において、以下の改
 #### ① Qubit量子シミュレーション ✅
 
 **要求事項:**
+
 - Unitaryゲートを使った場合と、全て基本量子ゲートに分解した場合の比較
 - 1トロッターステップ当たりの量子ゲート数とその内訳の出力
 - 回路深さの出力
 - 量子回路図の可視化（IPythonのdisplayを使う）
 
 **実装状況:**
+
 - ✅ すでに実装済み（既存のセル）
 - Cell: `qubit_gate_comparison` - UnitaryGate版と基本ゲート分解版の比較
 - Cell: `qubit_circuit_viz` - 両バージョンの回路可視化
@@ -28,6 +30,7 @@ tutorials/quantum_dynamics_complete_comparison.ipynb において、以下の改
 #### ② Qudit量子シミュレーション ✅
 
 **要求事項:**
+
 - CustomTwoゲートを使った場合と、全て基本量子ゲートに分解した場合の比較
 - 1トロッターステップ当たりの量子ゲート数とその内訳の出力
 - 回路深さの出力
@@ -36,12 +39,14 @@ tutorials/quantum_dynamics_complete_comparison.ipynb において、以下の改
 **実装内容（新規追加）:**
 
 1. **comparison_helpers.py に新規関数を追加**
+
    - `decompose_qudit_customtwo_gates_to_circuit(circuit, sparse_generator)`
    - CustomTwoゲートを実際に基本ゲート（CEx, R, VirtRz, Rz, Rh）に分解
    - IntegratedSparseCompilerV2を使用して疎構造（3×3部分空間）を認識
    - 推定ではなく、実際の分解を実行
 
 2. **新規セル追加: `qudit_circuit_build_comparison`**
+
    - CustomTwoゲート版の回路を取得（既存のstep_circuitから）
    - decompose_qudit_customtwo_gates_to_circuit()を使って実際に分解
    - 両バージョンのゲート数、ゲート構成を詳細に表示
@@ -69,11 +74,13 @@ tutorials/quantum_dynamics_complete_comparison.ipynb において、以下の改
 #### ゲート分解の詳細
 
 **Qubit:**
+
 - UnitaryGate (16×16 unitary matrix)
 - ↓ Qiskit KAK decomposition
 - Basic gates: CNOT, Rz, Ry, Rx, etc.
 
 **Qudit:**
+
 - CustomTwo gate (9×9 unitary matrix)
 - ↓ IntegratedSparseCompilerV2 (sparse structure recognition)
 - Basic gates: CEx, R, VirtRz, Rz, Rh
@@ -96,6 +103,7 @@ tutorials/quantum_dynamics_complete_comparison.ipynb
 以下の項目を確認済み：
 
 #### Qubit比較セクション
+
 - ✅ UnitaryGate simulation
 - ✅ Basic gate decomposition
 - ✅ Gate count comparison
@@ -104,6 +112,7 @@ tutorials/quantum_dynamics_complete_comparison.ipynb
 - ✅ IPython.display usage
 
 #### Qudit比較セクション
+
 - ✅ CustomTwo gate circuit
 - ✅ Decomposed gate circuit
 - ✅ Gate count comparison
@@ -128,10 +137,12 @@ tutorials/quantum_dynamics_complete_comparison.ipynb
 **現行のnotebookは安定して動作している**ため、以下の点に配慮しました：
 
 1. **既存のセルは一切変更していません**
+
    - 新規セルの追加のみ
    - 既存機能への影響なし
 
 2. **エラーハンドリング**
+
    - MQT-Quditsが利用できない場合は適切にスキップ
    - depth()メソッドが利用できない場合は"N/A"と表示
 

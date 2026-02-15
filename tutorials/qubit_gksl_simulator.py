@@ -17,6 +17,8 @@ import numpy as np
 from scipy.linalg import expm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from typing import TYPE_CHECKING
+
 from gksl_math_utils import (
     build_lindblad_operators,
     build_onsite_hamiltonian,
@@ -25,12 +27,14 @@ from gksl_math_utils import (
     compute_purity,
     compute_von_neumann_entropy,
 )
-from gksl_physical_parameters import GKSLPhysicalParameters
 from gksl_validation import PhysicsViolationError
 from stinespring_utils import (
     apply_stinespring_to_density_matrix,
     stinespring_unitary_from_lindblad,
 )
+
+if TYPE_CHECKING:
+    from gksl_physical_parameters import GKSLPhysicalParameters
 
 # Qubit-pair encoding for each qutrit level
 _QUTRIT_TO_QUBIT_PAIR = {0: 0b00, 1: 0b01, 2: 0b10}
@@ -46,7 +50,8 @@ class QubitGKSLSimulator:
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
         if params.with_boson:
-            raise ValueError("QubitGKSLSimulator is for non-boson model only")
+            msg = "QubitGKSLSimulator is for non-boson model only"
+            raise ValueError(msg)
         self.params = params
         self.N = params.N_molecules
         self.n_sys_qubits = 2 * self.N  # 8
@@ -60,8 +65,8 @@ class QubitGKSLSimulator:
         self.n_ancilla = len(self.lindblad_ops)  # 26
         self.n_total_qubits = self.n_sys_qubits + self.n_ancilla  # 34
 
-        self.dim_qutrit = params.d ** params.N_molecules  # 81
-        self.dim_qubit = (2 ** 2) ** params.N_molecules  # 256
+        self.dim_qutrit = params.d**params.N_molecules  # 81
+        self.dim_qubit = (2**2) ** params.N_molecules  # 256
 
         # Cache the qubit<->qutrit mapping
         self._mapping = self._build_qubit_qutrit_mapping()
@@ -81,7 +86,7 @@ class QubitGKSLSimulator:
             for i in range(N):
                 s = remainder % d
                 remainder //= d
-                qubit_idx += _QUTRIT_TO_QUBIT_PAIR[s] * (4 ** i)
+                qubit_idx += _QUTRIT_TO_QUBIT_PAIR[s] * (4**i)
             qutrit_to_qubit[idx] = qubit_idx
         return qutrit_to_qubit
 
@@ -105,9 +110,7 @@ class QubitGKSLSimulator:
     # Forbidden-state leakage check
     # ------------------------------------------------------------------
 
-    def check_forbidden_states(
-        self, rho_qubit: np.ndarray, step: int | None = None
-    ) -> float:
+    def check_forbidden_states(self, rho_qubit: np.ndarray, step: int | None = None) -> float:
         """Check leakage into forbidden |11> states.
 
         Returns the forbidden-state probability.
@@ -116,9 +119,8 @@ class QubitGKSLSimulator:
         p_phys = sum(np.real(rho_qubit[i, i]) for i in physical_indices)
         p_forbidden = 1.0 - p_phys
         if p_forbidden > 1e-8:
-            raise PhysicsViolationError(
-                f"Forbidden state leakage at step {step}: P_forbidden={p_forbidden}"
-            )
+            msg = f"Forbidden state leakage at step {step}: P_forbidden={p_forbidden}"
+            raise PhysicsViolationError(msg)
         return float(p_forbidden)
 
     # ------------------------------------------------------------------
@@ -131,9 +133,7 @@ class QubitGKSLSimulator:
         return U @ rho @ U.conj().T
 
     @staticmethod
-    def _apply_lindblad_stinespring(
-        rho: np.ndarray, L_op: np.ndarray, dt: float
-    ) -> np.ndarray:
+    def _apply_lindblad_stinespring(rho: np.ndarray, L_op: np.ndarray, dt: float) -> np.ndarray:
         """Apply a single Lindblad channel via Stinespring dilation."""
         U = stinespring_unitary_from_lindblad(L_op, dt)
         return apply_stinespring_to_density_matrix(rho, U)
@@ -149,8 +149,7 @@ class QubitGKSLSimulator:
         for L_op, _gamma in self.lindblad_ops:
             rho = self._apply_lindblad_stinespring(rho, L_op, dt)
         # Half Hamiltonian
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
-        return rho
+        return self._apply_hamiltonian_step(rho, dt / 2)
 
     # ------------------------------------------------------------------
     # Initial state
@@ -160,23 +159,25 @@ class QubitGKSLSimulator:
         """Prepare initial density matrix in the qutrit Hilbert space."""
         d = self.params.d
         N = self.N
-        dim = d ** N
+        dim = d**N
         psi = np.zeros(dim, dtype=np.complex128)
 
         if state_type == "edge_triplet":
             # |1,0,...,0,1> in base-d: molecules 0 and N-1 in T1, rest in S0
             if N < 2:
-                raise ValueError("edge_triplet requires N_molecules >= 2")
+                msg = "edge_triplet requires N_molecules >= 2"
+                raise ValueError(msg)
             index = (d ** (N - 1)) + 1
             psi[index] = 1.0
         elif state_type == "all_triplet":
-            index = sum(1 * (d ** i) for i in range(N))
+            index = sum(1 * (d**i) for i in range(N))
             psi[index] = 1.0
         elif state_type == "all_singlet":
-            index = sum(2 * (d ** i) for i in range(N))
+            index = sum(2 * (d**i) for i in range(N))
             psi[index] = 1.0
         else:
-            raise ValueError(f"Unknown state type: {state_type}")
+            msg = f"Unknown state type: {state_type}"
+            raise ValueError(msg)
 
         return np.outer(psi, psi.conj())
 
@@ -211,9 +212,7 @@ class QubitGKSLSimulator:
 
             times.append((step + 1) * dt)
             traces.append(float(np.real(np.trace(rho))))
-            populations.append(
-                compute_populations_from_density_matrix(rho, self.params)
-            )
+            populations.append(compute_populations_from_density_matrix(rho, self.params))
             entropies.append(compute_von_neumann_entropy(rho))
             purities.append(compute_purity(rho))
 
@@ -222,9 +221,7 @@ class QubitGKSLSimulator:
         # Gate count estimate for a real qubit circuit:
         # ~n_sys_qubits Rz gates (H0) + 3 * ~10 gates (H_transfer pairs)
         # + n_lindblad * ~6 gates per Stinespring channel
-        gates_per_step = (
-            self.n_sys_qubits + len(self.params.neighbors) * 10 + self.n_ancilla * 6
-        )
+        gates_per_step = self.n_sys_qubits + len(self.params.neighbors) * 10 + self.n_ancilla * 6
 
         return {
             "times": times,

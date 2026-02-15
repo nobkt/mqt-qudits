@@ -2,9 +2,10 @@
 
 ## 文書情報
 
-**作成日**: 2025-10-19  
-**対象フレームワーク**: Qiskit  
-**前提文書**: 
+**作成日**: 2025-10-19
+**対象フレームワーク**: Qiskit
+**前提文書**:
+
 - `qubit_quantum_dynamics_molecular_triplet_states_theory.md`
 - `qubit_implementation_specification.md`
 
@@ -85,8 +86,8 @@ class PhysicalParameters:
     """
     物理パラメータの管理クラス
     """
-    
-    def __init__(self, N_molecules=4, E_T=1.5, E_S=3.0, V=0.1, J=0.05, 
+
+    def __init__(self, N_molecules=4, E_T=1.5, E_S=3.0, V=0.1, J=0.05,
                  Gamma_fl=0.01, hbar=0.6582):
         """
         Parameters:
@@ -113,13 +114,13 @@ class PhysicalParameters:
         self.J = J
         self.Gamma_fl = Gamma_fl
         self.hbar = hbar
-        
+
         # 隣接リスト（1次元鎖）
         self.neighbors = [(i, i+1) for i in range(N_molecules - 1)]
-        
+
         # 検証
         self._validate()
-    
+
     def _validate(self):
         """パラメータの妥当性をチェック"""
         if self.N_molecules < 2:
@@ -130,7 +131,7 @@ class PhysicalParameters:
             print("Warning: TTA energy condition 2*E_T ≈ E_S not satisfied")
         if self.hbar <= 0:
             raise ValueError("hbar must be positive")
-    
+
     def __repr__(self):
         return (f"PhysicalParameters(N={self.N_molecules}, "
                 f"E_T={self.E_T}, E_S={self.E_S}, "
@@ -144,17 +145,17 @@ class StateEncoder:
     """
     分子状態とQubit状態の変換クラス
     """
-    
+
     @staticmethod
     def molecular_to_qubit_index(molecular_config):
         """
         分子状態配列をqubit状態インデックスに変換
-        
+
         Parameters:
         -----------
         molecular_config : list of int
             各分子の状態 [0, 1, 2] (S0, T1, S1)
-        
+
         Returns:
         --------
         int : qubit状態インデックス
@@ -169,29 +170,29 @@ class StateEncoder:
                 qubit_config.extend([1, 0])
             else:
                 raise ValueError(f"Invalid molecular state: {mol_state}")
-        
+
         # Binary to decimal
-        index = sum(bit * (2 ** (len(qubit_config) - 1 - i)) 
+        index = sum(bit * (2 ** (len(qubit_config) - 1 - i))
                     for i, bit in enumerate(qubit_config))
         return index
-    
+
     @staticmethod
     def qubit_index_to_molecular(index, N_molecules):
         """
         qubit状態インデックスを分子状態配列に変換
-        
+
         Returns:
         --------
         list of int or None : 分子状態配列（未使用状態の場合はNone）
         """
         n_qubits = 2 * N_molecules
         binary = format(index, f'0{n_qubits}b')
-        
+
         molecular_config = []
         for i in range(N_molecules):
             q0 = int(binary[2*i])
             q1 = int(binary[2*i + 1])
-            
+
             if q0 == 0 and q1 == 0:
                 molecular_config.append(0)  # S0
             elif q0 == 0 and q1 == 1:
@@ -200,15 +201,15 @@ class StateEncoder:
                 molecular_config.append(2)  # S1
             elif q0 == 1 and q1 == 1:
                 return None  # Unphysical state
-        
+
         return molecular_config
-    
+
     @staticmethod
-    def prepare_initial_state(circuit, N_molecules, state_type='all_triplet', 
+    def prepare_initial_state(circuit, N_molecules, state_type='all_triplet',
                              custom_config=None):
         """
         初期状態を準備
-        
+
         Parameters:
         -----------
         circuit : QuantumCircuit
@@ -221,22 +222,22 @@ class StateEncoder:
         if state_type == 'all_triplet':
             for i in range(N_molecules):
                 circuit.x(2 * i + 1)  # |00⟩ → |01⟩
-        
+
         elif state_type == 'alternating':
             for i in range(N_molecules):
                 if i % 2 == 1:
                     circuit.x(2 * i + 1)
-        
+
         elif state_type == 'custom':
             if custom_config is None:
                 raise ValueError("custom_config required for state_type='custom'")
             if len(custom_config) != N_molecules:
                 raise ValueError("custom_config length mismatch")
-            
+
             for i, mol_state in enumerate(custom_config):
                 q0 = 2 * i
                 q1 = 2 * i + 1
-                
+
                 if mol_state == 0:  # S0: |00⟩
                     pass
                 elif mol_state == 1:  # T1: |01⟩
@@ -245,7 +246,7 @@ class StateEncoder:
                     circuit.x(q0)
                 else:
                     raise ValueError(f"Invalid molecular state: {mol_state}")
-        
+
         else:
             raise ValueError(f"Unknown state_type: {state_type}")
 ```
@@ -260,7 +261,7 @@ class HamiltonianGates:
     """
     各ハミルトニアン項のゲート実装
     """
-    
+
     def __init__(self, params):
         """
         Parameters:
@@ -268,11 +269,11 @@ class HamiltonianGates:
         params : PhysicalParameters
         """
         self.params = params
-    
+
     def apply_H0_evolution(self, circuit, mol_index, dt):
         """
         対角ハミルトニアン H0 の時間発展
-        
+
         Parameters:
         -----------
         circuit : QuantumCircuit
@@ -283,96 +284,96 @@ class HamiltonianGates:
         """
         q0 = 2 * mol_index
         q1 = 2 * mol_index + 1
-        
+
         E_T = self.params.E_T
         E_S = self.params.E_S
         hbar = self.params.hbar
-        
+
         # パラメータ計算
         alpha = (E_T + E_S) / 4
         beta = (E_S - E_T) / 4
         gamma = (E_T - E_S) / 4
         delta = -(E_T + E_S) / 4
-        
+
         # 回転角
         theta_0 = -2 * beta * dt / hbar
         theta_1 = -2 * gamma * dt / hbar
         theta_zz = -2 * delta * dt / hbar
-        
+
         # ゲート適用
         circuit.rz(theta_0, q0)
         circuit.rz(theta_1, q1)
-        
+
         # Z⊗Z 相互作用
         circuit.cx(q0, q1)
         circuit.rz(theta_zz, q1)
         circuit.cx(q0, q1)
-    
+
     def apply_transfer_evolution(self, circuit, mol_i, mol_j, dt):
         """
         エネルギー移動項の時間発展
-        
+
         注意: これは簡略化された実装
         完全な実装には多重制御ゲートの分解が必要
         """
         qi0, qi1 = 2 * mol_i, 2 * mol_i + 1
         qj0, qj1 = 2 * mol_j, 2 * mol_j + 1
-        
+
         V = self.params.V
         hbar = self.params.hbar
-        
+
         theta = V * dt / hbar
-        
+
         # 簡略化実装: RXXゲートを使用
         # 実際には制御条件を追加する必要がある
-        
+
         # ステップ1: 制御準備
         circuit.x(qi0)
         circuit.x(qj0)
-        
+
         # ステップ2: 多重制御RXX（簡略版）
         # 完全な実装では、Toffoliゲートを用いた分解が必要
         circuit.ccx(qi0, qj0, qi1)  # 補助的な制御
         circuit.rxx(2 * theta, qi1, qj1)
         circuit.ccx(qi0, qj0, qi1)
-        
+
         # ステップ3: 制御解除
         circuit.x(qi0)
         circuit.x(qj0)
-    
+
     def apply_TTA_evolution(self, circuit, mol_i, mol_j, dt):
         """
         TTA項の時間発展
-        
+
         注意: これは概念的な実装
         完全な実装には固有基底変換が必要
         """
         qi0, qi1 = 2 * mol_i, 2 * mol_i + 1
         qj0, qj1 = 2 * mol_j, 2 * mol_j + 1
-        
+
         J = self.params.J
         hbar = self.params.hbar
-        
+
         phi = J * dt / hbar
         sqrt2 = np.sqrt(2)
-        
+
         # 簡略化実装
         # 完全な実装では、3準位部分空間での固有値分解が必要
-        
+
         # ステップ1: 基底変換（概念的）
         circuit.x(qi0)
         circuit.x(qj0)
-        
+
         circuit.cry(np.pi/4, qi1, qj1)
-        
+
         # ステップ2: 位相付与
         circuit.ccx(qi1, qj1, qi0)
         circuit.rz(sqrt2 * phi, qi0)
         circuit.ccx(qi1, qj1, qi0)
-        
+
         # ステップ3: 逆変換
         circuit.cry(-np.pi/4, qi1, qj1)
-        
+
         circuit.x(qi0)
         circuit.x(qj0)
 ```
@@ -384,7 +385,7 @@ class TrotterCircuitBuilder:
     """
     鈴木トロッター回路の構築クラス
     """
-    
+
     def __init__(self, params):
         """
         Parameters:
@@ -395,55 +396,55 @@ class TrotterCircuitBuilder:
         self.gates = HamiltonianGates(params)
         self.N = params.N_molecules
         self.n_qubits = 2 * self.N
-    
+
     def build_single_step(self, dt):
         """
         1トロッターステップの回路構築
-        
+
         2次対称分解:
         U(Δt) ≈ e^{-iH0Δt/2} e^{-iH_tΔt/2} e^{-iH_TTAΔt/2}
                × e^{-iH_TTAΔt/2} e^{-iH_tΔt/2} e^{-iH0Δt/2}
-        
+
         Returns:
         --------
         QuantumCircuit
         """
         circuit = QuantumCircuit(self.n_qubits)
-        
+
         # ===== 前半: dt/2 =====
-        
+
         # (1) H0 evolution (dt/2)
         for i in range(self.N):
             self.gates.apply_H0_evolution(circuit, i, dt/2)
-        
+
         # (2) H_transfer evolution (dt/2)
         for i, j in self.params.neighbors:
             self.gates.apply_transfer_evolution(circuit, i, j, dt/2)
-        
+
         # (3) H_TTA evolution (dt/2)
         for i, j in self.params.neighbors:
             self.gates.apply_TTA_evolution(circuit, i, j, dt/2)
-        
+
         # ===== 後半: dt/2 (逆順) =====
-        
+
         # (4) H_TTA evolution (dt/2)
         for i, j in reversed(self.params.neighbors):
             self.gates.apply_TTA_evolution(circuit, i, j, dt/2)
-        
+
         # (5) H_transfer evolution (dt/2)
         for i, j in reversed(self.params.neighbors):
             self.gates.apply_transfer_evolution(circuit, i, j, dt/2)
-        
+
         # (6) H0 evolution (dt/2)
         for i in reversed(range(self.N)):
             self.gates.apply_H0_evolution(circuit, i, dt/2)
-        
+
         return circuit
-    
+
     def build_full_circuit(self, T_total, N_steps, initial_state='all_triplet'):
         """
         完全な時間発展回路の構築
-        
+
         Parameters:
         -----------
         T_total : float
@@ -452,24 +453,24 @@ class TrotterCircuitBuilder:
             トロッターステップ数
         initial_state : str
             初期状態のタイプ
-        
+
         Returns:
         --------
         QuantumCircuit
         """
         dt = T_total / N_steps
-        
+
         circuit = QuantumCircuit(self.n_qubits)
-        
+
         # 初期状態の準備
         StateEncoder.prepare_initial_state(circuit, self.N, initial_state)
-        
+
         # 時間発展
         step_circuit = self.build_single_step(dt)
-        
+
         for step in range(N_steps):
             circuit = circuit.compose(step_circuit)
-        
+
         return circuit
 ```
 
@@ -483,7 +484,7 @@ class ObservableCalculator:
     """
     観測量の計算クラス
     """
-    
+
     def __init__(self, params):
         """
         Parameters:
@@ -492,15 +493,15 @@ class ObservableCalculator:
         """
         self.params = params
         self.N = params.N_molecules
-    
+
     def calculate_populations(self, statevector):
         """
         状態ベクトルから各状態の個体数を計算
-        
+
         Parameters:
         -----------
         statevector : Statevector or np.ndarray
-        
+
         Returns:
         --------
         dict : {'N_S0': float, 'N_T1': float, 'N_S1': float, 'unphysical': float}
@@ -509,72 +510,72 @@ class ObservableCalculator:
             state_array = statevector.data
         else:
             state_array = np.array(statevector)
-        
+
         n_qubits = 2 * self.N
         dim = 2 ** n_qubits
-        
+
         N_S0 = 0.0
         N_T1 = 0.0
         N_S1 = 0.0
         unphysical = 0.0
-        
+
         for idx in range(dim):
             prob = np.abs(state_array[idx])**2
-            
+
             if prob < 1e-15:
                 continue
-            
+
             binary = format(idx, f'0{n_qubits}b')
-            
+
             is_unphysical = False
-            
+
             for mol_idx in range(self.N):
                 q0_bit = int(binary[2*mol_idx])
                 q1_bit = int(binary[2*mol_idx + 1])
-                
+
                 if q0_bit == 1 and q1_bit == 1:
                     is_unphysical = True
                     break
-                
+
                 if q0_bit == 0 and q1_bit == 0:
                     N_S0 += prob
                 elif q0_bit == 0 and q1_bit == 1:
                     N_T1 += prob
                 elif q0_bit == 1 and q1_bit == 0:
                     N_S1 += prob
-            
+
             if is_unphysical:
                 unphysical += prob
-        
+
         return {
             'N_S0': N_S0,
             'N_T1': N_T1,
             'N_S1': N_S1,
             'unphysical': unphysical
         }
-    
+
     def calculate_fluorescence(self, populations_history, times):
         """
         蛍光強度の計算
-        
+
         Parameters:
         -----------
         populations_history : list of dict
         times : list of float
-        
+
         Returns:
         --------
         dict : {'times': list, 'intensity': list, 'total': float}
         """
         Gamma_fl = self.params.Gamma_fl
-        
+
         intensity = [Gamma_fl * pop['N_S1'] for pop in populations_history]
-        
+
         if len(times) > 1:
             total = np.trapz(intensity, times)
         else:
             total = 0.0
-        
+
         return {
             'times': times,
             'intensity': intensity,
@@ -589,7 +590,7 @@ class Validator:
     """
     物理的整合性の検証クラス
     """
-    
+
     @staticmethod
     def check_normalization(statevector, tolerance=1e-10):
         """
@@ -599,36 +600,36 @@ class Validator:
             norm = np.abs(statevector.norm())
         else:
             norm = np.linalg.norm(statevector)
-        
+
         if abs(norm - 1.0) > tolerance:
             raise ValueError(f"Normalization violation: ||Ψ|| = {norm:.6e}")
-        
+
         return True
-    
+
     @staticmethod
     def check_population_conservation(populations, N_molecules, tolerance=1e-10):
         """
         個体数保存則のチェック
         """
         total = populations['N_S0'] + populations['N_T1'] + populations['N_S1']
-        
+
         if abs(total - N_molecules) > tolerance:
             raise ValueError(
                 f"Population conservation violated: total = {total:.6f}, expected = {N_molecules}"
             )
-        
+
         return True
-    
+
     @staticmethod
     def check_unphysical_leakage(populations, tolerance=1e-10):
         """
         未使用状態への漏れチェック
         """
         unphys = populations.get('unphysical', 0.0)
-        
+
         if unphys > tolerance:
             print(f"Warning: Unphysical state leakage = {unphys:.6e}")
-        
+
         return unphys <= tolerance
 ```
 
@@ -708,10 +709,10 @@ def ccr xx_with_ancilla(circuit, c1, c2, t1, t2, theta, ancilla):
     """
     # 制御条件を補助qubitに集約
     circuit.ccx(c1, c2, ancilla)
-    
+
     # 補助qubit制御のRXX
     circuit.crxx(theta, ancilla, [t1, t2])  # 仮想的なゲート
-    
+
     # 制御解除
     circuit.ccx(c1, c2, ancilla)
 ```
@@ -763,18 +764,18 @@ Toffoliゲートの分解（15ゲート）+ RXXの制御版（10ゲート）
      (a) トロッターステップ回路を追加
          step_circuit ← TrotterCircuitBuilder.build_single_step(dt)
          circuit ← circuit.compose(step_circuit)
-     
+
      (b) 状態ベクトルの取得
          state ← Statevector(circuit)
-     
+
      (c) 検証
          Validator.check_normalization(state)
-     
+
      (d) 個体数の計算
          pop ← ObservableCalculator.calculate_populations(state)
          Validator.check_population_conservation(pop, params.N)
          Validator.check_unphysical_leakage(pop)
-     
+
      (e) 履歴に追加
          times.append(step * dt)
          populations.append(pop)
@@ -804,7 +805,7 @@ Toffoliゲートの分解（15ゲート）+ RXXの制御版（10ゲート）
 1. FOR EACH N_steps IN N_steps_list DO
      (a) シミュレーション実行
          times, pops, state_final ← Simulation(params, T_total, N_steps)
-     
+
      (b) 結果を記録
          result ← {
            'N_steps': N_steps,
@@ -820,7 +821,7 @@ Toffoliゲートの分解（15ゲート）+ RXXの制御版（10ゲート）
      (a) 連続する2つの結果を比較
          pop_i ← results[i]['final_populations']
          pop_i+1 ← results[i+1]['final_populations']
-     
+
      (b) 相対誤差
          error_N_T1 ← |pop_i['N_T1'] - pop_i+1['N_T1']|
          results[i]['error'] ← error_N_T1
@@ -831,13 +832,13 @@ Toffoliゲートの分解（15ゲート）+ RXXの制御版（10ゲート）
      (a) 対数誤差のフィッティング
          log_dt ← [log(r['dt']) for r in results]
          log_error ← [log(r['error']) for r in results if 'error' in r]
-     
+
      (b) 線形回帰
          slope, intercept ← polyfit(log_dt, log_error, deg=1)
-     
+
      (c) 収束次数
          convergence_order ← slope
-     
+
      PRINT "Convergence order:", convergence_order
      IF abs(convergence_order - 2.0) < 0.5 THEN
        PRINT "✓ 2次収束を確認"
@@ -855,7 +856,7 @@ Toffoliゲートの分解（15ゲート）+ RXXの制御版（10ゲート）
 ### 5.1 メインシミュレータクラス
 
 ```python
-from qiskit import QuantumCircuit, Aer, execute
+from qiskit import QuantumCircuit, Are, execute
 from qiskit.quantum_info import Statevector
 import numpy as np
 import matplotlib.pyplot as plt
@@ -865,7 +866,7 @@ class QubitMolecularDynamicsSimulator:
     """
     Qubitベースの分子三重項状態量子ダイナミクスシミュレータ
     """
-    
+
     def __init__(self, params: PhysicalParameters):
         """
         Parameters:
@@ -878,17 +879,17 @@ class QubitMolecularDynamicsSimulator:
         self.circuit_builder = TrotterCircuitBuilder(params)
         self.observable_calc = ObservableCalculator(params)
         self.validator = Validator()
-        
+
         print(f"✓ Simulator initialized for {params.N_molecules} molecules")
         print(f"  Qubits: {2 * params.N_molecules}")
         print(f"  State space: {2 ** (2 * params.N_molecules)} (physical: {3 ** params.N_molecules})")
-    
-    def simulate(self, T_total: float, N_steps: int, 
+
+    def simulate(self, T_total: float, N_steps: int,
                  initial_state: str = 'all_triplet',
                  track_dynamics: bool = True) -> Dict:
         """
         完全なシミュレーション実行
-        
+
         Parameters:
         -----------
         T_total : float
@@ -899,7 +900,7 @@ class QubitMolecularDynamicsSimulator:
             初期状態のタイプ
         track_dynamics : bool
             時間発展を追跡するか
-        
+
         Returns:
         --------
         dict : シミュレーション結果
@@ -912,9 +913,9 @@ class QubitMolecularDynamicsSimulator:
         """
         import time
         start_time = time.time()
-        
+
         dt = T_total / N_steps
-        
+
         print(f"\n{'='*60}")
         print(f"Simulation Start")
         print(f"{'='*60}")
@@ -923,28 +924,28 @@ class QubitMolecularDynamicsSimulator:
         print(f"Number of steps: {N_steps}")
         print(f"Initial state: {initial_state}")
         print()
-        
+
         # 初期状態準備
         circuit = QuantumCircuit(2 * self.params.N_molecules)
         self.state_encoder.prepare_initial_state(
             circuit, self.params.N_molecules, initial_state
         )
-        
+
         # 初期状態ベクトル
         state_0 = Statevector(circuit)
         pop_0 = self.observable_calc.calculate_populations(state_0)
-        
+
         print(f"Initial populations:")
         print(f"  N_S0 = {pop_0['N_S0']:.4f}")
         print(f"  N_T1 = {pop_0['N_T1']:.4f}")
         print(f"  N_S1 = {pop_0['N_S1']:.4f}")
-        
+
         if pop_0['unphysical'] > 0:
             print(f"  Warning: Unphysical = {pop_0['unphysical']:.2e}")
-        
+
         times = [0.0]
         populations = [pop_0]
-        
+
         if not track_dynamics:
             # 最終状態のみ計算
             full_circuit = self.circuit_builder.build_full_circuit(
@@ -952,58 +953,58 @@ class QubitMolecularDynamicsSimulator:
             )
             state_final = Statevector(full_circuit)
             pop_final = self.observable_calc.calculate_populations(state_final)
-            
+
             elapsed = time.time() - start_time
-            
+
             return {
                 'times': [0, T_total],
                 'populations': [pop_0, pop_final],
                 'state_final': state_final,
                 'elapsed_time': elapsed
             }
-        
+
         # 時間発展を追跡
         step_circuit = self.circuit_builder.build_single_step(dt)
-        
+
         for step in range(1, N_steps + 1):
             # 回路を構成
             circuit = circuit.compose(step_circuit)
-            
+
             # 状態ベクトル取得
             state = Statevector(circuit)
-            
+
             # 検証
             try:
                 self.validator.check_normalization(state)
             except ValueError as e:
                 print(f"  Step {step}: {e}")
-            
+
             # 個体数計算
             pop = self.observable_calc.calculate_populations(state)
-            
+
             try:
                 self.validator.check_population_conservation(
                     pop, self.params.N_molecules
                 )
             except ValueError as e:
                 print(f"  Step {step}: {e}")
-            
+
             if not self.validator.check_unphysical_leakage(pop):
                 print(f"  Step {step}: Unphysical leakage detected")
-            
+
             # 履歴に追加
             t = step * dt
             times.append(t)
             populations.append(pop)
-            
+
             # 進捗表示
             if step % max(1, N_steps // 10) == 0:
                 print(f"  Step {step}/{N_steps}: t = {t:.2f} fs, "
                       f"N_T1 = {pop['N_T1']:.4f}, N_S1 = {pop['N_S1']:.4f}")
-        
+
         state_final = state
         elapsed = time.time() - start_time
-        
+
         print()
         print(f"{'='*60}")
         print(f"Simulation Complete")
@@ -1014,7 +1015,7 @@ class QubitMolecularDynamicsSimulator:
         print(f"  N_S1 = {populations[-1]['N_S1']:.4f}")
         print(f"Elapsed time: {elapsed:.2f} seconds")
         print()
-        
+
         return {
             'times': times,
             'populations': populations,
@@ -1023,19 +1024,19 @@ class QubitMolecularDynamicsSimulator:
             'dt': dt,
             'N_steps': N_steps
         }
-    
-    def convergence_test(self, T_total: float, 
+
+    def convergence_test(self, T_total: float,
                         N_steps_list: List[int]) -> List[Dict]:
         """
         収束テストの実行
-        
+
         Parameters:
         -----------
         T_total : float
             総時間 (fs)
         N_steps_list : list of int
             テストするステップ数のリスト
-        
+
         Returns:
         --------
         list of dict : 各ステップ数での結果
@@ -1045,60 +1046,60 @@ class QubitMolecularDynamicsSimulator:
         print(f"{'='*60}")
         print(f"Testing N_steps: {N_steps_list}")
         print()
-        
+
         results = []
-        
+
         for N_steps in N_steps_list:
             print(f"Running simulation with N_steps = {N_steps}...")
-            
+
             sim_result = self.simulate(
-                T_total, N_steps, 
+                T_total, N_steps,
                 initial_state='all_triplet',
                 track_dynamics=False
             )
-            
+
             result = {
                 'N_steps': N_steps,
                 'dt': T_total / N_steps,
                 'final_populations': sim_result['populations'][-1],
                 'elapsed_time': sim_result['elapsed_time']
             }
-            
+
             results.append(result)
             print()
-        
+
         # 誤差の計算
         for i in range(len(results) - 1):
             pop_i = results[i]['final_populations']
             pop_next = results[i+1]['final_populations']
-            
+
             error = abs(pop_i['N_T1'] - pop_next['N_T1'])
             results[i]['error'] = error
-        
+
         # 収束次数の推定
         if len(results) >= 3:
             log_dt = [np.log(r['dt']) for r in results[:-1]]
             log_error = [np.log(r['error']) for r in results[:-1]]
-            
+
             slope, intercept = np.polyfit(log_dt, log_error, 1)
-            
+
             print(f"{'='*60}")
             print(f"Convergence Analysis")
             print(f"{'='*60}")
             print(f"Estimated convergence order: {slope:.2f}")
-            
+
             if abs(slope - 2.0) < 0.5:
                 print(f"✓ Second-order convergence confirmed")
             else:
                 print(f"⚠ Convergence order deviates from expected value of 2")
             print()
-        
+
         return results
-    
+
     def plot_results(self, results: Dict, save_path: str = None):
         """
         結果の可視化
-        
+
         Parameters:
         -----------
         results : dict
@@ -1108,35 +1109,35 @@ class QubitMolecularDynamicsSimulator:
         """
         times = results['times']
         populations = results['populations']
-        
+
         N_S0 = [p['N_S0'] for p in populations]
         N_T1 = [p['N_T1'] for p in populations]
         N_S1 = [p['N_S1'] for p in populations]
-        
+
         fig, ax = plt.subplots(figsize=(12, 8))
-        
-        ax.plot(times, N_S0, 'b-', linewidth=2.5, label='$N_{S_0}$ (Ground singlet)', 
+
+        ax.plot(times, N_S0, 'b-', linewidth=2.5, label='$N_{S_0}$ (Ground singlet)',
                 marker='o', markersize=6, alpha=0.8)
-        ax.plot(times, N_T1, 'r-', linewidth=2.5, label='$N_{T_1}$ (Triplet)', 
+        ax.plot(times, N_T1, 'r-', linewidth=2.5, label='$N_{T_1}$ (Triplet)',
                 marker='s', markersize=6, alpha=0.8)
-        ax.plot(times, N_S1, 'g-', linewidth=2.5, label='$N_{S_1}$ (Excited singlet)', 
+        ax.plot(times, N_S1, 'g-', linewidth=2.5, label='$N_{S_1}$ (Excited singlet)',
                 marker='^', markersize=6, alpha=0.8)
-        
+
         ax.set_xlabel('Time (fs)', fontsize=14, fontweight='bold')
         ax.set_ylabel('Population', fontsize=14, fontweight='bold')
-        ax.set_title('Quantum Dynamics of Molecular Triplet States (Qubit Implementation)', 
+        ax.set_title('Quantum Dynamics of Molecular Triplet States (Qubit Implementation)',
                     fontsize=16, fontweight='bold')
         ax.legend(fontsize=12, loc='best', framealpha=0.9)
         ax.grid(True, alpha=0.3, linestyle='--')
         ax.set_xlim(0, max(times))
         ax.set_ylim(0, self.params.N_molecules + 0.5)
-        
+
         plt.tight_layout()
-        
+
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"✓ Figure saved to {save_path}")
-        
+
         plt.show()
 ```
 
@@ -1155,10 +1156,10 @@ if __name__ == "__main__":
         J=0.05,   # eV
         Gamma_fl=0.01  # fs^-1
     )
-    
+
     # シミュレータの初期化
     simulator = QubitMolecularDynamicsSimulator(params)
-    
+
     # シミュレーション実行
     results = simulator.simulate(
         T_total=100.0,  # fs
@@ -1166,10 +1167,10 @@ if __name__ == "__main__":
         initial_state='all_triplet',
         track_dynamics=True
     )
-    
+
     # 結果の可視化
     simulator.plot_results(results, save_path='qubit_dynamics.png')
-    
+
     # 収束テスト
     convergence_results = simulator.convergence_test(
         T_total=100.0,
@@ -1218,22 +1219,22 @@ def plot_convergence(convergence_results):
     """
     dt_list = [r['dt'] for r in convergence_results[:-1]]
     error_list = [r['error'] for r in convergence_results[:-1]]
-    
+
     fig, ax = plt.subplots(figsize=(10, 8))
-    
+
     ax.loglog(dt_list, error_list, 'bo-', linewidth=2, markersize=8, label='Actual error')
-    
+
     # 参照線（2次収束）
     dt_ref = np.array(dt_list)
     error_ref = error_list[0] * (dt_ref / dt_list[0])**2
     ax.loglog(dt_ref, error_ref, 'r--', linewidth=2, label='$\mathcal{O}(\Delta t^2)$')
-    
+
     ax.set_xlabel('Time step $\Delta t$ (fs)', fontsize=14)
     ax.set_ylabel('Error in $N_{T_1}$', fontsize=14)
     ax.set_title('Convergence of Suzuki-Trotter Decomposition', fontsize=16)
     ax.legend(fontsize=12)
     ax.grid(True, alpha=0.3, which='both')
-    
+
     plt.tight_layout()
     plt.show()
 ```
@@ -1387,22 +1388,22 @@ Estimated convergence order: 1.98
 
 ### 8.2 実装の特徴
 
-✅ **数学的厳密性**: すべての演算が厳密に実装  
-✅ **Qiskitネイティブ**: 標準ゲートのみ使用  
-✅ **検証機能**: 物理的整合性の自動チェック  
-✅ **拡張性**: N分子系への容易な拡張  
+✅ **数学的厳密性**: すべての演算が厳密に実装
+✅ **Qiskitネイティブ**: 標準ゲートのみ使用
+✅ **検証機能**: 物理的整合性の自動チェック
+✅ **拡張性**: N分子系への容易な拡張
 ✅ **実用性**: 実行時間とメモリ使用量の最適化
 
 ### 8.3 Qudit実装との比較
 
-| 項目 | Qutrit (MQT-Qudits) | Qubit (本実装) |
-|------|-------------------|---------------|
-| 理論的厳密性 | ✅ | ✅ |
-| ヒューリスティック排除 | ✅ | ✅ |
-| ゲート数（4分子、1ステップ） | 約55個 | 約430個 |
-| 実装の自然性 | 高い | 中程度 |
-| ハードウェア可用性 | 実験段階 | 広く利用可能 |
-| フレームワーク | MQT-Qudits | Qiskit |
+| 項目                         | Qutrit (MQT-Qudits) | Qubit (本実装) |
+| ---------------------------- | ------------------- | -------------- |
+| 理論的厳密性                 | ✅                  | ✅             |
+| ヒューリスティック排除       | ✅                  | ✅             |
+| ゲート数（4分子、1ステップ） | 約55個              | 約430個        |
+| 実装の自然性                 | 高い                | 中程度         |
+| ハードウェア可用性           | 実験段階            | 広く利用可能   |
+| フレームワーク               | MQT-Qudits          | Qiskit         |
 
 ### 8.4 今後の展望
 
@@ -1441,7 +1442,6 @@ Estimated convergence order: 1.98
 
 ---
 
-**文書作成日**: 2025-10-19  
-**バージョン**: 1.0.0  
+**文書作成日**: 2025-10-19
+**バージョン**: 1.0.0
 **実装完了**: ✅ Ready for Production
-

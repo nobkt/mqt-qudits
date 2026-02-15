@@ -112,20 +112,9 @@ class ClassicalGKSLBosonSimulator:
         # If g_eph = 0, electron and phonon sectors are decoupled and
         # electronic reduced dynamics is exactly the non-bosonic GKSL model.
         if self.params.g_eph == 0.0:
-            reduced_params = GKSLPhysicalParameters(
-                E_T=self.params.E_T,
-                E_S=self.params.E_S,
-                V=self.params.V,
-                gamma_TTA=self.params.gamma_TTA,
-                Gamma_fl=self.params.Gamma_fl,
-                Gamma_ph=self.params.Gamma_ph,
-                k_IC=self.params.k_IC,
-                k_ISC_ST=self.params.k_ISC_ST,
-                k_ISC_TS=self.params.k_ISC_TS,
-                N_molecules=self.params.N_molecules,
-                d=self.params.d,
-                with_boson=False,
-            )
+            reduced_kwargs = self.params.to_dict()
+            reduced_kwargs["with_boson"] = False
+            reduced_params = GKSLPhysicalParameters(**reduced_kwargs)
             result = ClassicalGKSLSimulator(reduced_params).simulate(
                 t_max=t_max,
                 n_steps=n_steps,

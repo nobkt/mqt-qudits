@@ -615,3 +615,270 @@ class TestBosonGephZeroReduction:
         sim_b = ClassicalGKSLBosonSimulator(params_b)
         result = sim_b.simulate(t_max=1.0, n_steps=2, initial_state="edge_triplet")
         assert "g_eph=0" in result["method"]
+
+
+# ---------------------------------------------------------------------------
+# 13. TestQuditGKSLNoisySimulator
+# ---------------------------------------------------------------------------
+class TestQuditGKSLNoisySimulator:
+    @pytest.fixture()
+    def params(self):
+        return GKSLPhysicalParameters()
+
+    def test_zero_noise_matches_ideal(self, params):
+        """p_depol=0 must produce results identical to the ideal QuditGKSLSimulator."""
+        from qudit_gksl_noisy_simulator import QuditGKSLNoisySimulator
+
+        sim_ideal = QuditGKSLSimulator(params)
+        sim_zero = QuditGKSLNoisySimulator(params, p_depol=0.0)
+        r_ideal = sim_ideal.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        r_zero = sim_zero.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        for pi, pz in zip(r_ideal["populations"], r_zero["populations"]):
+            assert abs(pi["N_S0"] - pz["N_S0"]) < 1e-12
+            assert abs(pi["N_T1"] - pz["N_T1"]) < 1e-12
+            assert abs(pi["N_S1"] - pz["N_S1"]) < 1e-12
+
+    def test_noise_reduces_purity(self, params):
+        """Hardware noise must decrease purity (increase mixedness)."""
+        from qudit_gksl_noisy_simulator import QuditGKSLNoisySimulator
+
+        sim_ideal = QuditGKSLSimulator(params)
+        sim_noisy = QuditGKSLNoisySimulator(params, p_depol=0.01)
+        r_ideal = sim_ideal.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        r_noisy = sim_noisy.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        assert r_noisy["purity"][-1] < r_ideal["purity"][-1]
+
+    def test_trace_preservation(self, params):
+        """Noisy simulation must preserve trace within tolerance."""
+        from qudit_gksl_noisy_simulator import QuditGKSLNoisySimulator
+
+        sim = QuditGKSLNoisySimulator(params, p_depol=0.01)
+        result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        for tr in result["trace"]:
+            assert abs(tr - 1.0) < 0.01
+
+    def test_method_label(self, params):
+        """Method field must indicate noisy qudit simulation."""
+        from qudit_gksl_noisy_simulator import QuditGKSLNoisySimulator
+
+        sim = QuditGKSLNoisySimulator(params, p_depol=0.01)
+        result = sim.simulate(t_max=2.0, n_steps=2, initial_state="edge_triplet")
+        assert "noisy" in result["method"]
+
+    def test_noise_params_in_result(self, params):
+        """Result dict must contain noise_params."""
+        from qudit_gksl_noisy_simulator import QuditGKSLNoisySimulator
+
+        sim = QuditGKSLNoisySimulator(params, p_depol=0.02, p_dephasing=0.005)
+        result = sim.simulate(t_max=2.0, n_steps=2, initial_state="edge_triplet")
+        assert result["noise_params"]["p_depol"] == 0.02
+        assert result["noise_params"]["p_dephasing"] == 0.005
+
+    def test_invalid_p_depol(self, params):
+        """Invalid depolarization probability must raise ValueError."""
+        from qudit_gksl_noisy_simulator import QuditGKSLNoisySimulator
+
+        with pytest.raises(ValueError, match="p_depol"):
+            QuditGKSLNoisySimulator(params, p_depol=-0.1)
+        with pytest.raises(ValueError, match="p_depol"):
+            QuditGKSLNoisySimulator(params, p_depol=1.5)
+
+    def test_dephasing_reduces_coherence(self, params):
+        """Dephasing noise must reduce off-diagonal elements of density matrix."""
+        from qudit_gksl_noisy_simulator import QuditGKSLNoisySimulator
+
+        sim_no_deph = QuditGKSLNoisySimulator(params, p_depol=0.0, p_dephasing=0.0)
+        sim_deph = QuditGKSLNoisySimulator(params, p_depol=0.0, p_dephasing=0.05)
+        r_nd = sim_no_deph.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        r_d = sim_deph.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        # Dephasing reduces off-diagonal norm
+        offdiag_nd = np.linalg.norm(r_nd["rho_final"] - np.diag(np.diag(r_nd["rho_final"])))
+        offdiag_d = np.linalg.norm(r_d["rho_final"] - np.diag(np.diag(r_d["rho_final"])))
+        assert offdiag_d < offdiag_nd
+
+
+# ---------------------------------------------------------------------------
+# 14. TestQubitGKSLNoisySimulator
+# ---------------------------------------------------------------------------
+class TestQubitGKSLNoisySimulator:
+    @pytest.fixture()
+    def params(self):
+        return GKSLPhysicalParameters()
+
+    def test_zero_noise_matches_ideal(self, params):
+        """p_depol=0 must produce results identical to the ideal QubitGKSLSimulator."""
+        from qubit_gksl_noisy_simulator import QubitGKSLNoisySimulator
+
+        sim_ideal = QubitGKSLSimulator(params)
+        sim_zero = QubitGKSLNoisySimulator(params, p_depol=0.0)
+        r_ideal = sim_ideal.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        r_zero = sim_zero.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        for pi, pz in zip(r_ideal["populations"], r_zero["populations"]):
+            assert abs(pi["N_S0"] - pz["N_S0"]) < 1e-12
+            assert abs(pi["N_T1"] - pz["N_T1"]) < 1e-12
+            assert abs(pi["N_S1"] - pz["N_S1"]) < 1e-12
+
+    def test_noise_reduces_purity(self, params):
+        """Hardware noise must decrease purity."""
+        from qubit_gksl_noisy_simulator import QubitGKSLNoisySimulator
+
+        sim_ideal = QubitGKSLSimulator(params)
+        sim_noisy = QubitGKSLNoisySimulator(params, p_depol=0.01)
+        r_ideal = sim_ideal.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        r_noisy = sim_noisy.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        assert r_noisy["purity"][-1] < r_ideal["purity"][-1]
+
+    def test_trace_preservation(self, params):
+        """Noisy simulation must preserve trace within tolerance."""
+        from qubit_gksl_noisy_simulator import QubitGKSLNoisySimulator
+
+        sim = QubitGKSLNoisySimulator(params, p_depol=0.01)
+        result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        for tr in result["trace"]:
+            assert abs(tr - 1.0) < 0.01
+
+    def test_method_label(self, params):
+        """Method field must indicate noisy qubit simulation."""
+        from qubit_gksl_noisy_simulator import QubitGKSLNoisySimulator
+
+        sim = QubitGKSLNoisySimulator(params, p_depol=0.01)
+        result = sim.simulate(t_max=2.0, n_steps=2, initial_state="edge_triplet")
+        assert "noisy" in result["method"]
+
+    def test_noise_params_in_result(self, params):
+        """Result dict must contain noise_params with T1, T2, p_reset."""
+        from qubit_gksl_noisy_simulator import QubitGKSLNoisySimulator
+
+        sim = QubitGKSLNoisySimulator(params, p_depol=0.01, T1=5e10, T2=7e10)
+        result = sim.simulate(t_max=2.0, n_steps=2, initial_state="edge_triplet")
+        assert result["noise_params"]["p_depol"] == 0.01
+        assert result["noise_params"]["T1"] == 5e10
+        assert result["noise_params"]["p_reset"] > 0
+
+    def test_thermal_relaxation_trace(self, params):
+        """Thermal relaxation must preserve trace."""
+        from qubit_gksl_noisy_simulator import QubitGKSLNoisySimulator
+
+        sim = QubitGKSLNoisySimulator(params, p_depol=0.01, T1=5e10, T2=7e10, t_gate=300.0)
+        result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        for tr in result["trace"]:
+            assert abs(tr - 1.0) < 0.01
+
+    def test_qubit_qudit_noisy_consistency(self, params):
+        """Noisy qubit and qudit simulators should produce qualitatively similar results."""
+        from qubit_gksl_noisy_simulator import QubitGKSLNoisySimulator
+        from qudit_gksl_noisy_simulator import QuditGKSLNoisySimulator
+
+        sim_qb = QubitGKSLNoisySimulator(params, p_depol=0.01)
+        sim_qd = QuditGKSLNoisySimulator(params, p_depol=0.01)
+        r_qb = sim_qb.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        r_qd = sim_qd.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        for p_qb, p_qd in zip(r_qb["populations"], r_qd["populations"]):
+            assert abs(p_qb["N_T1"] - p_qd["N_T1"]) < 0.5
+            assert abs(p_qb["N_S0"] - p_qd["N_S0"]) < 0.5
+
+
+# ---------------------------------------------------------------------------
+# 15. TestNoiseChannelProperties – mathematical rigor of noise channels
+# ---------------------------------------------------------------------------
+class TestNoiseChannelProperties:
+    """Verify that each noise channel is a valid quantum channel (CPTP)."""
+
+    def test_depolarization_single_trace(self):
+        """Single-site depolarization preserves trace."""
+        from qudit_gksl_noisy_simulator import _apply_local_depolarization_single
+
+        d, N = 3, 4
+        dim = d**N
+        psi = np.random.randn(dim) + 1j * np.random.randn(dim)
+        psi /= np.linalg.norm(psi)
+        rho = np.outer(psi, psi.conj())
+        rho_noisy = _apply_local_depolarization_single(rho, 1, d, N, 0.1)
+        assert abs(np.trace(rho_noisy).real - 1.0) < 1e-12
+
+    def test_depolarization_pair_trace(self):
+        """Pair depolarization preserves trace."""
+        from qudit_gksl_noisy_simulator import _apply_local_depolarization_pair
+
+        d, N = 3, 4
+        dim = d**N
+        psi = np.random.randn(dim) + 1j * np.random.randn(dim)
+        psi /= np.linalg.norm(psi)
+        rho = np.outer(psi, psi.conj())
+        rho_noisy = _apply_local_depolarization_pair(rho, 0, 2, d, N, 0.15)
+        assert abs(np.trace(rho_noisy).real - 1.0) < 1e-12
+
+    def test_depolarization_hermiticity(self):
+        """Depolarization preserves Hermiticity."""
+        from qudit_gksl_noisy_simulator import _apply_local_depolarization_single
+
+        d, N = 3, 4
+        dim = d**N
+        psi = np.random.randn(dim) + 1j * np.random.randn(dim)
+        psi /= np.linalg.norm(psi)
+        rho = np.outer(psi, psi.conj())
+        rho_noisy = _apply_local_depolarization_single(rho, 2, d, N, 0.05)
+        assert np.allclose(rho_noisy, rho_noisy.conj().T, atol=1e-12)
+
+    def test_depolarization_positivity(self):
+        """Depolarization preserves positive semi-definiteness."""
+        from qudit_gksl_noisy_simulator import _apply_local_depolarization_single
+
+        d, N = 3, 4
+        dim = d**N
+        psi = np.random.randn(dim) + 1j * np.random.randn(dim)
+        psi /= np.linalg.norm(psi)
+        rho = np.outer(psi, psi.conj())
+        rho_noisy = _apply_local_depolarization_single(rho, 0, d, N, 0.2)
+        eigs = np.linalg.eigvalsh(rho_noisy)
+        assert eigs.min() >= -1e-12
+
+    def test_full_depolarization_gives_maximally_mixed(self):
+        """p=1 depolarization on all sites gives maximally mixed state."""
+        from qudit_gksl_noisy_simulator import _apply_local_depolarization_single
+
+        d, N = 3, 4
+        dim = d**N
+        psi = np.zeros(dim, dtype=np.complex128)
+        psi[0] = 1.0
+        rho = np.outer(psi, psi.conj())
+        for s in range(N):
+            rho = _apply_local_depolarization_single(rho, s, d, N, 1.0)
+        assert np.allclose(rho, np.eye(dim) / dim, atol=1e-10)
+
+    def test_dephasing_trace(self):
+        """Dephasing preserves trace."""
+        from qudit_gksl_noisy_simulator import _apply_local_dephasing_single
+
+        d, N = 3, 4
+        dim = d**N
+        psi = np.random.randn(dim) + 1j * np.random.randn(dim)
+        psi /= np.linalg.norm(psi)
+        rho = np.outer(psi, psi.conj())
+        rho_deph = _apply_local_dephasing_single(rho, 0, d, N, 0.3)
+        assert abs(np.trace(rho_deph).real - 1.0) < 1e-12
+
+    def test_thermal_relaxation_trace(self):
+        """Thermal relaxation preserves trace."""
+        from qubit_gksl_noisy_simulator import _apply_thermal_relaxation_single
+
+        d, N = 3, 4
+        dim = d**N
+        psi = np.random.randn(dim) + 1j * np.random.randn(dim)
+        psi /= np.linalg.norm(psi)
+        rho = np.outer(psi, psi.conj())
+        rho_th = _apply_thermal_relaxation_single(rho, 1, d, N, 0.1)
+        assert abs(np.trace(rho_th).real - 1.0) < 1e-12
+
+    def test_thermal_relaxation_positivity(self):
+        """Thermal relaxation preserves positive semi-definiteness."""
+        from qubit_gksl_noisy_simulator import _apply_thermal_relaxation_single
+
+        d, N = 3, 4
+        dim = d**N
+        psi = np.random.randn(dim) + 1j * np.random.randn(dim)
+        psi /= np.linalg.norm(psi)
+        rho = np.outer(psi, psi.conj())
+        rho_th = _apply_thermal_relaxation_single(rho, 0, d, N, 0.5)
+        eigs = np.linalg.eigvalsh(rho_th)
+        assert eigs.min() >= -1e-12

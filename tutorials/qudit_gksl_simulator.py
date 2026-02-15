@@ -103,10 +103,7 @@ class QuditGKSLSimulator:
             # Molecules 0 and N-1 in T1, rest in S0
             if N < 2:
                 raise ValueError("edge_triplet requires N_molecules >= 2")
-            basis_state = [0] * N
-            basis_state[0] = 1
-            basis_state[-1] = 1
-            index = sum(digit * (d ** (N - 1 - i)) for i, digit in enumerate(basis_state))
+            index = (d ** (N - 1)) + 1
             psi[index] = 1.0
         elif state_type == "all_triplet":
             index = sum(1 * (d ** i) for i in range(N))

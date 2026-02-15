@@ -344,6 +344,39 @@ class TestBosonSimulators:
             for key in ("N_S0", "N_T1", "N_S1"):
                 assert abs(pop_non_boson[key] - pop_boson[key]) < 1e-6
 
+    def test_boson_g_eph_zero_reduction_for_four_molecules(self):
+        from classical_gksl_boson_simulator import ClassicalGKSLBosonSimulator
+
+        params_non_boson = GKSLPhysicalParameters(N_molecules=4)
+        params_boson = GKSLPhysicalParameters(
+            N_molecules=4,
+            with_boson=True,
+            n_max=1,
+            g_eph=0.0,
+        )
+
+        result_non_boson = ClassicalGKSLSimulator(params_non_boson).simulate(
+            t_max=1.0, n_steps=4, initial_state="edge_triplet"
+        )
+        result_boson = ClassicalGKSLBosonSimulator(params_boson).simulate(
+            t_max=1.0, n_steps=4, initial_state="edge_triplet"
+        )
+
+        assert result_boson["method"] == "classical_gksl_boson_reduced"
+        for pop_non_boson, pop_boson in zip(
+            result_non_boson["populations"], result_boson["populations"]
+        ):
+            for key in ("N_S0", "N_T1", "N_S1"):
+                assert abs(pop_non_boson[key] - pop_boson[key]) < 1e-6
+
+    def test_classical_boson_edge_triplet_requires_two_or_more_molecules(self):
+        from classical_gksl_boson_simulator import ClassicalGKSLBosonSimulator
+
+        params = GKSLPhysicalParameters(N_molecules=1, with_boson=True, n_max=1)
+        sim = ClassicalGKSLBosonSimulator(params)
+        with pytest.raises(ValueError, match="N_molecules >= 2"):
+            sim.prepare_initial_state("edge_triplet")
+
     def test_qubit_qudit_boson_edge_triplet_requires_two_or_more_molecules(self):
         from qubit_gksl_boson_simulator import QubitGKSLBosonSimulator
         from qudit_gksl_boson_simulator import QuditGKSLBosonSimulator

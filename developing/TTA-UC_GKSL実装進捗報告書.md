@@ -234,3 +234,19 @@ tutorials/
 3. `qubit_gksl_simulator.py` / `qudit_gksl_simulator.py` / `qubit_gksl_boson_simulator.py` / `qudit_gksl_boson_simulator.py` の `prepare_initial_state("edge_triplet")` に `N_molecules >= 2` バリデーションを追加し、Classical実装と境界条件を整合。
 4. `tutorials/test_gksl_simulators.py` に `N_molecules=1` の `edge_triplet` 例外検証を3件追加（Qubit/Qudit/ボソンQubit・Qudit）。
 5. 継続実装後の結果: **52/52テスト通過**。
+
+## 8. 継続実装PRでの追加対応（2026-02-15, 本PR）
+
+1. `classical_gksl_boson_simulator.py` に `edge_triplet` の `N_molecules >= 2` バリデーションを追加し、Classical/Qubit/Quditの境界条件を統一。
+2. `classical_gksl_boson_simulator.py` に **厳密縮約経路**を追加:
+   - 条件: `g_eph == 0.0`
+   - 実装: ボソン付きモデルを非ボソンClassical GKSLへ厳密に縮約して計算
+   - 意図: 高次元ボソン系（例: N=4, n_max=1以上）でBDFヤコビアンが作る巨大メモリ要求を回避しつつ、物理的に同値な結果を返す
+   - 注意: 近似・fallbackではなく、`g_eph=0` での厳密な理論同値性に基づく実装
+3. `tutorials/test_gksl_simulators.py` に以下のテストを追加:
+   - `test_boson_g_eph_zero_reduction_for_four_molecules`
+   - `test_classical_boson_edge_triplet_requires_two_or_more_molecules`
+4. 本PR時点の残課題（未完了）:
+   - MQT-Qudits/Qiskitの実回路構築
+   - GKSL専用ハードウェアノイズモデル（QubitGKSLNoisySimulator/QuditGKSLNoisySimulator）
+   - N=4, n_max=2（6561次元）長時間のボソン有り直接積分検証（計算資源課題）

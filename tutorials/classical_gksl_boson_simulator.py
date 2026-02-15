@@ -25,6 +25,7 @@ from gksl_math_utils import (
     partial_trace_phonon,
 )
 from gksl_physical_parameters import GKSLPhysicalParameters
+from classical_gksl_simulator import ClassicalGKSLSimulator
 
 
 class ClassicalGKSLBosonSimulator:
@@ -68,6 +69,9 @@ class ClassicalGKSLBosonSimulator:
         # Electronic initial state
         psi_el = np.zeros(dim_el, dtype=np.complex128)
         if state_type == "edge_triplet":
+            if N < 2:
+                msg = "edge_triplet requires N_molecules >= 2"
+                raise ValueError(msg)
             # Edge molecules in T1 (1), middle ones in S0 (0): |1,0,...,0,1⟩
             index = 1 * (d ** (N - 1)) + 1
             psi_el[index] = 1.0
@@ -103,6 +107,36 @@ class ClassicalGKSLBosonSimulator:
         Returns dict compatible with ClassicalGKSLSimulator output format.
         """
         start = time_module.time()
+
+        # Exact reduction:
+        # If g_eph = 0, electron and phonon sectors are decoupled and
+        # electronic reduced dynamics is exactly the non-bosonic GKSL model.
+        if self.params.g_eph == 0.0:
+            reduced_params = GKSLPhysicalParameters(
+                E_T=self.params.E_T,
+                E_S=self.params.E_S,
+                V=self.params.V,
+                gamma_TTA=self.params.gamma_TTA,
+                Gamma_fl=self.params.Gamma_fl,
+                Gamma_ph=self.params.Gamma_ph,
+                k_IC=self.params.k_IC,
+                k_ISC_ST=self.params.k_ISC_ST,
+                k_ISC_TS=self.params.k_ISC_TS,
+                N_molecules=self.params.N_molecules,
+                d=self.params.d,
+                with_boson=False,
+            )
+            result = ClassicalGKSLSimulator(reduced_params).simulate(
+                t_max=t_max,
+                n_steps=n_steps,
+                initial_state=initial_state,
+            )
+            result["elapsed_time"] = time_module.time() - start
+            result["method"] = "classical_gksl_boson_reduced"
+            result["params"] = self.params.to_dict()
+            result["ode_solver"] = "RK45"
+            return result
+
         dim = self.dim_total
 
         rho_0 = self.prepare_initial_state(initial_state)

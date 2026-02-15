@@ -4191,6 +4191,17 @@ plot_gksl_comparison(result_unitary, result1,
 - [ ] README.md更新
 - [ ] チュートリアルドキュメント作成
 
+#### 6.2.1 進捗更新（2026-02-15 継続実装PR）
+
+- [x] `tutorials/quantum_dynamics_gksl_comparison.ipynb` 作成済み（PR#147）
+- [x] 追加物理極限テスト（ユニタリ極限・蛍光解析解・定常状態）実装済み（PR#147）
+- [x] `edge_triplet` の `N_molecules >= 2` 境界条件を Classical/Qubit/Qudit/ボソン系で整合
+- [x] `g_eph=0` 条件でのボソン系厳密縮約経路を追加（Classical Boson → Classical Non-Boson）
+- [x] N=4, n_max=1, g_eph=0 の一致性テストを追加し、縮約経路を検証
+- [ ] 実回路構築（MQT-Qudits/Qiskitの回路APIでのGKSL回路生成）
+- [ ] GKSL専用ハードウェアノイズモデル（QubitGKSLNoisySimulator/QuditGKSLNoisySimulator）
+- [ ] N=4, n_max=2（6561次元）長時間の直接ボソン積分検証（計算資源課題）
+
 ---
 
 ## 第7部: 品質保証とレビュー

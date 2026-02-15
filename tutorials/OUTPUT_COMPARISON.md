@@ -1,13 +1,11 @@
 # Output Comparison: Qubit vs Qudit Tutorials
 
 ## Purpose
-
 This document provides a side-by-side comparison of the circuit analysis output from the qubit and qudit tutorials, demonstrating that the qudit tutorial now matches the format of the qubit tutorial.
 
 ## Problem Statement Requirements
 
 The issue requested that the qudit tutorial (`tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb`) should output:
-
 1. 【単一トロッターステップの回路サイズ】(Single Trotter Step Circuit Size)
 2. 【単一トロッターステップの回路】の図 (Visualization of single Trotter step circuit)
 
@@ -75,7 +73,6 @@ VirtRz: 368個
 ### Structural Similarity ✅
 
 Both outputs now have the same four main sections:
-
 1. ✅ 【システム構成】
 2. ✅ 【単一トロッターステップの回路サイズ】
 3. ✅ 【ゲートタイプ別内訳】
@@ -83,25 +80,23 @@ Both outputs now have the same four main sections:
 
 ### Content Differences (Expected and Correct)
 
-| Aspect                         | Qubit Tutorial                        | Qudit Tutorial                     | Reason                                          |
-| ------------------------------ | ------------------------------------- | ---------------------------------- | ----------------------------------------------- |
-| **Quantum units per molecule** | 2 Qubits                              | 1 Qudit                            | Qubits are 2-level, need 2 per 3-level molecule |
-| **Total quantum units**        | 8 Qubits                              | 4 Qudits                           | 4 molecules × 2 vs 4 molecules × 1              |
-| **Encoding**                   | \|S0⟩→\|00⟩, \|T1⟩→\|01⟩, \|S1⟩→\|10⟩ | \|S0⟩→\|0⟩, \|T1⟩→\|1⟩, \|S1⟩→\|2⟩ | Direct 3-level encoding in qudits               |
-| **Gates per step**             | 112                                   | 3344                               | CustomTwo gates decomposed to basic gates       |
-| **Gate types**                 | x, rz, cx, cry, rxx                   | VirtRz, R, Rh, Rz, CEx             | Different frameworks (Qiskit vs MQT-Qudits)     |
-| **Total gates**                | 2,240                                 | 66,880                             | 20 steps × gates per step                       |
+| Aspect | Qubit Tutorial | Qudit Tutorial | Reason |
+|--------|---------------|----------------|---------|
+| **Quantum units per molecule** | 2 Qubits | 1 Qudit | Qubits are 2-level, need 2 per 3-level molecule |
+| **Total quantum units** | 8 Qubits | 4 Qudits | 4 molecules × 2 vs 4 molecules × 1 |
+| **Encoding** | \|S0⟩→\|00⟩, \|T1⟩→\|01⟩, \|S1⟩→\|10⟩ | \|S0⟩→\|0⟩, \|T1⟩→\|1⟩, \|S1⟩→\|2⟩ | Direct 3-level encoding in qudits |
+| **Gates per step** | 112 | 3344 | CustomTwo gates decomposed to basic gates |
+| **Gate types** | x, rz, cx, cry, rxx | VirtRz, R, Rh, Rz, CEx | Different frameworks (Qiskit vs MQT-Qudits) |
+| **Total gates** | 2,240 | 66,880 | 20 steps × gates per step |
 
 ### Key Points
 
 1. **Gate Count Difference**: The qudit version has significantly more gates (3344 vs 112) because:
-
    - CustomTwo gates are decomposed into basic gates using LogEntQRCEXPass
    - This is the **exact** implementation with **no approximations**
    - The qubit version's gate count includes only high-level gates before decomposition
 
-2. **Circuit Depth**:
-
+2. **Circuit Depth**: 
    - Qubit: Shows depth (26)
    - Qudit: May show "N/A" if depth() method not available
    - This is handled gracefully in the code with try-except
@@ -114,13 +109,11 @@ Both outputs now have the same four main sections:
 ## Circuit Visualization
 
 ### Qubit Tutorial (Section 8.5.2)
-
 - Creates a simplified 2-molecule circuit for visualization
 - Uses Qiskit's `circuit_drawer` to display the circuit
 - Shows both text and graphical formats
 
 ### Qudit Tutorial (Section 5.6)
-
 - Uses the full 4-molecule circuit with the `visualize_circuit_with_decomposition` tool
 - Shows two versions side-by-side:
   - Before decomposition (with CustomTwo gates)

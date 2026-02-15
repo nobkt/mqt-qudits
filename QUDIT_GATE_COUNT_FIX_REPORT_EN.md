@@ -3,12 +3,10 @@
 ## Executive Summary
 
 Fixed inefficient gate decomposition in the Qudit quantum simulation that caused:
-
 - **2.5x higher gate count** than Qubit implementation (6604 vs 2650 gates per Trotter step)
 - **Poor accuracy** not matching classical results
 
 **Solution achieved**:
-
 - **98.8% gate count reduction**: 7252 → 88 gates per Trotter step
 - **30x more efficient than Qubit**: 88 vs 2650 gates
 - **Mathematical exactness preserved**: fidelity = 1.0
@@ -19,7 +17,6 @@ Fixed inefficient gate decomposition in the Qudit quantum simulation that caused
 ### Observed Issue
 
 When running `tutorials/quantum_dynamics_complete_comparison.ipynb`:
-
 - **Qubit-based simulation**: 2650 gates per Trotter step
 - **Qudit-based simulation**: 6604 gates per Trotter step
 - **Accuracy**: Qudit simulation showed poor accuracy, not matching classical results
@@ -37,7 +34,6 @@ The H_TTA (Triplet-Triplet Annihilation) Hamiltonian's CustomTwo gates were bein
 ```
 
 **However**, the H_TTA unitary has **sparse structure**:
-
 - **Active subspace**: 3×3 (only states |02⟩, |11⟩, |20⟩)
 - **Identity elements**: 66.67% of 9×9 matrix
 - **Proper decomposition**: ~6 gates per CustomTwo (when recognizing sparse structure)
@@ -49,7 +45,6 @@ The H_TTA (Triplet-Triplet Annihilation) Hamiltonian's CustomTwo gates were bein
 Modified `decompose_custom_two_gates()` in `tutorials/mqt_qudits_four_molecule_sparse_implementation.py`:
 
 **OLD**:
-
 ```python
 # LogEntQRCEXPass: treats as dense 9×9 matrix
 pass_instance = LogEntQRCEXPass(backend)
@@ -58,7 +53,6 @@ decomposed_temp = pass_instance.transpile(temp_circuit)
 ```
 
 **NEW**:
-
 ```python
 # IntegratedSparseCompilerV2: recognizes sparse structure
 compiler = IntegratedSparseCompilerV2(tolerance=1e-10, optimize_gates=True)
@@ -123,21 +117,21 @@ Comparison:
 
 ### Per Trotter Step (Symmetric Decomposition)
 
-| Term                         | Gates per half-step | Half-steps | Total  |
-| ---------------------------- | ------------------- | ---------- | ------ |
-| H0 (On-site energy)          | 8 VirtRz            | ×2         | 16     |
-| H_transfer (Energy transfer) | 18 (6/pair×3)       | ×2         | 36     |
-| H_TTA (Sparse-aware)         | 18 (6/CustomTwo×3)  | ×2         | 36     |
-| **Total**                    |                     |            | **88** |
+| Term | Gates per half-step | Half-steps | Total |
+|------|---------------------|------------|-------|
+| H0 (On-site energy) | 8 VirtRz | ×2 | 16 |
+| H_transfer (Energy transfer) | 18 (6/pair×3) | ×2 | 36 |
+| H_TTA (Sparse-aware) | 18 (6/CustomTwo×3) | ×2 | 36 |
+| **Total** | | | **88** |
 
 ### Before Fix (LogEntQRCEXPass)
 
-| Term                        | Gates per half-step     | Half-steps | Total    |
-| --------------------------- | ----------------------- | ---------- | -------- |
-| H0                          | 8                       | ×2         | 16       |
-| H_transfer                  | 18                      | ×2         | 36       |
-| H_TTA (Dense decomposition) | 3600 (1200/CustomTwo×3) | ×2         | 7200     |
-| **Total**                   |                         |            | **7252** |
+| Term | Gates per half-step | Half-steps | Total |
+|------|---------------------|------------|-------|
+| H0 | 8 | ×2 | 16 |
+| H_transfer | 18 | ×2 | 36 |
+| H_TTA (Dense decomposition) | 3600 (1200/CustomTwo×3) | ×2 | 7200 |
+| **Total** | | | **7252** |
 
 ### Improvement
 
@@ -151,7 +145,6 @@ Comparison:
 The earlier implementation had a non-unitary matrix bug in H_TTA implementation (fixed in PR#89).
 
 Current implementation:
-
 ```python
 # Exact 3×3 unitary computed via scipy.linalg.expm
 U_3x3 = expm(-1j * H_TTA * dt / hbar)
@@ -165,7 +158,6 @@ if unitarity_error > 1e-10:
 ### Verified
 
 All tests in `exact_qudit_basic_gates.py` pass:
-
 ```
 H_transfer decomposition verification:
 ✓ H_transfer decomposition is mathematically exact
@@ -186,7 +178,6 @@ H_TTA decomposition verification:
 ### Sparse Structure Recognition
 
 IntegratedSparseCompilerV2 automatically detects:
-
 - **2×2 subspace**: ~1 gate
 - **3×3 subspace**: ~6 gates
 - **Dense matrix**: Full QR decomposition (only when necessary)
@@ -196,17 +187,14 @@ IntegratedSparseCompilerV2 automatically detects:
 ### When Running quantum_dynamics_complete_comparison.ipynb
 
 **Before Fix**:
-
 - Qubit-based: 2650 gates per Trotter step
 - Qudit-based: 6604 gates per Trotter step (worse)
 
 **After Fix**:
-
 - Qubit-based: 2650 gates per Trotter step (unchanged)
 - Qudit-based: **88 gates per Trotter step** (96.7% reduction)
 
 **Qudit vs Qubit Comparison**:
-
 - Before: Qudit 2.5× worse than Qubit
 - After: Qudit **30× better than Qubit**
 
@@ -227,7 +215,6 @@ IntegratedSparseCompilerV2 automatically detects:
 ### Technical Significance
 
 This fix demonstrates that Qudit-based quantum simulation can be:
-
 - **Efficient**: 30× fewer gates than Qubit
 - **Accurate**: Matches classical calculations within numerical precision
 - **Rigorous**: No heuristics or approximations
@@ -237,12 +224,10 @@ This validates the theoretical advantage of Qudit quantum computing: achieving e
 ## Files Modified
 
 1. **tutorials/mqt_qudits_four_molecule_sparse_implementation.py**
-
    - `decompose_custom_two_gates()`: Changed to sparse-aware version
    - `simulate_shot_based()`: Updated for gate count estimation
 
 2. **test_sparse_gate_fix.py** (New)
-
    - Comprehensive test suite
    - Verifies sparse structure recognition, gate count reduction, and mathematical exactness
 
@@ -257,6 +242,6 @@ This validates the theoretical advantage of Qudit quantum computing: achieving e
 
 ---
 
-**Report Date**: 2025-11-13
-**Author**: GitHub Copilot Coding Agent
+**Report Date**: 2025-11-13  
+**Author**: GitHub Copilot Coding Agent  
 **Status**: Complete & Verified

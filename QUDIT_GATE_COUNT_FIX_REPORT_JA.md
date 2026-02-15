@@ -19,7 +19,6 @@ H_TTA（三重項-三重項消滅）ハミルトニアンのCustomTwoゲート�
 - **影響**: 3つのCustomTwoゲート（ペアごとに1つ）× 1200 = 3600ゲート/半ステップ
 
 しかし、H_TTAのユニタリ行列は実際には**疎構造**を持っていました：
-
 - **活性部分空間**: 3×3（|02⟩, |11⟩, |20⟩の3状態のみ）
 - **恒等要素**: 9×9行列の66.67%
 - **適切な分解**: ~6ゲート/CustomTwo（疎構造を認識した場合）
@@ -31,7 +30,6 @@ H_TTA（三重項-三重項消滅）ハミルトニアンのCustomTwoゲート�
 `tutorials/mqt_qudits_four_molecule_sparse_implementation.py`の`decompose_custom_two_gates()`メソッドを修正：
 
 **旧実装**:
-
 ```python
 # LogEntQRCEXPassで9×9密行列として分解
 pass_instance = LogEntQRCEXPass(backend)
@@ -40,7 +38,6 @@ decomposed_temp = pass_instance.transpile(temp_circuit)
 ```
 
 **新実装**:
-
 ```python
 # IntegratedSparseCompilerV2で疎構造を認識
 compiler = IntegratedSparseCompilerV2(tolerance=1e-10, optimize_gates=True)
@@ -105,21 +102,21 @@ Comparison:
 
 ### 1トロッターステップ（対称分解）
 
-| 項                          | ゲート数/半ステップ | 半ステップ数 | 合計   |
-| --------------------------- | ------------------- | ------------ | ------ |
-| H0 (オンサイトエネルギー)   | 8 VirtRz            | ×2           | 16     |
-| H_transfer (エネルギー移動) | 18 (6/ペア×3)       | ×2           | 36     |
-| H_TTA (疎構造認識)          | 18 (6/CustomTwo×3)  | ×2           | 36     |
-| **合計**                    |                     |              | **88** |
+| 項 | ゲート数/半ステップ | 半ステップ数 | 合計 |
+|---|---|---|---|
+| H0 (オンサイトエネルギー) | 8 VirtRz | ×2 | 16 |
+| H_transfer (エネルギー移動) | 18 (6/ペア×3) | ×2 | 36 |
+| H_TTA (疎構造認識) | 18 (6/CustomTwo×3) | ×2 | 36 |
+| **合計** | | | **88** |
 
 ### 改善前（LogEntQRCEXPass使用）
 
-| 項             | ゲート数/半ステップ     | 半ステップ数 | 合計     |
-| -------------- | ----------------------- | ------------ | -------- |
-| H0             | 8                       | ×2           | 16       |
-| H_transfer     | 18                      | ×2           | 36       |
-| H_TTA (密分解) | 3600 (1200/CustomTwo×3) | ×2           | 7200     |
-| **合計**       |                         |              | **7252** |
+| 項 | ゲート数/半ステップ | 半ステップ数 | 合計 |
+|---|---|---|---|
+| H0 | 8 | ×2 | 16 |
+| H_transfer | 18 | ×2 | 36 |
+| H_TTA (密分解) | 3600 (1200/CustomTwo×3) | ×2 | 7200 |
+| **合計** | | | **7252** |
 
 ### 削減率
 
@@ -133,7 +130,6 @@ Comparison:
 以前の実装では、`exact_qudit_basic_gates.py`のH_TTA実装に非ユニタリ行列のバグがありました（PR#89で修正済み）。
 
 現在の実装:
-
 ```python
 # 厳密な3×3ユニタリ行列をscipy.linalg.expmで計算
 U_3x3 = expm(-1j * H_TTA * dt / hbar)
@@ -147,7 +143,6 @@ if unitarity_error > 1e-10:
 ### 検証済み
 
 `exact_qudit_basic_gates.py`の検証テストがすべてパス:
-
 ```
 H_transfer decomposition verification:
 ✓ H_transfer decomposition is mathematically exact
@@ -168,7 +163,6 @@ H_TTA decomposition verification:
 ### 疎構造認識
 
 IntegratedSparseCompilerV2が自動的に検出:
-
 - 2×2部分空間: ~1ゲート
 - 3×3部分空間: ~6ゲート
 - 密行列: フルQR分解（必要な場合のみ）
@@ -178,17 +172,14 @@ IntegratedSparseCompilerV2が自動的に検出:
 ### quantum_dynamics_complete_comparison.ipynb実行時
 
 **改善前**:
-
 - Qubitベース: 2650ゲート/トロッターステップ
 - Quditベース: 6604ゲート/トロッターステップ（悪い）
 
 **改善後**:
-
 - Qubitベース: 2650ゲート/トロッターステップ（変更なし）
 - Quditベース: **88ゲート/トロッターステップ**（96.7%削減）
 
 **Qudit vs Qubit比較**:
-
 - 従来: Quditの方が2.5倍多い（悪い）
 - 改善後: Quditの方が**30倍少ない**（優れている）
 
@@ -209,7 +200,6 @@ IntegratedSparseCompilerV2が自動的に検出:
 ### 技術的意義
 
 この修正により、Quditベースの量子シミュレーションが:
-
 - **効率的**: Qubitの30倍少ないゲート数
 - **正確**: 古典計算と数値精度内で一致
 - **厳密**: ヒューリスティックや近似なし
@@ -219,7 +209,6 @@ IntegratedSparseCompilerV2が自動的に検出:
 ## ファイル修正リスト
 
 1. **tutorials/mqt_qudits_four_molecule_sparse_implementation.py**
-
    - `decompose_custom_two_gates()`: 疎構造認識版に変更
    - `simulate_shot_based()`: ゲート数推定に対応
 
@@ -235,6 +224,6 @@ IntegratedSparseCompilerV2が自動的に検出:
 
 ---
 
-**報告日**: 2025-11-13
-**担当**: GitHub Copilot Coding Agent
+**報告日**: 2025-11-13  
+**担当**: GitHub Copilot Coding Agent  
 **ステータス**: 完了・検証済み

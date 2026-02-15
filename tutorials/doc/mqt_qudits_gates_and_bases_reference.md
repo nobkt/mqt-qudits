@@ -83,13 +83,11 @@ $$
 ここで、$\omega_d = e^{2\pi i/d}$は$d$次の単位根です。
 
 **性質**:
-
 - ユニタリ性: $H_d^\dagger H_d = I_d$
 - 自己随伴: $H_d^\dagger = H_d$
 - 周期性: $H_d^2 = I_d$ (次元が2の場合)
 
 **実装コード**:
-
 ```python
 def H(dimension):
     matrix = np.zeros((dimension, dimension), dtype=complex)
@@ -135,7 +133,6 @@ X_d = \begin{pmatrix}
 $$
 
 **性質**:
-
 - 巡回性: $X_d^d = I_d$
 - ユニタリ性: $X_d^\dagger X_d = I_d$
 - 固有値: $\{e^{2\pi i k/d} \mid k=0,1,\ldots,d-1\}$
@@ -188,7 +185,6 @@ $$
 ここで、$\omega_d = e^{2\pi i/d}$です。
 
 **性質**:
-
 - 対角: すべてが対角行列
 - 巡回性: $Z_d^d = I_d$
 - $X$ゲートとの関係: $Z_d X_d Z_d^\dagger = \omega_d X_d$
@@ -265,7 +261,6 @@ $$
 **説明**: 指定された2つのエネルギーレベル$a$と$b$の間で回転を行うゲートです。Gell-Mann行列を生成子として使用します。
 
 **パラメータ**:
-
 - $a, b$: エネルギーレベル ($0 \leq a < b < d$)
 - $\theta$: 回転角度
 - $\phi$: 回転軸の方位角
@@ -303,7 +298,6 @@ R_{a,b}(\theta, \phi)_{ij} = \begin{cases}
 $$
 
 **性質**:
-
 - $R_{a,b}(0, \phi) = I$
 - $R_{a,b}(2\pi, \phi) = -I$
 - $R_{a,b}(\theta, 0)$は$X$タイプの回転
@@ -326,7 +320,6 @@ $$
 **説明**: 2つのエネルギーレベル間でZ軸周りの回転を実行するゲートです。3つのRゲートの合成で実装されます。
 
 **パラメータ**:
-
 - $a, b$: エネルギーレベル ($0 \leq a < b < d$)
 - $\phi$: 回転角度
 
@@ -362,7 +355,6 @@ e^{i\phi/2} & \text{if } i = j = b \\
 $$
 
 **性質**:
-
 - 対角行列
 - $\text{Rz}_{a,b}(0) = I$
 - $\text{Rz}_{a,b}(2\pi) = -I$
@@ -384,7 +376,6 @@ $$
 **説明**: 2つのエネルギーレベル間でHadamard変換を実行するゲートです。SU(2)部分空間でのHadamardゲートに相当します。
 
 **パラメータ**:
-
 - $a, b$: エネルギーレベル ($0 \leq a < b < d$)
 
 **行列表現**:
@@ -444,7 +435,6 @@ $$
 **説明**: 単一のエネルギーレベルに対して位相を適用するゲートです。計算には含まれない「仮想」の位相回転として扱われることがあります。
 
 **パラメータ**:
-
 - $a$: エネルギーレベル ($0 \leq a < d$)
 - $\phi$: 位相角度
 
@@ -471,7 +461,6 @@ e^{-i\phi} & \text{if } i = j = a \\
 $$
 
 **性質**:
-
 - 対角行列
 - グローバル位相を除いて効果的
 - $\text{VirtRz}_a(0) = I$
@@ -493,7 +482,6 @@ $$
 **説明**: 計算基底状態を任意の順序で入れ替えるゲートです。指定された置換に従って基底状態を並び替えます。
 
 **パラメータ**:
-
 - $\sigma$: 置換 (長さ$d$のリスト)
 
 **行列表現**:
@@ -513,7 +501,6 @@ $$
 ここで、$e_i$は$i$番目の標準基底ベクトルです。
 
 **性質**:
-
 - 置換行列
 - $\text{Perm}_\sigma^{-1} = \text{Perm}_{\sigma^{-1}}$
 - $\text{Perm}_\sigma^\dagger = \text{Perm}_{\sigma^{-1}}$
@@ -543,7 +530,6 @@ $$
 **説明**: 2つの指定されたエネルギーレベル間でビット反転（X回転）を行うゲートです。qubitのPauli-Xゲートの一般化です。
 
 **パラメータ**:
-
 - $a, b$: エネルギーレベル ($0 \leq a < b < d$)
 
 **行列表現**:
@@ -574,7 +560,6 @@ $$
 $$
 
 **性質**:
-
 - $\text{NoiseX}_{a,b}^2 = I$
 - エルミート: $\text{NoiseX}_{a,b}^\dagger = \text{NoiseX}_{a,b}$
 - ユニタリ: $\text{NoiseX}_{a,b}^\dagger \text{NoiseX}_{a,b} = I$
@@ -596,7 +581,6 @@ $$
 **説明**: 2つの指定されたエネルギーレベル間でY回転を行うゲートです。qubitのPauli-Yゲートの一般化です。
 
 **パラメータ**:
-
 - $a, b$: エネルギーレベル ($0 \leq a < b < d$)
 
 **行列表現**:
@@ -628,7 +612,6 @@ $$
 $$
 
 **性質**:
-
 - $\text{NoiseY}_{a,b}^2 = I$
 - エルミート: $\text{NoiseY}_{a,b}^\dagger = \text{NoiseY}_{a,b}$
 - ユニタリ: $\text{NoiseY}_{a,b}^\dagger \text{NoiseY}_{a,b} = I$
@@ -653,7 +636,6 @@ $$
 **説明**: 制御quditが特定の状態にあるとき、ターゲットquditの2つのレベル間でスワップ（または位相付きスワップ）を実行するゲートです。
 
 **パラメータ**:
-
 - $a, b$: ターゲットquditのスワップするレベル ($0 \leq a < b < d_{\text{target}}$)
 - $c$: 制御レベル ($0 \leq c < d_{\text{ctrl}}$)
 - $\phi$: 位相角度
@@ -678,7 +660,6 @@ $$
 $$
 
 位置$(a,a), (a,b), (b,a), (b,b)$に以下の要素を持ちます：
-
 - $(a,a)$: $0$
 - $(a,b)$: $-i\cos(\phi) - \sin(\phi)$
 - $(b,a)$: $-i\cos(\phi) + \sin(\phi)$
@@ -710,7 +691,6 @@ $$
 **説明**: 制御quditの値に応じて、ターゲットquditにX演算を複数回適用するゲートです。加算modulo $d$を実行します。
 
 **パラメータ**:
-
 - 制御quditとターゲットqudit（それぞれ次元$d_{\text{ctrl}}$と$d_{\text{target}}$）
 
 **行列表現**:
@@ -728,7 +708,6 @@ $$
 $$
 
 **性質**:
-
 - 量子加算を実行
 - 可逆演算: $\text{CSum}^{d_{\text{target}}} = I$
 
@@ -757,7 +736,6 @@ $$
 **説明**: 2つのqudit間でローカルスピン相互作用を実装するゲートです。対角要素が等しい状態（$|ii\rangle$）に対して作用します。
 
 **パラメータ**:
-
 - $\theta$: 相互作用の強さ
 
 **行列表現**:
@@ -812,7 +790,6 @@ $$
 **説明**: イオントラップ量子コンピュータで使用されるMølmer-Sørensenゲートの一般化です。2つのqudit間でもつれを生成します。
 
 **パラメータ**:
-
 - $\theta$: 相互作用の強さ
 
 **行列表現**:
@@ -835,9 +812,9 @@ $$
 
 $$
 \text{MS}(\theta) = \exp\left(-i\frac{\theta}{4}(
-\sigma_0 \otimes \sigma_0 +
-\sigma_0 \otimes I +
-I \otimes \sigma_0 +
+\sigma_0 \otimes \sigma_0 + 
+\sigma_0 \otimes I + 
+I \otimes \sigma_0 + 
 I \otimes I
 )\right)
 $$
@@ -849,7 +826,6 @@ $$
 $$
 
 **性質**:
-
 - もつれゲート
 - $\theta = \pi/2$で最大もつれ状態を生成
 
@@ -870,7 +846,6 @@ $$
 **説明**: 複数のquditに作用するランダムなユニタリ行列を生成するゲートです。Haar測度に従って一様にサンプリングされます。
 
 **パラメータ**:
-
 - 対象quditのリスト（次元のリスト）
 
 **行列表現**:
@@ -884,7 +859,6 @@ $$
 ここで、$U$はHaar測度に従ってランダムにサンプリングされた$D \times D$ユニタリ行列です。
 
 **性質**:
-
 - ユニタリ性: $U^\dagger U = I$
 - Haar測度に従う一様分布
 - 完全にランダムな量子演算
@@ -892,13 +866,11 @@ $$
 **サンプリング方法**:
 
 Haar測度からのサンプリングは以下の手順で行われます：
-
 1. $D \times D$の複素ガウス行列$G$を生成（各要素が独立に標準正規分布に従う）
 2. QR分解: $G = QR$
 3. $Q$を対角行列で正規化して$U$を得る
 
 **使用例**:
-
 - ランダム量子回路のベンチマーク
 - 量子カオスの研究
 - ランダム化コンパイル技術
@@ -912,7 +884,6 @@ Haar測度からのサンプリングは以下の手順で行われます：
 **説明**: ユーザーが指定した任意のユニタリ行列を単一のquditに適用するゲートです。
 
 **パラメータ**:
-
 - $U$: $d \times d$のユニタリ行列
 
 **行列表現**:
@@ -924,11 +895,9 @@ $$
 ここで、$U \in U(d)$はユーザーが指定した$d \times d$のユニタリ行列です。
 
 **制約**:
-
 - $U$はユニタリ行列でなければならない: $U^\dagger U = I_d$
 
 **使用例**:
-
 ```python
 import numpy as np
 from mqt.qudits import QuantumCircuit
@@ -937,21 +906,11 @@ from mqt.qudits import QuantumCircuit
 qc = QuantumCircuit(1, [3])
 
 # カスタムユニタリ行列を定義
-U = np.array(
-    [
-        [1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3)],
-        [
-            1 / np.sqrt(3),
-            np.exp(2j * np.pi / 3) / np.sqrt(3),
-            np.exp(4j * np.pi / 3) / np.sqrt(3),
-        ],
-        [
-            1 / np.sqrt(3),
-            np.exp(4j * np.pi / 3) / np.sqrt(3),
-            np.exp(8j * np.pi / 3) / np.sqrt(3),
-        ],
-    ]
-)
+U = np.array([
+    [1/np.sqrt(3), 1/np.sqrt(3), 1/np.sqrt(3)],
+    [1/np.sqrt(3), np.exp(2j*np.pi/3)/np.sqrt(3), np.exp(4j*np.pi/3)/np.sqrt(3)],
+    [1/np.sqrt(3), np.exp(4j*np.pi/3)/np.sqrt(3), np.exp(8j*np.pi/3)/np.sqrt(3)]
+])
 
 # カスタムゲートを適用
 qc.cu_one(0, U)
@@ -964,7 +923,6 @@ qc.cu_one(0, U)
 **説明**: ユーザーが指定した任意のユニタリ行列を2つのquditに適用するゲートです。
 
 **パラメータ**:
-
 - $U$: $(d_0 \cdot d_1) \times (d_0 \cdot d_1)$のユニタリ行列
 
 **行列表現**:
@@ -976,12 +934,10 @@ $$
 ここで、$U \in U(d_0 \cdot d_1)$はユーザーが指定したユニタリ行列です。
 
 **制約**:
-
 - $U$はユニタリ行列でなければならない: $U^\dagger U = I_{d_0 \cdot d_1}$
 - 行列のサイズは2つのquditの次元の積と一致する必要がある
 
 **使用例**:
-
 ```python
 import numpy as np
 from mqt.qudits import QuantumCircuit
@@ -1005,7 +961,6 @@ qc.cu_two([0, 1], U)
 **説明**: ユーザーが指定した任意のユニタリ行列を複数のquditに適用するゲートです。
 
 **パラメータ**:
-
 - $U$: $D \times D$のユニタリ行列（$D = \prod_i d_i$）
 
 **行列表現**:
@@ -1017,12 +972,10 @@ $$
 ここで、$U \in U(D)$はユーザーが指定したユニタリ行列で、$D$は全quditの次元の積です。
 
 **制約**:
-
 - $U$はユニタリ行列でなければならない: $U^\dagger U = I_D$
 - 行列のサイズはすべての対象quditの次元の積と一致する必要がある
 
 **使用例**:
-
 ```python
 import numpy as np
 from mqt.qudits import QuantumCircuit
@@ -1049,24 +1002,21 @@ qc.cu_multi([0, 1, 2], U)
 **種類**:
 
 1. **対称型** ($\lambda_{a,b}^{(s)}$):
-
-   $$
-   \lambda_{a,b}^{(s)} = |a\rangle\langle b| + |b\rangle\langle a|
-   $$
+$$
+\lambda_{a,b}^{(s)} = |a\rangle\langle b| + |b\rangle\langle a|
+$$
 
 2. **反対称型** ($\lambda_{a,b}^{(a)}$):
-
-   $$
-   \lambda_{a,b}^{(a)} = -i|a\rangle\langle b| + i|b\rangle\langle a|
-   $$
+$$
+\lambda_{a,b}^{(a)} = -i|a\rangle\langle b| + i|b\rangle\langle a|
+$$
 
 3. **対角型** ($\lambda_k^{(d)}$):
-   $$
-   \lambda_k^{(d)} = \sqrt{\frac{2}{k(k+1)}} \left(\sum_{j=0}^{k-1} |j\rangle\langle j| - k|k\rangle\langle k|\right)
-   $$
+$$
+\lambda_k^{(d)} = \sqrt{\frac{2}{k(k+1)}} \left(\sum_{j=0}^{k-1} |j\rangle\langle j| - k|k\rangle\langle k|\right)
+$$
 
 **性質**:
-
 - エルミート: $\lambda^\dagger = \lambda$
 - トレースレス: $\text{Tr}(\lambda) = 0$
 - 正規化: $\text{Tr}(\lambda_i \lambda_j) = 2\delta_{ij}$
@@ -1100,7 +1050,6 @@ $$
 $$
 
 **用途**:
-
 - 任意の回転ゲートの生成子
 - 量子状態トモグラフィー
 - quditシステムの完全な記述
@@ -1114,7 +1063,6 @@ $$
 ### ゲートの分類
 
 **単一Quditゲート** (11種類):
-
 1. 一般化Hadamardゲート (H)
 2. 一般化Pauli-Xゲート (X)
 3. 一般化Pauli-Zゲート (Z)
@@ -1128,24 +1076,20 @@ $$
 11. ノイズYゲート (NoiseY)
 
 **2Quditゲート** (4種類):
-
 1. 制御Exchangeゲート (CEx)
 2. 制御Sumゲート (CSum)
 3. LSゲート (Local Spin)
 4. MSゲート (Mølmer-Sørensen)
 
 **多Quditゲート** (1種類):
-
 1. ランダムユニタリゲート (RandU)
 
 **カスタムゲート** (3種類):
-
 1. 単一Quditカスタムゲート (CustomOne)
 2. 2Quditカスタムゲート (CustomTwo)
 3. 多Quditカスタムゲート (CustomMulti)
 
 **補助** (1種類):
-
 1. Gell-Mann行列 (GellMann)
 
 ### 使用例
@@ -1157,15 +1101,15 @@ from mqt.qudits import QuantumCircuit
 qc = QuantumCircuit(3, [3, 3, 3])
 
 # 各種ゲートを適用
-qc.h(0)  # Hadamardゲート
-qc.x(1)  # Pauli-Xゲート
-qc.z(2)  # Pauli-Zゲート
-qc.r(0, [0, 1, np.pi / 4, 0])  # 回転ゲート
-qc.rz(1, [0, 2, np.pi / 2])  # Rz回転
-qc.cx([0, 1], [0, 1, 1, 0.0])  # 制御Exchangeゲート
-qc.csum([1, 2])  # 制御Sumゲート
-qc.ls([0, 1], [np.pi / 4])  # LSゲート
-qc.ms([1, 2], [np.pi / 2])  # MSゲート
+qc.h(0)                          # Hadamardゲート
+qc.x(1)                          # Pauli-Xゲート
+qc.z(2)                          # Pauli-Zゲート
+qc.r(0, [0, 1, np.pi/4, 0])     # 回転ゲート
+qc.rz(1, [0, 2, np.pi/2])       # Rz回転
+qc.cx([0, 1], [0, 1, 1, 0.0])   # 制御Exchangeゲート
+qc.csum([1, 2])                  # 制御Sumゲート
+qc.ls([0, 1], [np.pi/4])        # LSゲート
+qc.ms([1, 2], [np.pi/2])        # MSゲート
 ```
 
 ### 参考文献
@@ -1176,6 +1120,6 @@ qc.ms([1, 2], [np.pi / 2])  # MSゲート
 
 ---
 
-**ドキュメント作成日**: 2025年10月15日
-**バージョン**: 1.0
+**ドキュメント作成日**: 2025年10月15日  
+**バージョン**: 1.0  
 **フレームワーク**: MQT-Qudits

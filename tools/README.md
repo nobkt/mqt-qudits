@@ -17,14 +17,12 @@ The qudit gate optimization project addresses the gate count explosion problem w
 **Purpose**: Mathematically rigorous 2×2 unitary decomposition using ZYZ decomposition
 
 **Key Features**:
-
 - Perfect ZYZ decomposition (fidelity = 1.0)
 - Handles all edge cases (singular points at θ≈0, π)
 - No heuristics or approximations
 - 100% test pass rate (100/100 random unitaries)
 
 **Test Results**:
-
 ```bash
 $ python tools/improved_unitary_decomposition.py
 Minimum fidelity: 1.0000000000
@@ -34,7 +32,6 @@ Pass rate: 100/100 (100.0%)
 ```
 
 **Usage**:
-
 ```python
 from tools.improved_unitary_decomposition import ImprovedTwoQubitDecomposer
 
@@ -51,7 +48,6 @@ result = decomposer.decompose_zyz(U_2x2)
 **Purpose**: Mathematically rigorous 3×3 unitary decomposition using QR decomposition
 
 **Key Features**:
-
 - Uses numpy.linalg.qr directly (Householder/Givens based)
 - Perfect fidelity = 1.0
 - No heuristics or approximations (no scipy.linalg.expm)
@@ -59,7 +55,6 @@ result = decomposer.decompose_zyz(U_2x2)
 - 100% test pass rate (100/100 random unitaries)
 
 **Test Results**:
-
 ```bash
 $ python tools/perfect_3x3_decomposition.py
 Random unitary test:
@@ -71,7 +66,6 @@ H_TTA real problem test:
 ```
 
 **Usage**:
-
 ```python
 from tools.perfect_3x3_decomposition import Perfect3x3Decomposer
 
@@ -90,7 +84,6 @@ D, R_norm = decomposer.normalize_R(result.R)
 ```
 
 **Real Problem Validation**: Tested with H_TTA time evolution operator:
-
 ```python
 J = 0.05
 dt = 1.0
@@ -109,14 +102,12 @@ result = decomposer.decompose(U)
 **Purpose**: Debug tool for analyzing 3×3 Givens decomposition step-by-step
 
 **Features**:
-
 - Visualizes each Givens rotation step
 - Verifies element zeroing
 - Checks unitarity at each step
 - Helped identify the correct Givens formula
 
 **Usage**:
-
 ```bash
 $ python tools/debug_3x3_decomposition.py
 # Shows detailed step-by-step decomposition
@@ -138,27 +129,23 @@ $ python tools/debug_3x3_decomposition.py
 **Purpose**: Sparse structure-aware compiler for efficient qudit gate decomposition
 
 **Status**: ✅ Partially Working
-
 - ✅ Sparse structure detection (2×2 and 3×3 subspaces correctly identified)
 - ✅ Gate count estimation (98.1% and 95.7% reduction potential)
 - ⚠️ Unitary decomposition needs to use improved/perfect decomposers from PR#37
 
 **Key Features**:
-
 - `SparseStructureAnalyzer`: Detects sparse structure in 9×9 unitary matrices
 - `TwoLevelRotationDecomposer`: 2×2 unitary decomposition (should use improved_unitary_decomposition.py)
 - `ThreeLevelRotationDecomposer`: 3×3 unitary decomposition (should use perfect_3x3_decomposition.py)
 - `SubspaceRotationOptimizer`: Estimates optimized gate counts
 
 **Problem Context**:
-
 - Qubit implementation: 44 gates/Trotter step
 - Qudit implementation (current): 6,182 gates/Trotter step (140× worse!)
 - Qudit implementation (theoretical with optimization): 158 gates/Trotter step
 - Potential improvement: 97.4% reduction (38× better than current)
 
 **Test Results**:
-
 ```bash
 $ python sparse_structure_compiler.py
 ✓ H_transfer structure: 2×2 subspace detected, 810 → 15 gates (98.1% reduction)
@@ -166,14 +153,12 @@ $ python sparse_structure_compiler.py
 ⚠ Needs integration with PR#37 decomposers for perfect fidelity
 ```
 
-**Next Steps**:
-
+**Next Steps**: 
 1. Replace internal decomposers with `improved_unitary_decomposition.py` (2×2)
 2. Replace internal decomposers with `perfect_3x3_decomposition.py` (3×3)
 3. Achieve perfect fidelity throughout the pipeline
 
 **Related Documentation**:
-
 - `tutorials/doc/qudit_gate_cost_analysis.md` - Problem analysis
 - `tutorials/doc/qudit_gate_optimization_implementation_plan.md` - Implementation plan
 - `tutorials/doc/TASK_COMPLETION_REPORT.md` - PR#36 completion report
@@ -185,7 +170,6 @@ $ python sparse_structure_compiler.py
 **Status**: ⚠️ Framework Complete, Superseded by PR#37 implementations
 
 **Note**: This was the initial attempt. The correct, working implementations are:
-
 - For 2×2: Use `improved_unitary_decomposition.py`
 - For 3×3: Use `perfect_3x3_decomposition.py`
 
@@ -196,7 +180,6 @@ $ python sparse_structure_compiler.py
 **Purpose**: Complete report of PR#37 work
 
 **Contents**:
-
 - Executive summary of achievements
 - 2×2 and 3×3 decomposition implementation details
 - Comprehensive test results (all passing with fidelity = 1.0)
@@ -205,7 +188,6 @@ $ python sparse_structure_compiler.py
 - Complete deliverables list
 
 **Key Results**:
-
 - 2×2 decomposition: 100/100 tests passed, fidelity = 1.0
 - 3×3 decomposition: 100/100 tests passed, fidelity = 1.0
 - H_TTA real problem: fidelity = 1.0
@@ -216,7 +198,6 @@ $ python sparse_structure_compiler.py
 **Purpose**: Detailed continuation specification for 3×3 decomposition work
 
 **Contents**:
-
 - Summary of completed work (2×2 perfect, 3×3 theoretical analysis)
 - Detailed 3×3 decomposition theory
 - Implementation algorithms and pseudocode
@@ -229,7 +210,6 @@ $ python sparse_structure_compiler.py
 **Purpose**: Complete mathematical theory of Givens rotations for 3×3 unitary decomposition
 
 **Contents**:
-
 - Rigorous definition and properties of Givens rotations
 - Proof of unitarity
 - Element zeroing theorem with complete derivation
@@ -240,7 +220,6 @@ $ python sparse_structure_compiler.py
 - Implementation examples
 
 **Key Formulas**:
-
 ```
 Givens parameters:
   c = a*/r
@@ -261,7 +240,6 @@ Parameter extraction:
 All implementations follow strict mathematical rigor:
 
 ### Allowed ✅
-
 - ✅ Exact linear algebra: np.linalg.eigh, np.linalg.qr
 - ✅ Exact trigonometry: np.cos, np.sin, np.arccos
 - ✅ Exact complex operations: np.angle, np.exp, np.conj
@@ -269,7 +247,6 @@ All implementations follow strict mathematical rigor:
 - ✅ Fidelity > 0.9999 required (achieved 1.0)
 
 ### Prohibited ❌
-
 - ❌ scipy.linalg.expm (uses Padé approximation)
 - ❌ Heuristics or approximations
 - ❌ Trotter order reduction
@@ -279,21 +256,18 @@ All implementations follow strict mathematical rigor:
 ## Integration Roadmap
 
 ### Phase 1: Update sparse_structure_compiler.py (1-2 weeks)
-
 1. Replace `TwoLevelRotationDecomposer` with `ImprovedTwoQubitDecomposer`
 2. Replace `ThreeLevelRotationDecomposer` with `Perfect3x3Decomposer`
 3. Test with H_transfer and H_TTA
 4. Verify fidelity > 0.9999 throughout
 
 ### Phase 2: MQT-Qudits Integration (1-2 months)
-
 1. Convert QR decomposition to MQT-Qudits basic gates (CEx, R, Rz, VirtRz)
 2. Implement CompilerPass
 3. Test on full circuits
 4. Measure actual gate count reduction
 
 ### Expected Results
-
 - Current: ~6,000 gates/Trotter step
 - After optimization: ~150-200 gates/Trotter step
 - Reduction: 97.5% (30-40× improvement)
@@ -323,7 +297,6 @@ The visualization tool automatically handles circuits of any size:
 - **Large circuits (> 100 gates)**: Multiple rows for optimal readability
 
 **Key Parameters:**
-
 - Minimum gate width: 0.15 inches (ensures readability)
 - Maximum figure width: 30 inches (before wrapping to new row)
 - Row height: 2.5 inches per qudit
@@ -428,14 +401,12 @@ python tools/sparse_structure_compiler.py
 ## Summary
 
 **PR#37 Achievement**: ✅ Complete Success
-
 - 2×2 unitary decomposition: fidelity = 1.0
 - 3×3 unitary decomposition: fidelity = 1.0
 - All mathematical rigor requirements met
 - Ready for integration with MQT-Qudits
 
-**Next Steps**:
-
+**Next Steps**: 
 1. Integrate PR#37 decomposers into sparse_structure_compiler.py
 2. Convert to MQT-Qudits gates
 3. Achieve 97.5% gate count reduction
@@ -449,7 +420,6 @@ python tools/sparse_structure_compiler.py
 **Purpose**: Integrates PR#37's perfect decomposers with sparse structure analysis
 
 **Key Features**:
-
 - Sparse structure analysis (identity row detection, subspace extraction)
 - PR#37 decomposer integration (fidelity = 1.0)
 - 2×2 decomposition: 3 gates (99.6% reduction from 810)
@@ -458,7 +428,6 @@ python tools/sparse_structure_compiler.py
 - Comprehensive testing with H_transfer and H_TTA
 
 **Test Results**:
-
 ```bash
 $ python tools/integrated_sparse_compiler.py
 
@@ -481,7 +450,6 @@ H_TTAテスト:
 ```
 
 **Usage**:
-
 ```python
 from tools.integrated_sparse_compiler import IntegratedSparseCompiler
 
@@ -496,7 +464,6 @@ print(f"使用した方法: {result.method}")  # 2x2_ZYZ_improved or 3x3_QR_dire
 ```
 
 **Architecture**:
-
 ```
 IntegratedSparseCompiler
 ├─ IntegratedSparseStructureAnalyzer (疎構造解析)
@@ -512,7 +479,6 @@ IntegratedSparseCompiler
 ```
 
 **Performance Improvements**:
-
 ```
 元の実装 (sparse_structure_compiler.py):
   - 2×2分解: 忠実度 0.24 ✗
@@ -531,7 +497,6 @@ IntegratedSparseCompiler
 ```
 
 **Implementation Notes**:
-
 - 既存のsparse_structure_compiler.pyは修正せず、新規ツールとして実装
 - PR#37の分解器を動的にインポート（エラーハンドリング付き）
 - すべての実装は数学的に厳密（ヒューリスティックゼロ）
@@ -544,7 +509,6 @@ IntegratedSparseCompiler
 **Purpose**: Analyzes integration feasibility between PR#37 decomposers and sparse_structure_compiler.py
 
 **Features**:
-
 - Implementation status comparison
 - Performance estimation
 - Integration point identification
@@ -555,7 +519,6 @@ IntegratedSparseCompiler
 **Purpose**: Analyzes conversion from QR decomposition to MQT-Qudits gates
 
 **Features**:
-
 - 2×2 conversion: ZYZ → 3 gates
 - 3×3 conversion: Givens → 12 gates
 - Gate count estimation
@@ -566,7 +529,6 @@ IntegratedSparseCompiler
 **Purpose**: Quantitative performance measurement and analysis
 
 **Features**:
-
 - 2×2/3×3 performance measurement
 - Performance comparison
 - Full circuit improvement estimation
@@ -574,7 +536,6 @@ IntegratedSparseCompiler
 ## Summary
 
 **Current Status**:
-
 - ✅ PR#37: Perfect decomposers (fidelity = 1.0)
 - ✅ PR#38: Analysis and roadmap complete
 - ✅ PR#39 Phase 1: Integration complete (fidelity = 1.0, 97.5% gate reduction)
@@ -584,21 +545,18 @@ IntegratedSparseCompiler
 - ✅ PR#43 Phase 3: Full integration complete (100% pass rate achieved!)
 
 **Achievements**:
-
 - Fidelity: 1.0 (perfect) for all test cases ✓
 - Gate count reduction: 50-80% achieved ✓
 - 100% pass rate for all integration tests ✓
 - Mathematical rigor: Perfect (no heuristics, no approximations) ✓
 
 **Next Steps (Future Work)**:
-
 1. Real-world testing with H_transfer and H_TTA operators
 2. Integration with actual 4-molecule chain simulation
 3. MQT-Qudits framework integration (CompilerPass implementation)
 4. Performance benchmarking on full quantum circuits
 
 **Expected Final Result**:
-
 - Fidelity: 1.0 (perfect) ✓ ACHIEVED
 - Gate count: 6,000 → 150-180 (97-98% reduction) - PREDICTED
 - Qubit-competitive performance - IN PROGRESS
@@ -612,7 +570,6 @@ IntegratedSparseCompiler
 **Purpose**: Convert Phase 1 decomposition results to MQT-Qudits gates
 
 **Key Features**:
-
 - TwoLevelGateConverter: 2×2 ZYZ → MQT-Qudits gates (fidelity = 1.0) ✓
 - ThreeLevelGateConverter: 3×3 Givens → MQT-Qudits gates (fidelity = 0.68) ⚠️
 - Correct MQT-Qudits R gate definition (R(θ, φ) ≠ standard Ry)
@@ -620,7 +577,6 @@ IntegratedSparseCompiler
 - Comprehensive test suite
 
 **Important Discovery**:
-
 ```
 Standard Ry(θ) = [[cos(θ/2), -sin(θ/2)],
                   [sin(θ/2),  cos(θ/2)]]
@@ -632,7 +588,6 @@ Relationship: Ry(θ) = R(-θ, 0)  # Sign flip!
 ```
 
 **Test Results**:
-
 ```bash
 $ python tools/gate_converter.py
 
@@ -656,9 +611,7 @@ Random unitaries:
 ```
 
 **Remaining Work**:
-
 1. **Gate Count Optimization** (1-2 days)
-
    - Combine consecutive VirtRz gates on same level
    - H_transfer: 5 gates → 1-3 gates
    - Maintain fidelity = 1.0
@@ -670,7 +623,6 @@ Random unitaries:
    - Random unitary pass rate: 0% → 100%
 
 **Usage**:
-
 ```python
 from tools.gate_converter import TwoLevelGateConverter, ThreeLevelGateConverter
 
@@ -698,7 +650,6 @@ gates_3x3 = converter_3x3.convert(params_3x3, active_indices=[0, 1, 2])
 ```
 
 **Related Documentation**:
-
 - `tutorials/doc/PR40_COMPLETION_REPORT_JA.md` - Phase 2 completion report
 - `tutorials/doc/pr40_continuation_specification_ja.md` - Continuation specification
 - `tutorials/doc/pr39_phase2_specification_ja.md` - Original Phase 2 specification
@@ -712,14 +663,12 @@ gates_3x3 = converter_3x3.convert(params_3x3, active_indices=[0, 1, 2])
 **Purpose**: Convert Givens rotations to MQT-Qudits gates via ZYZ decomposition
 
 **Key Features**:
-
 - Uses improved_unitary_decomposition.py for perfect ZYZ decomposition
 - Converts Givens(θ, φ) → 2×2 Unitary → ZYZ → MQT-Qudits gates
 - 96/100 random tests pass with fidelity = 1.0
 - 4/100 tests fail with fidelity = 0.33 (global phase issue)
 
 **Test Results**:
-
 ```bash
 $ python tools/givens_to_zyz_decomposer.py
 
@@ -735,7 +684,6 @@ Random Givens rotation test (N=100):
 **Known Issue**: Global phase ambiguity in ZYZ decomposition causes sign flip in 4% of cases
 
 **Related Documentation**:
-
 - `tutorials/doc/PR41_CONTINUATION_SPECIFICATION_JA.md` - Continuation specification
 - `tutorials/doc/PR41_GIVENS_CONVERSION_ANALYSIS_JA.md` - Detailed analysis
 
@@ -748,7 +696,6 @@ Random Givens rotation test (N=100):
 **Purpose**: Detect and correct π phase ambiguity in ZYZ decomposition
 
 **Key Features**:
-
 - Mathematically rigorous phase detection (no heuristics)
 - Exact π phase correction
 - Tested on all 4 known failure cases from PR#41
@@ -760,7 +707,6 @@ Some Givens rotations are reconstructed with a π phase shift (multiplication by
 This is mathematically equivalent but breaks element-wise verification.
 
 **Detection Algorithm**:
-
 ```python
 # Method 1: Check if all absolute phase differences ≈ π
 phase_diffs = [abs(angle(U_zyz[i,j] / G_target[i,j])) for all i,j]
@@ -774,7 +720,6 @@ if max(|abs(G_target) - abs(U_zyz)|) < tol:
 ```
 
 **Test Results**:
-
 ```bash
 $ python tools/givens_global_phase_corrector.py
 
@@ -808,14 +753,12 @@ Case 4: θ=0.455201, φ=-0.066270
 **Purpose**: Givens → ZYZ → MQT-Qudits conversion with automatic global phase correction
 
 **Key Features**:
-
 - Integrates givens_global_phase_corrector.py
 - Automatic π phase correction when needed
 - 100/100 random tests pass with fidelity = 1.0
 - Correction applied in ~4% of cases
 
 **Test Results**:
-
 ```bash
 $ python tools/givens_to_zyz_decomposer_v2.py
 
@@ -835,7 +778,6 @@ Random Givens rotation test (N=100):
 ```
 
 **Improvement over v1**:
-
 - v1: 96/100 → v2: 100/100
 - Minimum fidelity: 0.333 → 1.0
 - Average fidelity: 0.973 → 1.0
@@ -847,7 +789,6 @@ Random Givens rotation test (N=100):
 **Purpose**: Optimize MQT-Qudits gate sequences by combining VirtRz gates
 
 **Key Features**:
-
 - VirtRz combination: Accumulate all VirtRz on same level
 - Zero phase removal: Remove VirtRz with accumulated phase ≈ 0
 - Identity R removal: Remove R(θ≈0) gates
@@ -855,15 +796,12 @@ Random Givens rotation test (N=100):
 
 **Theory**:
 VirtRz gates are diagonal matrices, so they commute with R gates:
-
 ```
 VirtRz(φ1, k) @ R(θ, φ) @ VirtRz(φ2, k) = VirtRz(φ1 + φ2, k) @ R(θ, φ)
 ```
-
-This is exact (not approximate) because: e^(iφ1) \* e^(iφ2) = e^(i(φ1 + φ2))
+This is exact (not approximate) because: e^(iφ1) * e^(iφ2) = e^(i(φ1 + φ2))
 
 **Test Results**:
-
 ```bash
 $ python tools/gate_sequence_optimizer.py
 
@@ -887,7 +825,6 @@ Identity R Removal Test:
 ```
 
 **Usage**:
-
 ```python
 from tools.gate_sequence_optimizer import GateSequenceOptimizer, MQTGate
 
@@ -910,7 +847,6 @@ optimizer.print_stats()
 ```
 
 **Related Documentation**:
-
 - `tutorials/doc/PR42_COMPLETION_REPORT_JA.md` - Phase 1-2 completion report
 - `tutorials/doc/PR42_CONTINUATION_SPECIFICATION_JA.md` - Phase 3 continuation specification
 
@@ -923,14 +859,12 @@ optimizer.print_stats()
 **Purpose**: Gate conversion with v2 decomposer and optimizer integration
 
 **Key Features**:
-
 - TwoLevelGateConverterV2: Integrates gate_sequence_optimizer
 - ThreeLevelGateConverterV2: Uses givens_to_zyz_decomposer_v2
 - 100% pass rate with fidelity = 1.0
 - Gate count optimization (50-80% reduction)
 
 **Test Results**:
-
 ```bash
 $ python tools/gate_converter_v2.py
 
@@ -946,7 +880,6 @@ H_transfer (2×2) v2テスト:
 ```
 
 **Usage**:
-
 ```python
 from tools.gate_converter_v2 import TwoLevelGateConverterV2, ThreeLevelGateConverterV2
 
@@ -968,14 +901,12 @@ result = converter_3x3.convert(givens_params, [0, 1, 2])
 **Purpose**: Integrated sparse compiler with v2 converters and optimizer
 
 **Key Features**:
-
 - Uses integrated_sparse_compiler.py for structure analysis
 - Uses gate_converter_v2.py for gate conversion
 - Automatic gate optimization
 - 50-80% gate reduction compared to v1
 
 **Test Results**:
-
 ```bash
 $ python tools/integrated_sparse_compiler_v2.py
 
@@ -992,7 +923,6 @@ H_transfer (2×2) v2コンパイルテスト:
 ```
 
 **Usage**:
-
 ```python
 from tools.integrated_sparse_compiler_v2 import IntegratedSparseCompilerV2
 
@@ -1011,7 +941,6 @@ print(f"削減率: {(result.v1_gate_count - result.gate_count_estimate) / result
 **Purpose**: Comprehensive integration tests for PR#42-43 components
 
 **Test Coverage**:
-
 1. Global phase corrector (単体)
 2. Givens to ZYZ v2 (単体)
 3. Gate sequence optimizer (単体)
@@ -1021,7 +950,6 @@ print(f"削減率: {(result.v1_gate_count - result.gate_count_estimate) / result
 7. Performance comparison
 
 **Test Results**:
-
 ```bash
 $ python tools/test_integration_pr43.py
 
@@ -1032,7 +960,6 @@ $ python tools/test_integration_pr43.py
 ### PR#43: Final Results
 
 **H_transfer (2×2)**:
-
 ```
 v1 (gate_converter.py): 3-5 gates → fidelity 1.0
 v2 (gate_converter_v2.py): 1 gate → fidelity 1.0
@@ -1040,7 +967,6 @@ Reduction: 66-80%
 ```
 
 **H_TTA (3×3)**:
-
 ```
 v1 (gate_converter.py): 12-15 gates → fidelity 0.68
 v2 (gate_converter_v2.py): 6-12 gates → fidelity 1.0
@@ -1048,7 +974,6 @@ Improvement: Perfect fidelity + 20-50% gate reduction
 ```
 
 **4-molecule chain (100 steps)** - Predicted:
-
 ```
 Current: ~6,000 gates/step
 With v2 integration: ~150-180 gates/step
@@ -1068,7 +993,6 @@ Overall reduction: 97-98%
 **Purpose**: Extract and analyze real H_transfer and H_TTA matrices from molecular Hamiltonians
 
 **Key Features**:
-
 - Generates time evolution operators from physical parameters
 - Extracts 2×2 (H_transfer) and 3×3 (H_TTA) subspaces
 - Tests with PR#42-43 developed tools
@@ -1076,7 +1000,6 @@ Overall reduction: 97-98%
 - 100% pass rate on real molecular data
 
 **Test Results**:
-
 ```bash
 $ python tools/real_hamiltonian_analyzer.py
 
@@ -1095,7 +1018,6 @@ Pass rate: 2/2 (100%)
 ```
 
 **Usage**:
-
 ```python
 from tools.real_hamiltonian_analyzer import RealHamiltonianAnalyzer
 
@@ -1118,14 +1040,12 @@ analyzer.print_decomposition_test(result)
 **Purpose**: Run comprehensive tests across various physical parameters and time steps
 
 **Key Features**:
-
 - Tests multiple time steps: dt = 0.1, 0.5, 1.0, 2.0 fs
 - Tests multiple parameter sets: default, strong, weak interactions
 - Statistical analysis: success rate, average fidelity, reduction rate
 - Estimates total gate counts for 4-molecule simulations
 
 **Test Results**:
-
 ```bash
 $ python tools/comprehensive_molecular_test.py
 
@@ -1137,7 +1057,7 @@ Overall Summary:
   Total conditions tested: 8
   Success rate: 100%
   Minimum fidelity: 1.0000000000
-
+  
 4-molecule chain simulation (100 steps):
   Without optimization (v1): 9,400 gates
   With optimization (v2): 5,800 gates
@@ -1147,7 +1067,6 @@ Overall Summary:
 ```
 
 **Usage**:
-
 ```python
 from tools.comprehensive_molecular_test import ComprehensiveMolecularTester
 from tools.real_hamiltonian_analyzer import PhysicalParameters
@@ -1169,20 +1088,17 @@ tester.print_simulation_estimate(estimate)
 ### PR#44: Validation Results
 
 **Confirmed Performance**:
-
 - H_transfer: Fidelity 1.0, 1 gate (already optimal)
 - H_TTA: Fidelity 1.0, 6 gates (50% reduction from 12)
 - 4-molecule simulation: 38.3% gate reduction
 - 100% success rate across all test conditions
 
 **Physical Parameters Tested**:
-
 - Default: V=0.10 eV, J=0.05 eV
 - Strong: V=0.20 eV, J=0.10 eV
 - Weak: V=0.05 eV, J=0.025 eV
 
 **Time Steps Tested**:
-
 - 0.1, 0.5, 1.0, 2.0 fs
 - All stable and accurate
 
@@ -1197,14 +1113,12 @@ tester.print_simulation_estimate(estimate)
 **Purpose**: Prototype implementation of SparseStructureAwarePass for MQT-Qudits framework integration
 
 **Key Features**:
-
 - Automatic sparse structure detection (2×2 and 3×3 subspaces)
 - Integration with PR#42-44 tools (IntegratedSparseCompilerV2)
 - Comprehensive statistics tracking
 - 99.7% gate reduction for 4-molecule simulations
 
 **Test Results**:
-
 ```bash
 $ python tools/sparse_pass_prototype.py
 
@@ -1231,7 +1145,6 @@ Test 3: 4-Molecule Chain Simulation (1 Trotter step)
 ```
 
 **Architecture**:
-
 ```python
 class SparseStructureDetector:
     """Detects sparse structures in unitary matrices"""
@@ -1250,7 +1163,6 @@ class SparseStructureAwareCompiler:
 ```
 
 **Usage**:
-
 ```python
 from tools.sparse_pass_prototype import (
     SparseStructureAwareCompiler,
@@ -1278,7 +1190,6 @@ compiler.print_statistics()
 ```
 
 **Performance**:
-
 - Sparse detection: 100% accuracy
 - H_transfer: 1 gate (optimal)
 - H_TTA: 6 gates (50% reduction from 12)
@@ -1287,14 +1198,12 @@ compiler.print_statistics()
 - Fidelity: 1.0000000000 (perfect)
 
 **Next Steps**:
-
 1. Integrate into MQT-Qudits as `SparseStructureAwarePass`
 2. Implement CompilerPass interface
 3. Add comprehensive test suite
 4. Create user documentation
 
 **Related Documentation**:
-
 - `tutorials/doc/PR46_FRAMEWORK_INTEGRATION_SPECIFICATION_JA.md` - Framework integration specification
 - `tutorials/doc/PR46_IMPLEMENTATION_DESIGN.md` - Detailed implementation design
 - `tutorials/doc/SPARSE_COMPILER_THEORETICAL_FOUNDATION_JA.md` - Mathematical theory
@@ -1304,7 +1213,6 @@ compiler.print_statistics()
 ## Documentation
 
 Complete documentation available in `tutorials/doc/`:
-
 - **PR37_COMPLETION_REPORT.md**: PR#37 complete report
 - **PR37_FINAL_SUMMARY_JA.md**: PR#37 summary (Japanese)
 - **PR38_COMPLETION_REPORT_JA.md**: PR#38 complete report (Japanese)

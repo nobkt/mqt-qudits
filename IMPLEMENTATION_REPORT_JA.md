@@ -40,19 +40,16 @@ But the Qudit tutorial only outputs item 4.
 ### 追加されたドキュメント (Added Documentation)
 
 1. **IMPLEMENTATION_COMPLETE.md** (6,108 bytes)
-
    - 全体サマリー
    - 実装の詳細
    - 検証結果
 
 2. **tutorials/NOTEBOOK_MODIFICATION_SUMMARY.md** (4,906 bytes)
-
    - 詳細な変更内容
    - 実装ノート
    - テスト手順
 
 3. **tutorials/OUTPUT_COMPARISON.md** (4,092 bytes)
-
    - Qubit vs Qudit 比較
    - 出力フォーマット解析
    - 技術的分析
@@ -91,14 +88,14 @@ VirtRz: 368個
 
 ## QubitとQuditの比較 (Qubit vs Qudit Comparison)
 
-| 項目                    | Qubitチュートリアル | Quditチュートリアル    |
-| ----------------------- | ------------------- | ---------------------- |
-| 分子あたりの量子単位    | 2 Qubits            | 1 Qudit                |
-| 全量子単位数            | 8 Qubits            | 4 Qudits               |
-| 1ステップあたりゲート数 | 112                 | 3,344                  |
-| 全ゲート数 (20ステップ) | 2,240               | 66,880                 |
-| ゲート種類              | x, rz, cx, cry, rxx | VirtRz, R, Rh, Rz, CEx |
-| フレームワーク          | Qiskit              | MQT-Qudits             |
+| 項目 | Qubitチュートリアル | Quditチュートリアル |
+|-----|------------------|------------------|
+| 分子あたりの量子単位 | 2 Qubits | 1 Qudit |
+| 全量子単位数 | 8 Qubits | 4 Qudits |
+| 1ステップあたりゲート数 | 112 | 3,344 |
+| 全ゲート数 (20ステップ) | 2,240 | 66,880 |
+| ゲート種類 | x, rz, cx, cry, rxx | VirtRz, R, Rh, Rz, CEx |
+| フレームワーク | Qiskit | MQT-Qudits |
 
 **重要**: 出力構造は完全に一致 ✅
 
@@ -129,13 +126,11 @@ VirtRz: 368個
 ## テスト結果 (Testing Results)
 
 ### JSON構文検証 (JSON Syntax Validation)
-
 ```
 ✅ JSON syntax: Valid
 ```
 
 ### ロジックテスト (Logic Testing)
-
 ```
 ✅ Test script executed successfully
 ✅ Output format verified
@@ -149,7 +144,6 @@ VirtRz: 368個
 ```
 
 ### 出力フォーマット検証 (Output Format Verification)
-
 ```
 ✅ All four sections present
 ✅ Format matches Qubit tutorial
@@ -159,13 +153,11 @@ VirtRz: 368個
 ## 回路可視化 (Circuit Visualization)
 
 Section 5.6 (旧Section 5.5) で回路可視化を提供:
-
 - CustomTwoゲートを含む回路 (分解前)
 - 基本ゲートのみの回路 (分解後)
 - `visualize_circuit_with_decomposition` ツールを使用
 
 Section 5.6 (formerly 5.5) provides circuit visualization:
-
 - Circuit with CustomTwo gates (before decomposition)
 - Circuit with basic gates only (after decomposition)
 - Uses `visualize_circuit_with_decomposition` tool
@@ -184,9 +176,7 @@ Section 5.6 (formerly 5.5) provides circuit visualization:
 ```python
 # 回路深さを安全に取得
 try:
-    circuit_depth = (
-        decomposed_circuit.depth() if hasattr(decomposed_circuit, "depth") else "N/A"
-    )
+    circuit_depth = decomposed_circuit.depth() if hasattr(decomposed_circuit, 'depth') else "N/A"
 except:
     circuit_depth = "N/A"
 ```

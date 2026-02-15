@@ -10,7 +10,7 @@
 
 考察する系は以下の特徴を持つ：
 
-- **分子数**: $N = 4$
+- **分子数**: $N = 4$ 
 - **空間配置**: 一次元直線配列、最近接相互作用
 - **各分子の電子状態**: 3つの状態（基底一重項、励起三重項、励起一重項）
 - **エネルギー移動過程**: 三重項間エネルギー移動（Triplet Energy Transfer）、三重項-三重項消滅（Triplet-Triplet Annihilation）
@@ -105,7 +105,6 @@ Qiskitは**little-endian**規約を採用しているため、ビット順序が
 - 計算基底状態のインデックスは little-endian で解釈される
 
 具体例：
-
 - Big-endian $|01\rangle$ = Qubit $2i+1$ が $|0\rangle$、Qubit $2i$ が $|1\rangle$
 - Little-endian インデックス: Qubit $2i$ が右側なので $|10\rangle$ に対応
 - 状態準備: Qubit $2i$ に $X$ ゲートを適用
@@ -135,7 +134,6 @@ $$
 全256次元のヒルベルト空間のうち、物理的に許される状態は各分子が $\{|S_0\rangle, |T_1\rangle, |S_1\rangle\}$ のいずれかにある81次元の部分空間に限定される。
 
 禁止された状態の例：
-
 - $|11\rangle_{2i+1,2i}$：対応する分子状態が存在しない
 
 ### 3.4 基底状態の表記
@@ -155,7 +153,6 @@ $$
 $$
 
 例えば：
-
 - $|S_0 S_0 S_0 S_0\rangle$: $|00\,00\,00\,00\rangle$ = 全Qubitが $|0\rangle$
 - $|T_1 T_1 T_1 T_1\rangle$: $|01\,01\,01\,01\rangle$ = Qubits 0,2,4,6 が $|1\rangle$
 - $|T_1 S_0 S_0 T_1\rangle$: $|01\,00\,00\,01\rangle$ = Qubits 0,6 が $|1\rangle$（両端励起）
@@ -464,7 +461,6 @@ $$
 $$
 
 Big-endian表記では、各分子ペアは：
-
 - 分子0: $|01\rangle$ → Qubits 1,0
 - 分子1: $|00\rangle$ → Qubits 3,2
 - 分子2: $|00\rangle$ → Qubits 5,4
@@ -479,15 +475,14 @@ Big-endian表記では、各分子ペアは：
 3. Qubit 6 に $X$ ゲートを適用（分子3を $|T_1\rangle$ に設定）
 
 Qiskitのlittle-endian規約では：
-
 - Qubit 0 が右端（最下位ビット）
 - Qubit 6 も同様に対応する分子の右側qubit
 
 したがって、状態準備コードは：
 
 ```python
-circuit.x(0)  # 分子0をT1状態に
-circuit.x(6)  # 分子3をT1状態に
+circuit.x(0)   # 分子0をT1状態に
+circuit.x(6)   # 分子3をT1状態に
 ```
 
 ### 5.4 初期状態の物理的意味
@@ -650,15 +645,12 @@ $$
 各ステップで以下の量子ゲート列を適用：
 
 1. **前半のオンサイト項**: $\exp(-i\hat{H}_0 \Delta t/2)$
-
    - 各分子 $i = 0, 1, 2, 3$ に対して、$Z$ ゲートと $ZZ$ ゲートを適用
 
 2. **前半の移動項**: $\exp(-i\hat{H}_{\text{transfer}} \Delta t/2)$
-
    - 各隣接ペア $(i, j)$ に対して、4-qubitゲートを適用
 
 3. **前半のTTA項**: $\exp(-i\hat{H}_{\text{TTA}} \Delta t/2)$
-
    - 各隣接ペア $(i, j)$ に対して、4-qubitゲートを適用
 
 4. **後半のTTA項**: $\exp(-i\hat{H}_{\text{TTA}} \Delta t/2)$（同じ）
@@ -702,15 +694,12 @@ $$
 #### 実装手順
 
 1. **単一qubit $Z$ 回転**: $\exp(-ic_1 Z_{2i} t) = R_Z(2c_1 t)$
-
    - Qiskitでは `rz(2*c1*t, qubit_2i)` で実装
 
 2. **単一qubit $Z$ 回転**: $\exp(-ic_2 Z_{2i+1} t) = R_Z(2c_2 t)$
-
    - Qiskitでは `rz(2*c2*t, qubit_2i+1)` で実装
 
 3. **2-qubit $ZZ$ 回転**: $\exp(-ic_3 Z_{2i+1}Z_{2i} t) = R_{ZZ}(2c_3 t)$
-
    - Qiskitでは `rzz(2*c3*t, qubit_2i+1, qubit_2i)` で実装
 
 4. **グローバル位相**: $e^{-ic_0 t}$ は物理的観測量に影響しないため無視可能
@@ -751,7 +740,7 @@ H_transfer_matrix = build_transfer_matrix(i, j, V, dt)
 U_transfer = expm(-1j * H_transfer_matrix)
 
 # カスタムゲートとして適用
-circuit.unitary(U_transfer, [2 * i, 2 * i + 1, 2 * j, 2 * j + 1])
+circuit.unitary(U_transfer, [2*i, 2*i+1, 2*j, 2*j+1])
 ```
 
 #### 8.3.4 $\hat{H}_{\text{TTA}}$ の実装
@@ -766,7 +755,7 @@ H_TTA_matrix = build_TTA_matrix(i, j, J, dt)
 U_TTA = expm(-1j * H_TTA_matrix)
 
 # カスタムゲートとして適用
-circuit.unitary(U_TTA, [2 * i, 2 * i + 1, 2 * j, 2 * j + 1])
+circuit.unitary(U_TTA, [2*i, 2*i+1, 2*j, 2*j+1])
 ```
 
 ### 8.4 物理的部分空間の維持
@@ -856,23 +845,18 @@ $$
 #### 主要コンポーネント
 
 1. **PhysicalParameters**: 物理パラメータの管理
-
    - 分子数、エネルギー、相互作用強度
 
 2. **StateEncoder**: 初期状態の準備
-
    - `edge_triplet` モード：両端励起状態
 
 3. **HamiltonianGates**: ハミルトニアン項のゲート実装
-
    - オンサイト項、移動項、TTA項の時間発展
 
 4. **TrotterCircuitBuilder**: トロッター回路の構築
-
    - 2次対称分解の実装
 
 5. **ObservableCalculator**: 観測量の計算
-
    - 個体数の計算
 
 6. **QubitMolecularDynamicsSimulator**: メインシミュレータ
@@ -944,7 +928,6 @@ $$
 両端の励起三重項（分子0と分子3）から、隣接する基底状態分子（分子1と分子2）へエネルギーが移動する。
 
 期待される変化：
-
 - $N_{T_1}$: わずかに減少（または維持）
 - $N_{S_0}$: わずかに変化
 - $N_{S_1}$: ほぼ0（TTA未発生）
@@ -960,7 +943,6 @@ T_1 + T_1 \rightarrow S_1 + S_0
 $$
 
 期待される変化：
-
 - $N_{T_1}$: 急速に減少（2ずつ減少）
 - $N_{S_0}$: 増加（1ずつ増加）
 - $N_{S_1}$: 増加（1ずつ増加）
@@ -972,7 +954,6 @@ $$
 生成された一重項励起 $S_1$ は、蛍光放出や内部変換により基底状態に緩和する可能性がある（本モデルでは緩和項を含まない場合、振動する）。
 
 期待される変化：
-
 - 個体数の振動または準定常状態への到達
 
 ### 11.4 対称性
@@ -991,20 +972,20 @@ $$
 
 ### 12.1 表現の違い
 
-| 項目                | Qudit (Qutrit) 実装 | Qubit 実装         |
-| ------------------- | ------------------- | ------------------ |
-| 1分子あたりの量子系 | 1 Qutrit (3準位)    | 2 Qubits           |
-| 4分子系の量子系数   | 4 Qutrits           | 8 Qubits           |
-| ヒルベルト空間次元  | $3^4 = 81$          | $2^8 = 256$        |
-| 物理的状態空間      | 81次元（全空間）    | 81次元（部分空間） |
+| 項目 | Qudit (Qutrit) 実装 | Qubit 実装 |
+|------|---------------------|------------|
+| 1分子あたりの量子系 | 1 Qutrit (3準位) | 2 Qubits |
+| 4分子系の量子系数 | 4 Qutrits | 8 Qubits |
+| ヒルベルト空間次元 | $3^4 = 81$ | $2^8 = 256$ |
+| 物理的状態空間 | 81次元（全空間） | 81次元（部分空間） |
 
 ### 12.2 ゲート実装の違い
 
-| 項目         | Qudit 実装              | Qubit 実装             |
-| ------------ | ----------------------- | ---------------------- |
-| オンサイト項 | 単一Qutrit回転          | 複数のPauliゲート      |
-| 移動項       | 2-Qutrit カスタムゲート | 4-Qubit カスタムゲート |
-| TTA項        | 2-Qutrit カスタムゲート | 4-Qubit カスタムゲート |
+| 項目 | Qudit 実装 | Qubit 実装 |
+|------|-----------|------------|
+| オンサイト項 | 単一Qutrit回転 | 複数のPauliゲート |
+| 移動項 | 2-Qutrit カスタムゲート | 4-Qubit カスタムゲート |
+| TTA項 | 2-Qutrit カスタムゲート | 4-Qubit カスタムゲート |
 
 ### 12.3 計算資源の比較
 
@@ -1028,7 +1009,6 @@ Qubit実装は約3倍のメモリを使用。
 Qubit実装では、数値誤差により物理的部分空間から逸脱する可能性がある。
 
 対策：
-
 - 高精度演算の使用
 - 各ステップでの部分空間への射影（必要に応じて）
 
@@ -1048,7 +1028,6 @@ Qubit実装では、数値誤差により物理的部分空間から逸脱する
 #### スケーラビリティ
 
 大規模系（多分子系）では：
-
 - Qudit: $3^N$ 次元
 - Qubit: $2^{2N}$ 次元
 
@@ -1109,18 +1088,18 @@ Qubit実装は指数的に資源を消費するが、量子もつれを利用し
 
 ## 参考文献
 
-1. Smith, M. B., & Michl, J. (2010). "Singlet fission." _Chemical Reviews_, 110(11), 6891-6936.
+1. Smith, M. B., & Michl, J. (2010). "Singlet fission." *Chemical Reviews*, 110(11), 6891-6936.
 
-2. Casanova, D. (2018). "Theoretical modeling of singlet fission." _Chemical Reviews_, 118(15), 7164-7207.
+2. Casanova, D. (2018). "Theoretical modeling of singlet fission." *Chemical Reviews*, 118(15), 7164-7207.
 
-3. Nielsen, M. A., & Chuang, I. L. (2010). _Quantum Computation and Quantum Information_. Cambridge University Press.
+3. Nielsen, M. A., & Chuang, I. L. (2010). *Quantum Computation and Quantum Information*. Cambridge University Press.
 
-4. Suzuki, M. (1976). "Generalized Trotter's formula and systematic approximants of exponential operators and inner derivations with applications to many-body problems." _Communications in Mathematical Physics_, 51(2), 183-190.
+4. Suzuki, M. (1976). "Generalized Trotter's formula and systematic approximants of exponential operators and inner derivations with applications to many-body problems." *Communications in Mathematical Physics*, 51(2), 183-190.
 
-5. Qiskit Development Team. (2021). _Qiskit: An Open-source Framework for Quantum Computing_. https://qiskit.org/
+5. Qiskit Development Team. (2021). *Qiskit: An Open-source Framework for Quantum Computing*. https://qiskit.org/
 
-6. McClean, J. R., et al. (2016). "The theory of variational hybrid quantum-classical algorithms." _New Journal of Physics_, 18(2), 023023.
+6. McClean, J. R., et al. (2016). "The theory of variational hybrid quantum-classical algorithms." *New Journal of Physics*, 18(2), 023023.
 
-7. Dexter, D. L. (1953). "A theory of sensitized luminescence in solids." _The Journal of Chemical Physics_, 21(5), 836-850.
+7. Dexter, D. L. (1953). "A theory of sensitized luminescence in solids." *The Journal of Chemical Physics*, 21(5), 836-850.
 
-8. Pope, M., & Swenberg, C. E. (1999). _Electronic Processes in Organic Crystals and Polymers_. Oxford University Press.
+8. Pope, M., & Swenberg, C. E. (1999). *Electronic Processes in Organic Crystals and Polymers*. Oxford University Press.

@@ -7,13 +7,11 @@
 ## 問題の定量的記述
 
 ### Qubit実装 (tutorials/qubit/four_molecule_linear_chain_quantum_dynamics_qubit.ipynb)
-
 - **Qubit数**: 4分子 × 2 Qubit/分子 = 8 Qubits
 - **単一トロッターステップのゲート数**: 44ゲート
 - **回路深さ**: 18
 
 ### Qudit実装 (tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb)
-
 - **Qudit数**: 4分子 × 1 Qutrit/分子 = 4 Qutrits
 - **分解前のゲート数**: 14ゲート
   - H0の時間発展: 8個のVirtRzゲート
@@ -27,7 +25,6 @@
   - VirtRz: 662個
 
 ### 問題の核心
-
 **分解前14ゲート → 分解後6182ゲート**: 約**440倍**の増加
 
 ## 根本原因の分析
@@ -39,7 +36,6 @@
 ```python
 def decompose_custom_two_gates(self, circuit: QuantumCircuit) -> QuantumCircuit:
     from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
-
     backend = self.provider.get_backend("faketraps3six")
     compiler = LogEntQRCEXPass(backend)
     return compiler.transpile(circuit)
@@ -48,7 +44,6 @@ def decompose_custom_two_gates(self, circuit: QuantumCircuit) -> QuantumCircuit:
 ### 2. LogEntQRCEXPassの計算量
 
 実験的測定結果:
-
 - **単一の9×9 CustomTwoゲート** → 約**1000基本ゲート**に分解
 - 6個のCustomTwoゲート (3 × H_transfer + 3 × H_TTA) → 約6000ゲート
 - 8個のVirtRzゲートは分解不要で保持 → 合計約6200ゲート
@@ -58,13 +53,11 @@ def decompose_custom_two_gates(self, circuit: QuantumCircuit) -> QuantumCircuit:
 `LogEntQRCEXPass`は**一般的な任意のユニタリ行列**を分解するアルゴリズムで、QR分解ベースの手法を使用します。
 
 #### アルゴリズムの動作（log_ent_qr_cex_decomp.py より）:
-
 1. 9×9行列の各要素を順番にゼロにしていく（QR分解）
 2. 各要素をゼロにするために、CRotまたはPSwapブロックを使用
 3. 最後に対角位相を調整
 
 #### ゲート数の理論的見積もり:
-
 - QR分解: O(d²) ステップ、各ステップで数ゲート必要
 - d = 9 (2つのqutrit) の場合: O(81) ステップ × 約10ゲート/ステップ ≈ 810ゲート
 - 対角位相調整: O(d) ステップ × 約3ゲート/ステップ ≈ 27ゲート
@@ -77,7 +70,6 @@ def decompose_custom_two_gates(self, circuit: QuantumCircuit) -> QuantumCircuit:
 現在の分解アルゴリズムは、**行列の疎構造を一切活用していません**。
 
 #### H_transferのユニタリ行列（9×9）:
-
 ```
 基底順序: |00⟩, |01⟩, |02⟩, |10⟩, |11⟩, |12⟩, |20⟩, |21⟩, |22⟩
           0    1    2    3    4    5    6    7    8
@@ -93,14 +85,12 @@ def decompose_custom_two_gates(self, circuit: QuantumCircuit) -> QuantumCircuit:
  [0,         0,         0, 0, 0, 0, 0, 0, 1]]   # |22⟩
 ```
 
-**重要な観察**:
-
+**重要な観察**: 
 - 非自明な要素は4つのみ（2×2ブロック）
 - 残り77個の要素は単位行列（恒等変換）
 - 実質的には**2×2ユニタリ**を9×9空間に埋め込んだもの
 
 #### H_TTAのユニタリ行列（9×9）:
-
 ```
 基底順序: |00⟩, |01⟩, |02⟩, |10⟩, |11⟩, |12⟩, |20⟩, |21⟩, |22⟩
           0    1    2    3    4    5    6    7    8
@@ -117,7 +107,6 @@ def decompose_custom_two_gates(self, circuit: QuantumCircuit) -> QuantumCircuit:
 ```
 
 **重要な観察**:
-
 - 非自明な要素は9つのみ（3×3ブロック）
 - 残り72個の要素は単位行列
 - 実質的には**3×3ユニタリ**を9×9空間に埋め込んだもの
@@ -125,13 +114,11 @@ def decompose_custom_two_gates(self, circuit: QuantumCircuit) -> QuantumCircuit:
 ### 5. 比較：Qubit実装との違い
 
 Qubit実装では：
-
 1. **直接的な1-qubitおよび2-qubitゲート**を使用
 2. 特殊な構造（Pauliゲート、回転ゲート）を活用
 3. 分解の必要性が最小限
 
 Qudit実装（現行）では：
-
 1. **一般的な9×9ユニタリ**として扱う
 2. 疎構造を無視
 3. 過度に複雑な分解を実行
@@ -145,35 +132,33 @@ Qudit実装（現行）では：
 疎構造を活用して、CustomTwoゲートを使わずに直接基本ゲートで実装します。
 
 ##### H_transferの場合（2×2部分空間）:
-
 ```python
 def add_H_transfer_evolution_optimized(self, circuit, dt, i, j, V):
     """
     {|01⟩, |10⟩}部分空間での回転を直接実装
-
+    
     必要なゲート数: 約10-20ゲート（vs 現行1000ゲート）
     """
     theta = V * dt / self.params.hbar
-
+    
     # ステップ1: |01⟩と|10⟩を基底|0⟩と|1⟩に写像（準位変更）
     # ステップ2: 制御回転ゲート（CEx, R, Rz の組み合わせ）
     # ステップ3: 基底を戻す
-
+    
     # 詳細実装は後述
 ```
 
 ##### H_TTAの場合（3×3部分空間）:
-
 ```python
 def add_H_TTA_evolution_optimized(self, circuit, dt, i, j, J):
     """
     {|02⟩, |11⟩, |20⟩}部分空間での時間発展を直接実装
-
+    
     必要なゲート数: 約20-40ゲート（vs 現行1000ゲート）
     """
     # 3×3ハミルトニアンの固有値分解（オフライン計算可能）
     # 各固有状態への射影と位相回転を基本ゲートで実装
-
+    
     # 詳細実装は後述
 ```
 
@@ -185,19 +170,19 @@ def add_H_TTA_evolution_optimized(self, circuit, dt, i, j, J):
 class SparseStructuredTwoQuditPass(CompilerPass):
     """
     疎構造を持つ2-quditゲートの効率的な分解
-
+    
     検出可能な構造:
     1. ブロック対角
     2. 小さな部分空間でのみ作用
     3. 特殊な対称性
     """
-
+    
     def analyze_structure(self, U: np.ndarray) -> dict:
         """ユニタリ行列の構造を解析"""
         # 恒等要素の検出
         # ブロック構造の検出
         # 作用する部分空間の特定
-
+        
     def decompose_efficiently(self, U: np.ndarray, structure: dict) -> List[Gate]:
         """構造に基づいた効率的な分解"""
         # 小さな部分空間のみを処理
@@ -209,21 +194,18 @@ class SparseStructuredTwoQuditPass(CompilerPass):
 #### ゲート数の見積もり:
 
 **H_transfer（2×2部分空間）**:
-
 - 準位操作: 4ゲート（各quditで2準位を基底に）
 - 2-qudit回転: 8-10ゲート（CRotブロック1つ）
 - 準位復元: 4ゲート
 - **合計: 約16-20ゲート**（vs 現行1000ゲート）
 
 **H_TTA（3×3部分空間）**:
-
 - 準位操作: 6ゲート
 - 3×3ユニタリ分解: 15-25ゲート（3つのCRotブロック）
-- 準位復元: 6ゲート
+- 準位復元: 6ゲート  
 - **合計: 約27-37ゲート**（vs 現行1000ゲート）
 
 **単一トロッターステップ全体**:
-
 - H0: 8ゲート（変更なし）
 - H_transfer: 3×20 = 60ゲート
 - H_TTA: 3×32 = 96ゲート
@@ -236,25 +218,19 @@ class SparseStructuredTwoQuditPass(CompilerPass):
 ## 実装上の注意点
 
 ### 重要な制約
-
 問題文の要求：
-
 > ヒューリスティックな処理やごまかしのためのfallbackは絶対にしないでください
 
 ### 遵守すべき原則
-
 1. ✅ **数学的に厳密な分解のみ使用**
-
    - 量子ゲートの組み合わせによる正確なユニタリ実装
    - 近似や打ち切りは行わない
 
 2. ✅ **MQT-Quditsの基本ゲートのみ使用**
-
    - VirtRz, CEx, R, Rh, Rz
    - scipy.linalg.expmなどのヒューリスティックは使用しない
 
 3. ✅ **構造の活用は数学的に正当**
-
    - 疎構造の活用は最適化であり、近似ではない
    - 同じユニタリを効率的に実装するだけ
 
@@ -272,14 +248,11 @@ class SparseStructuredTwoQuditPass(CompilerPass):
 #### 実装方針
 
 **H_transferの場合**:
-
 ```python
 # 現在: 9×9ユニタリ行列を使用
 U_9x9 = np.eye(9, dtype=complex)
-U_9x9[1, 1] = cos(θ)
-U_9x9[1, 3] = -1j * sin(θ)
-U_9x9[3, 1] = -1j * sin(θ)
-U_9x9[3, 3] = cos(θ)
+U_9x9[1,1] = cos(θ); U_9x9[1,3] = -1j*sin(θ)
+U_9x9[3,1] = -1j*sin(θ); U_9x9[3,3] = cos(θ)
 circuit.cu_two([i, j], U_9x9)  # → ~1000ゲートに分解
 
 # 提案: 条件付き単一qudit操作として実装
@@ -289,7 +262,6 @@ circuit.cu_two([i, j], U_9x9)  # → ~1000ゲートに分解
 ```
 
 **H_TTAの場合**:
-
 ```python
 # 3×3部分空間のユニタリを段階的に構築
 # 1. |02⟩ と |11⟩ の間の2準位回転
@@ -299,7 +271,6 @@ circuit.cu_two([i, j], U_9x9)  # → ~1000ゲートに分解
 ```
 
 #### 期待される効果
-
 - H_transfer: 1000ゲート → 50-100ゲート (約10-20倍削減)
 - H_TTA: 1000ゲート → 100-200ゲート (約5-10倍削減)
 - 全体: 6182ゲート → 500-800ゲート (約8-12倍削減)
@@ -314,19 +285,19 @@ MQT-Quditsフレームワークに疎構造認識コンパイラパスを追加�
 class SparseStructureAwarePass(CompilerPass):
     """
     疎構造を認識してCustomTwoゲートを効率的に分解するコンパイラ
-
+    
     認識可能な構造:
     1. ブロック対角行列
     2. 小さな部分空間でのみ作用する行列
     3. 恒等要素が多い行列
     """
-
+    
     def analyze_sparsity(self, U: np.ndarray) -> dict:
         """ユニタリ行列の疎性を解析"""
         # 恒等要素の数を数える
         # 作用する部分空間を特定
         # ブロック構造を検出
-
+        
     def decompose_sparse_unitary(self, U: np.ndarray, structure: dict):
         """疎構造に基づいた効率的な分解"""
         # 部分空間のみを分解
@@ -350,12 +321,10 @@ Trotter分解ではなく、他の量子アルゴリズム手法を検討しま�
 ### 現在のフレームワークで難しい点
 
 1. **基本ゲートへの直接アクセスの複雑さ**
-
    - CEx, R, Rh, Rzなどの基本ゲートを直接組み合わせて複雑な操作を構築するのは非常に困難
    - ゲート追加のAPIが高レベル（cu_two, virtrz等）に設計されている
 
 2. **部分空間制限の表現**
-
    - 「qudit iが|1⟩の時のみqudit jを操作」のような条件付き操作の直接表現が難しい
    - CustomTwoゲートは常に全空間（d×d）の行列を要求
 
@@ -368,7 +337,6 @@ Trotter分解ではなく、他の量子アルゴリズム手法を検討しま�
 フレームワークの制約を考慮すると、以下のアプローチが現実的です：
 
 #### アプローチA: ハイブリッド実装
-
 ```python
 def add_H_transfer_optimized(self, circuit, dt):
     """
@@ -379,12 +347,12 @@ def add_H_transfer_optimized(self, circuit, dt):
         # 準備: VirtRzで位相調整
         circuit.virtrz(i, [...])
         circuit.virtrz(j, [...])
-
+        
         # 核心部分: 小さめのCustomTwoゲート
         # （完全な9×9ではなく、疎構造を明示）
         U = create_minimal_unitary_for_transfer(theta)
         circuit.cu_two([i, j], U)
-
+        
         # 後処理: VirtRzで位相戻し
         circuit.virtrz(i, [...])
         circuit.virtrz(j, [...])
@@ -400,7 +368,7 @@ H_transfer専用、H_TTA専用のゲートシーケンスを構築します：
 ```python
 class HTransferGateSequence:
     """H_transfer専用の最適化されたゲートシーケンス"""
-
+    
     def generate_sequence(self, i, j, theta):
         """
         {|01⟩, |10⟩}部分空間回転のための
@@ -417,26 +385,21 @@ class HTransferGateSequence:
 ## 結論と推奨事項
 
 ### 問題の本質
-
 - Qudit実装のゲート数爆発（6182ゲート）は、一般的なユニタリ分解アルゴリズム（LogEntQRCEXPass）が行列の疎構造を活用していないことが原因
 - 物理的に意味のある操作（エネルギー移動、TTA）は小さな部分空間でのみ作用（2×2または3×3）するが、9×9行列全体として分解されている
 
 ### 推奨される解決策
-
 **短期的（即座に実装可能）**:
-
 1. ✅ 本レポートでの問題分析と原因特定（完了）
 2. 🔨 CustomTwoゲートの使用を最小化し、可能な限りVirtRz等の単一quditゲートを活用
 3. 📊 ゲート数の削減効果を測定・報告
 
 **中期的（フレームワーク拡張）**:
-
 1. SparseStructureAwarePassコンパイラの実装
 2. HTransferGateSequence/HTTAGateSequenceクラスの実装
 3. 既存のノートブックとチュートリアルの更新
 
 **長期的（研究的取り組み）**:
-
 1. Quditハードウェアに最適化された新しいゲート分解手法の研究
 2. 部分空間制限操作のための新しいゲートプリミティブの提案
 3. MQT-Quditsフレームワークへのコントリビューション
@@ -444,15 +407,13 @@ class HTransferGateSequence:
 ### 現実的な期待値
 
 完全な最適化（アプローチB）を実装した場合:
-
 - **ゲート数**: 6182 → 400-600 (約10-15倍削減)
 - **Qubit実装との比較**: 依然として10-13倍多いが、これは:
   - Quditの次元が高い（3準位 vs 2準位）
   - 2-qudit操作がより複雑
-    という本質的な違いによるもので、妥当な範囲
+  という本質的な違いによるもので、妥当な範囲
 
 部分的な最適化（アプローチA）の場合:
-
 - **ゲート数**: 6182 → 1000-2000 (約3-6倍削減)
 - **実装の容易さ**: 高い
 - **数学的厳密性**: 完全に保持
@@ -466,13 +427,12 @@ class HTransferGateSequence:
 
 ---
 
-**作成日**: 2025-10-20
-**最終更新**: 2025-10-20
-**分析者**: AI System (Copilot)
+**作成日**: 2025-10-20  
+**最終更新**: 2025-10-20  
+**分析者**: AI System (Copilot)  
 **ステータス**: 分析完了、実装推奨事項提示済み
 
-**関連ファイル**:
-
+**関連ファイル**: 
 - `tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb` - Qudit実装（現行版）
 - `tutorials/qubit/four_molecule_linear_chain_quantum_dynamics_qubit.ipynb` - Qubit実装（比較対象）
 - `tutorials/mqt_qudits_four_molecule_implementation.py` - 現行実装

@@ -11,7 +11,6 @@ This PR fixes the accuracy issue in the qudit implementation observed in tutoria
 ## 問題 (Problem)
 
 **観測された現象:**
-
 - Qubit実装: 2656ゲート/ステップ、最大誤差 ~0.021
 - **Qudit実装**: 118ゲート/ステップ、最大誤差 ~0.234 ← **10倍悪い！**
 
@@ -19,7 +18,6 @@ This PR fixes the accuracy issue in the qudit implementation observed in tutoria
 量子ゲート数が22分の1に削減されているにもかかわらず、Quditの精度が著しく悪化。
 
 **Observed phenomenon:**
-
 - Qubit implementation: 2656 gates/step, max error ~0.021
 - **Qudit implementation**: 118 gates/step, max error ~0.234 ← **10x worse!**
 
@@ -35,24 +33,20 @@ Despite 22x fewer gates, qudit accuracy was significantly worse.
 The H_TTA (Triplet-Triplet Annihilation) time evolution operator in `tutorials/exact_qudit_basic_gates.py` (lines 67-161) used a **non-unitary matrix**.
 
 **誤った実装 (Wrong implementation):**
-
 ```python
 U_TTA = 0.5 * [[1+cos(ω), √2·sin(ω), 1-cos(ω)],     # All REAL
                [√2·sin(ω), 2·cos(ω),  √2·sin(ω)],
                [1-cos(ω),  √2·sin(ω), 1+cos(ω)]]
 ```
-
 - ユニタリ性誤差: **2.14** (許容範囲: < 10^-10)
 - Unitarity error: **2.14** (tolerance: < 10^-10)
 
 **正しい実装 (Correct implementation):**
-
 ```python
 from scipy.linalg import expm
 H_TTA = J * [[0, 1, 0], [1, 0, 1], [0, 1, 0]]
 U_TTA = expm(-1j * H_TTA * dt / hbar)
 ```
-
 - ユニタリ性誤差: **< 10^-15** ✓
 - Unitarity error: **< 10^-15** ✓
 
@@ -86,7 +80,6 @@ python3 verify_qudit_accuracy_fix.py
 ```
 
 **期待される出力 (Expected output):**
-
 ```
 ✅ Test 1: H_TTA Unitarity Check - PASS
 ✅ Test 2: H_TTA Structure Check - PASS
@@ -111,12 +104,12 @@ jupyter nbconvert --to notebook --execute \
 
 ## 期待される効果 (Expected Impact)
 
-| 指標 (Metric)                          | 修正前 (Before)         | 修正後 (After)          | 改善 (Improvement)    |
-| -------------------------------------- | ----------------------- | ----------------------- | --------------------- |
-| 最大誤差 (Max error)                   | 0.234                   | ~0.01                   | 23倍改善 (23x better) |
-| 平均誤差 (Avg error)                   | 0.072                   | ~0.002                  | 36倍改善 (36x better) |
-| ゲート数 (Gates/step)                  | 118                     | 118                     | 変わらず (unchanged)  |
-| Qubitとの精度比較 (vs Qubit accuracy)  | 10倍悪い (10x worse)    | 同等以上 (same/better)  |
+| 指標 (Metric) | 修正前 (Before) | 修正後 (After) | 改善 (Improvement) |
+|--------------|----------------|----------------|-------------------|
+| 最大誤差 (Max error) | 0.234 | ~0.01 | 23倍改善 (23x better) |
+| 平均誤差 (Avg error) | 0.072 | ~0.002 | 36倍改善 (36x better) |
+| ゲート数 (Gates/step) | 118 | 118 | 変わらず (unchanged) |
+| Qubitとの精度比較 (vs Qubit accuracy) | 10倍悪い (10x worse) | 同等以上 (same/better) |
 | Qubitとのゲート数比較 (vs Qubit gates) | 22倍効率的 (22x better) | 22倍効率的 (22x better) |
 
 **結果 (Result):** 効率性と精度の両方を達成！ (Both efficiency AND accuracy!)
@@ -165,5 +158,5 @@ CodeQL scan results: **0 vulnerabilities**
 
 ---
 
-**ステータス (Status):** ✅ 完了 - 検証準備完了 (Complete - Ready for validation)
+**ステータス (Status):** ✅ 完了 - 検証準備完了 (Complete - Ready for validation)  
 **日付 (Date):** 2025-11-12

@@ -86,7 +86,7 @@ def validate_density_matrix(
 
 def validate_particle_conservation(
     populations: dict[str, float],
-    N_molecules: float,
+    N_molecules: int | float,
     tolerance: float = 1e-8,
 ) -> bool:
     """Check that N_S0 + N_T1 + N_S1 = N_molecules.
@@ -104,7 +104,10 @@ def validate_particle_conservation(
     """
     total = populations["N_S0"] + populations["N_T1"] + populations["N_S1"]
     if abs(total - N_molecules) > tolerance:
-        msg = f"Particle conservation violated: N_S0 + N_T1 + N_S1 = {total}, expected {N_molecules}"
+        msg = (
+            f"Particle conservation violated: "
+            f"N_S0 + N_T1 + N_S1 = {total}, expected {N_molecules}"
+        )
         raise PhysicsViolationError(msg)
     return True
 
@@ -127,7 +130,8 @@ def validate_entropy_increase(
     diff = S_curr - S_prev
     if diff < tolerance:
         warnings.warn(
-            f"Entropy decreased: S_prev={S_prev:.6e}, S_curr={S_curr:.6e}, dS={diff:.6e}",
+            f"Entropy decreased: S_prev={S_prev:.6e}, S_curr={S_curr:.6e}, "
+            f"dS={diff:.6e}",
             stacklevel=2,
         )
         return False

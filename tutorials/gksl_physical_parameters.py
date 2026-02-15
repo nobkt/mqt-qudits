@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
+
 # hbar in eV·fs units (NIST CODATA value, truncated)
 HBAR_EV_FS = 0.6582
 
@@ -85,11 +87,9 @@ class GKSLPhysicalParameters:
                 errors.append(f"2*E_T should approximate E_S (ratio deviation {ratio:.3f} > {ENERGY_RATIO_TOLERANCE})")
 
         # 3. Dissipation rate non-negativity
-        errors.extend(
-            f"{name} must be non-negative"
-            for name in ("gamma_TTA", "Gamma_fl", "Gamma_ph", "k_IC", "k_ISC_ST", "k_ISC_TS")
-            if getattr(self, name) < 0
-        )
+        for name in ("gamma_TTA", "Gamma_fl", "Gamma_ph", "k_IC", "k_ISC_ST", "k_ISC_TS"):
+            if getattr(self, name) < 0:
+                errors.append(f"{name} must be non-negative")
 
         # 4. Time scale hierarchy: gamma_TTA >= Gamma_fl >= k_IC >= k_ISC_ST
         if self.gamma_TTA < self.Gamma_fl:
@@ -133,7 +133,7 @@ class GKSLPhysicalParameters:
 
     def get_hilbert_space_dim(self) -> int:
         """Return the Hilbert space dimension."""
-        dim = int(self.d**self.N_molecules)
+        dim = int(self.d ** self.N_molecules)
         if self.with_boson:
             dim *= int((self.n_max + 1) ** self.N_molecules)
         return dim

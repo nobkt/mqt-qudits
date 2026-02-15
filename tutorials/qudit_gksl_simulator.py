@@ -18,8 +18,6 @@ import numpy as np
 from scipy.linalg import expm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from typing import TYPE_CHECKING
-
 from gksl_math_utils import (
     build_lindblad_operators,
     build_onsite_hamiltonian,
@@ -28,13 +26,11 @@ from gksl_math_utils import (
     compute_purity,
     compute_von_neumann_entropy,
 )
+from gksl_physical_parameters import GKSLPhysicalParameters
 from stinespring_utils import (
     apply_stinespring_to_density_matrix,
     stinespring_unitary_from_lindblad,
 )
-
-if TYPE_CHECKING:
-    from gksl_physical_parameters import GKSLPhysicalParameters
 
 
 class QuditGKSLSimulator:
@@ -46,8 +42,7 @@ class QuditGKSLSimulator:
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
         if params.with_boson:
-            msg = "QuditGKSLSimulator is for non-boson model only"
-            raise ValueError(msg)
+            raise ValueError("QuditGKSLSimulator is for non-boson model only")
         self.params = params
         self.n_system_qudits = params.N_molecules  # 4
         # 26 ancilla qubits: 2*3 TTA + 4*4 single-site + 4 ISC channels
@@ -60,7 +55,7 @@ class QuditGKSLSimulator:
         self.lindblad_ops = build_lindblad_operators(params)
 
         # System dimension (qutrit space)
-        self.dim = params.d**params.N_molecules  # 81
+        self.dim = params.d ** params.N_molecules  # 81
 
     # ------------------------------------------------------------------
     # Trotter step primitives
@@ -72,7 +67,9 @@ class QuditGKSLSimulator:
         return U @ rho @ U.conj().T
 
     @staticmethod
-    def _apply_lindblad_stinespring(rho: np.ndarray, L_op: np.ndarray, dt: float) -> np.ndarray:
+    def _apply_lindblad_stinespring(
+        rho: np.ndarray, L_op: np.ndarray, dt: float
+    ) -> np.ndarray:
         """Apply single Lindblad channel via Stinespring dilation."""
         U = stinespring_unitary_from_lindblad(L_op, dt)
         return apply_stinespring_to_density_matrix(rho, U)
@@ -88,7 +85,8 @@ class QuditGKSLSimulator:
         for L_op, _gamma in self.lindblad_ops:
             rho = self._apply_lindblad_stinespring(rho, L_op, dt)
         # Half Hamiltonian
-        return self._apply_hamiltonian_step(rho, dt / 2)
+        rho = self._apply_hamiltonian_step(rho, dt / 2)
+        return rho
 
     # ------------------------------------------------------------------
     # Initial state
@@ -98,7 +96,7 @@ class QuditGKSLSimulator:
         """Prepare initial density matrix in qutrit space."""
         d = self.params.d
         N = self.params.N_molecules
-        dim = d**N
+        dim = d ** N
         psi = np.zeros(dim, dtype=np.complex128)
 
         if state_type == "edge_triplet":
@@ -106,14 +104,13 @@ class QuditGKSLSimulator:
             index = 1 * (d ** (N - 1)) + 1
             psi[index] = 1.0
         elif state_type == "all_triplet":
-            index = sum(1 * (d**i) for i in range(N))
+            index = sum(1 * (d ** i) for i in range(N))
             psi[index] = 1.0
         elif state_type == "all_singlet":
-            index = sum(2 * (d**i) for i in range(N))
+            index = sum(2 * (d ** i) for i in range(N))
             psi[index] = 1.0
         else:
-            msg = f"Unknown state type: {state_type}"
-            raise ValueError(msg)
+            raise ValueError(f"Unknown state type: {state_type}")
 
         return np.outer(psi, psi.conj())
 
@@ -148,7 +145,9 @@ class QuditGKSLSimulator:
 
             times.append((step + 1) * dt)
             traces.append(float(np.real(np.trace(rho))))
-            populations.append(compute_populations_from_density_matrix(rho, self.params))
+            populations.append(
+                compute_populations_from_density_matrix(rho, self.params)
+            )
             entropies.append(compute_von_neumann_entropy(rho))
             purities.append(compute_purity(rho))
 

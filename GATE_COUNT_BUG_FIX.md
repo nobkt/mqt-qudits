@@ -29,7 +29,7 @@ circuit.cx([i, j])
 circuit.r(i, [0, 1, -theta, 0.0])
 circuit.r(j, [2, 1, -theta, 0.0])
 
-# |02⟩ ↔ |20⟩ transition
+# |02⟩ ↔ |20⟩ transition  
 circuit.r(i, [0, 2, theta, 0.0])
 circuit.r(j, [2, 0, theta, 0.0])
 circuit.cx([i, j])
@@ -42,21 +42,18 @@ This implements the 3×3 subspace TTA process with 10 gates per pair (30 gates t
 ## Results
 
 ### Before Fix
-
 - **Total gates/step: 3344**
 - H0: 8 gates
 - H_transfer: 18 gates (direct implementation)
 - H_TTA: ~3318 gates (3 CustomTwo × ~1000 gates each from LogEntQRCEXPass)
 
 ### After Fix
-
 - **Total gates/step: 56**
 - H0: 8 gates
 - H_transfer: 18 gates (direct implementation)
 - H_TTA: 30 gates (direct implementation, 10 gates/pair × 3 pairs)
 
 ### Comparison with Qubit Version
-
 - Qubit version: 112 gates/step
 - Qutrit version (fixed): 56 gates/step
 - **Reduction: 2.00x** ✓
@@ -65,17 +62,16 @@ This matches the expected ~2x reduction mentioned in the tutorial analysis.
 
 ## Gate Breakdown
 
-| Component                            | Gates  | Implementation                              |
-| ------------------------------------ | ------ | ------------------------------------------- |
-| H0 (on-site energy)                  | 8      | VirtRz gates (2 per molecule × 4 molecules) |
-| H_transfer (energy transfer)         | 18     | R + CEx + Rz pattern (6 per pair × 3 pairs) |
-| H_TTA (triplet-triplet annihilation) | 30     | R + CEx pattern (10 per pair × 3 pairs)     |
-| **Total**                            | **56** | All basic gates, no CustomTwo               |
+| Component | Gates | Implementation |
+|-----------|-------|----------------|
+| H0 (on-site energy) | 8 | VirtRz gates (2 per molecule × 4 molecules) |
+| H_transfer (energy transfer) | 18 | R + CEx + Rz pattern (6 per pair × 3 pairs) |
+| H_TTA (triplet-triplet annihilation) | 30 | R + CEx pattern (10 per pair × 3 pairs) |
+| **Total** | **56** | All basic gates, no CustomTwo |
 
 ## Validation
 
 All tests pass:
-
 - ✓ Gate count is 56 (within expected range 40-80)
 - ✓ No CustomTwo gates remain in the circuit
 - ✓ 2.00x reduction vs qubit version achieved
@@ -85,13 +81,11 @@ All tests pass:
 ## Technical Details
 
 The H_TTA Hamiltonian operates on a 3×3 subspace {|02⟩, |11⟩, |20⟩} which represents:
-
 - |02⟩: qudit_i in S0, qudit_j in S1
-- |11⟩: both qudits in T1
+- |11⟩: both qudits in T1  
 - |20⟩: qudit_i in S1, qudit_j in S0
 
 The TTA process allows transitions between these states:
-
 - |02⟩ ↔ |11⟩: S0 + S1 ↔ T1 + T1
 - |02⟩ ↔ |20⟩: Exchange between molecules
 - |11⟩ ↔ |20⟩: T1 + T1 ↔ S1 + S0

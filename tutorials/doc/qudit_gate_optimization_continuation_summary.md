@@ -15,7 +15,7 @@ This PR continues the work started in PR#36 to address the gate count explosion 
 The gate count explosion occurs because:
 
 1. **CustomTwo gates** (9×9 unitary matrices) are decomposed by LogEntQRCEXPass into ~1,000 basic gates each
-2. **Sparse structure is ignored**:
+2. **Sparse structure is ignored**: 
    - H_transfer: Only 4 non-trivial elements (2×2 subspace) in 9×9 matrix
    - H_TTA: Only 9 non-trivial elements (3×3 subspace) in 9×9 matrix
 3. **6 CustomTwo gates** per Trotter step result in ~6,000 gates total
@@ -23,13 +23,11 @@ The gate count explosion occurs because:
 ### Theoretical Optimization Potential
 
 With sparse structure optimization:
-
 - Current: 6,182 gates/Trotter step
 - Theoretical optimal: 158 gates/Trotter step
 - **Reduction: 97.4% (38× improvement)**
 
 Breakdown:
-
 - H₀: 8 gates (unchanged)
 - H_transfer: 3 × 15 gates = 45 gates (vs current 3,000)
 - H_TTA: 3 × 35 gates = 105 gates (vs current 3,000)
@@ -41,7 +39,6 @@ Breakdown:
 **Tool**: `tools/sparse_structure_compiler.py` (633 lines)
 
 **Status**: ✅ Partially working
-
 - ✅ Sparse structure detection: Correctly identifies 2×2 and 3×3 subspaces
 - ✅ Gate count estimation: Accurate predictions (98.1% and 95.7% reduction)
 - ❌ 2×2 unitary decomposition: Fidelity 0.24 << 0.9999 (required)
@@ -54,23 +51,20 @@ Breakdown:
 **Purpose**: Provide mathematically rigorous 2×2 and 3×3 unitary decomposition
 
 **Status**: ⚠️ Framework complete, numerical accuracy needs improvement
-
 - ✅ ZYZ decomposition framework
-- ✅ ZXZ decomposition framework
+- ✅ ZXZ decomposition framework  
 - ✅ Givens decomposition framework
 - ❌ Fidelity requirements not met (needs algorithmic fixes)
 
 ### 3. Comprehensive Documentation
 
 #### Continuation Specification (`qudit_optimization_continuation_specification_ja.md`)
-
 - Complete technical specification for remaining work
 - 4 implementation phases with detailed task breakdown
 - Time estimates: 370-500 hours total
 - Mathematical rigor requirements clearly defined
 
 #### Theoretical Foundation (`rigorous_unitary_decomposition_theory_ja.md`)
-
 - Complete mathematical theory for 2×2 and 3×3 decomposition
 - SU(2) and SU(3) structure
 - ZYZ decomposition derivation with proofs
@@ -79,7 +73,6 @@ Breakdown:
 - Verification methods
 
 #### Implementation Design (`immediate_implementation_design_ja.md`)
-
 - Detailed design for immediate next steps
 - Problem analysis and root cause identification
 - Reference implementation survey plan
@@ -93,13 +86,11 @@ Breakdown:
 **Problem**: Current ZYZ decomposition has poor fidelity (0.24)
 
 **Root Cause**:
-
 - Incorrect parameter extraction formula
 - Improper global phase handling
 - Numerical instability at singularities
 
 **Solution Strategy**:
-
 - Reference Qiskit's `TwoQubitBasisDecomposer`
 - Implement stable parameter extraction
 - Handle singular points (θ ≈ 0, π) correctly
@@ -110,13 +101,11 @@ Breakdown:
 **Problem**: Current Givens decomposition has poor fidelity (0.63)
 
 **Root Cause**:
-
 - Incorrect Givens rotation matrix construction
 - Incomplete diagonal phase handling
 - Accumulated numerical errors
 
 **Solution Strategy**:
-
 - Improve Givens parameter computation
 - Implement proper QR-based triangularization
 - Add numerical stability checks at each step
@@ -127,7 +116,6 @@ Breakdown:
 **Status**: Not yet started (future work)
 
 **Requirements**:
-
 - Convert to MQT-Qudits basic gates (CEx, R, Rz, VirtRz)
 - Implement as CompilerPass
 - Integrate with existing pipeline
@@ -136,18 +124,15 @@ Breakdown:
 ## Remaining Work (Future PRs)
 
 ### Phase 1: Foundation Improvements (100-135 hours)
-
 **Priority**: Critical
 
 1. **Fix 2×2 decomposition** (30-40h)
-
    - Study Qiskit reference implementation
    - Implement accurate ZYZ decomposition
    - Test with 100+ random unitaries
    - Achieve fidelity > 0.9999
 
 2. **Fix 3×3 decomposition** (40-50h)
-
    - Improve Givens rotation algorithm
    - Handle diagonal phases correctly
    - Test with 100+ random unitaries
@@ -160,11 +145,9 @@ Breakdown:
    - Document test results
 
 ### Phase 2: MQT-Qudits Integration (90-130 hours)
-
 **Priority**: High
 
 1. **Basic gate conversion** (50-70h)
-
    - Map 2-level rotations to CEx, R, Rz
    - Implement gate sequence generators
    - Handle level permutations
@@ -175,11 +158,9 @@ Breakdown:
    - Add fallback to LogEntQRCEXPass
 
 ### Phase 3: Specialized Sequences (140-180 hours)
-
 **Priority**: Medium
 
 1. **H_transfer optimization** (60-80h)
-
    - Direct implementation without CustomTwo
    - Target: ≤20 gates per operation
 
@@ -188,11 +169,9 @@ Breakdown:
    - Target: ≤40 gates per operation
 
 ### Phase 4: Testing & Documentation (70-100 hours)
-
 **Priority**: High
 
 1. **Comprehensive testing** (40-60h)
-
    - End-to-end 4-molecule system test
    - Verify 6,182 → 158 gate reduction
    - Performance benchmarking
@@ -230,17 +209,17 @@ All implementations must pass:
 ```python
 def verify_mathematical_rigor(original_U, decomposed_gates):
     """Verify mathematical rigor of decomposition"""
-
+    
     # 1. Reconstruct unitary from gates
     U_reconstructed = reconstruct_unitary_from_gates(decomposed_gates)
-
+    
     # 2. Verify unitarity
     assert is_unitary(U_reconstructed, tolerance=1e-10)
-
+    
     # 3. Compute fidelity
     fidelity = compute_fidelity(original_U, U_reconstructed)
     assert fidelity > 0.9999
-
+    
     # 4. Verify eigenvalue preservation
     eigenvals_orig = np.sort(np.angle(np.linalg.eigvals(original_U)))
     eigenvals_recon = np.sort(np.angle(np.linalg.eigvals(U_reconstructed)))
@@ -273,12 +252,10 @@ def verify_mathematical_rigor(original_U, decomposed_gates):
 ## Files in This PR
 
 ### Tools (`tools/`)
-
 1. `sparse_structure_compiler.py` - Existing (tested)
 2. `unitary_decomposition_rigorous.py` - New (needs improvement)
 
 ### Documentation (`tutorials/doc/`)
-
 1. `qudit_optimization_continuation_specification_ja.md` - Complete continuation spec
 2. `rigorous_unitary_decomposition_theory_ja.md` - Complete mathematical theory
 3. `immediate_implementation_design_ja.md` - Detailed implementation design
@@ -289,13 +266,11 @@ def verify_mathematical_rigor(original_U, decomposed_gates):
 ### For Immediate Implementation (Next PR)
 
 1. **Read**: `immediate_implementation_design_ja.md`
-
    - Detailed task breakdown for fixing 2×2 and 3×3 decomposition
    - Reference implementation study plan
    - Test cases and verification procedures
 
 2. **Study**: `rigorous_unitary_decomposition_theory_ja.md`
-
    - Mathematical foundations
    - Correct algorithms with proofs
    - Numerical stability considerations
@@ -308,7 +283,6 @@ def verify_mathematical_rigor(original_U, decomposed_gates):
 ### For Long-term Planning
 
 1. **Reference**: `qudit_optimization_continuation_specification_ja.md`
-
    - Complete roadmap with 4 phases
    - Time estimates: 370-500 hours
    - Technical challenges and solutions
@@ -346,7 +320,7 @@ This PR establishes a solid foundation for continued qudit gate optimization wor
 
 ---
 
-**Document Date**: October 20, 2025
-**Author**: GitHub Copilot AI Analysis System
-**Version**: 1.0
+**Document Date**: October 20, 2025  
+**Author**: GitHub Copilot AI Analysis System  
+**Version**: 1.0  
 **Status**: Continuation Work Complete, Ready for Next Phase

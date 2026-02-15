@@ -33,13 +33,13 @@
 ```python
 class CustomTwo(Gate):
     """Two body custom gate."""
-
+    
     def __init__(
         self,
         circuit: QuantumCircuit,
         name: str,
         target_qudits: list[int],
-        parameters: ANDArray[np.complex128, np.complex128],
+        parameters: NDArray[np.complex128, np.complex128],
         dimensions: list[int],
         controls: ControlData | None = None,
     ) -> None:
@@ -53,7 +53,7 @@ class CustomTwo(Gate):
             params=parameters,
             qasm_tag="cutwo",
         )
-        self.__array_storage: ANDArray = None
+        self.__array_storage: NDArray = None
         if self.validate_parameter(parameters):
             self.__array_storage = parameters
 ```
@@ -109,7 +109,7 @@ class EntangledQRCEX:
         self.circuit: QuantumCircuit = gate.parent_circuit
         self.dimensions: list[int] = itemgetter(*gate.reference_lines)(self.circuit.dimensions)
         self.qudit_indices: list[int] = gate.reference_lines
-        self.u: ANDArray = gate.to_matrix(identities=0)  # ユニタリ行列を取得
+        self.u: NDArray = gate.to_matrix(identities=0)  # ユニタリ行列を取得
         self.decomposition: list[Gate] = []
 ```
 
@@ -122,7 +122,7 @@ class EntangledQRCEX:
 例: 2つの3次元qudit（qutrit）の場合、$9 \times 9$ 行列。
 
 ```python
-self.u: ANDArray = gate.to_matrix(identities=0)
+self.u: NDArray = gate.to_matrix(identities=0)
 ```
 
 ##### ステップ2: QR分解による行列の三角化
@@ -138,7 +138,6 @@ U = Q \cdot R
 $$
 
 ここで、
-
 - $Q$ は直交（ユニタリ）行列
 - $R$ は上三角ユニタリ行列
 
@@ -164,15 +163,15 @@ $$
 def execute(self) -> tuple[list[Gate], int, int]:
     crot_counter = 0
     pswap_counter = 0
-
+    
     u_ = self.u
     dim_control = self.dimensions[0]
     dim_target = self.dimensions[1]
     matrix_dimension = dim_control * dim_target
-
+    
     index_iterator = list(range(matrix_dimension))
     index_iterator.reverse()
-
+    
     # 行列の右下から左上に向かって要素をゼロ化
     for c in range(matrix_dimension):
         diag_index = index_iterator.index(c)
@@ -180,7 +179,7 @@ def execute(self) -> tuple[list[Gate], int, int]:
             if abs(u_[r, c]) > 1.0e-8:  # 非ゼロ要素を検出
                 coef_r1 = u_[r - 1, c].round(15)
                 coef_r = u_[r, c].round(15)
-
+                
                 # Givens回転のパラメータを計算
                 theta = 2 * np.arctan2(abs(coef_r), abs(coef_r1))
                 phi = -(np.pi / 2 + np.angle(coef_r1) - np.angle(coef_r))
@@ -220,7 +219,6 @@ else:
 ```
 
 **選択基準**:
-
 - 行インデックス $(r-1)$ がtarget quditの次元の倍数であり、かつゼロでない場合 → PSwapゲート（4個）
 - それ以外 → CRotゲート（1個）
 
@@ -316,10 +314,10 @@ $$
 def test___array__():
     circuit_33 = QuantumCircuit(2, [3, 3], 0)
     cu = circuit_33.cu_two([0, 1], 1j * np.identity(9))
-
+    
     matrix = cu.to_matrix(identities=0)
     assert np.allclose(1j * np.identity(9), matrix)
-
+    
     matrix_dag = cu.dag().to_matrix()
     assert np.allclose(-1j * np.identity(9), matrix_dag)
 ```
@@ -367,17 +365,17 @@ def apply_H_transfer_basic_gates(circuit, qudit_i, qudit_j, V, dt, hbar):
     エネルギー移動項を基本ゲートで実装
     """
     theta = V * dt / hbar
-
+    
     # 位相調整（虚数単位 -i の実現）
     circuit.virtrz(qudit_i, 1, -np.pi/2)      # |T_1⟩ に -π/2 位相
     circuit.virtrz(qudit_j, 0, -np.pi/2)      # |S_0⟩ に -π/2 位相
-
+    
     # 主要な回転（CExゲート）
     circuit.cex(qudit_i, qudit_j, 0, 0, theta)    # 制御qudit i が |0⟩ のとき回転
-
+    
     # 逆の制御（|10⟩ → |01⟩ の対称性を実現）
     circuit.cex(qudit_j, qudit_i, 0, 0, theta)    # 制御qudit j が |0⟩ のとき回転
-
+    
     # 位相補正
     circuit.virtrz(qudit_i, 1, np.pi/2)
     circuit.virtrz(qudit_j, 0, np.pi/2)
@@ -419,10 +417,10 @@ $$
 3次元部分空間 $(|02\rangle, |11\rangle, |20\rangle)$ でのハミルトニアン行列：
 
 $$
-H_{\text{subspace}} = J \begin{pmatrix}
-0 & 1 & 0 \\
-1 & 0 & 1 \\
-0 & 1 & 0
+H_{\text{subspace}} = J \begin{pmatrix} 
+0 & 1 & 0 \\ 
+1 & 0 & 1 \\ 
+0 & 1 & 0 
 \end{pmatrix}
 $$
 
@@ -512,14 +510,13 @@ MQT-Quditsのノイズモデルは、量子ゲート演算後に確率的なエ�
 ```python
 class Noise:
     """Represents a noise model with depolarizing and dephasing probabilities."""
-
+    
     def __init__(self, probability_depolarizing: float, probability_dephasing: float) -> None:
         self.probability_depolarizing = probability_depolarizing
         self.probability_dephasing = probability_dephasing
 ```
 
 **機能**:
-
 - 脱分極確率 (`probability_depolarizing`)
 - 位相緩和確率 (`probability_dephasing`)
 
@@ -528,7 +525,7 @@ class Noise:
 ```python
 class SubspaceNoise:
     """Represents physical noises for each level transitions."""
-
+    
     def __init__(
         self,
         probability_depolarizing: float,
@@ -540,7 +537,6 @@ class SubspaceNoise:
 ```
 
 **機能**:
-
 - **準位特異的ノイズ**: 特定の準位遷移（例: $|0\rangle \leftrightarrow |1\rangle$）に対するノイズ
 - **動的割り当て**: 負のキー `(-2, -1)` を使用して、Givens回転の2準位部分空間に動的にノイズを割り当て
 
@@ -549,25 +545,24 @@ class SubspaceNoise:
 ```python
 class NoiseModel:
     """Represents a quantum noise model for various gates and qudit configurations."""
-
+    
     def __init__(self) -> None:
         self.quantum_errors: dict[str, dict[str, Noise | SubspaceNoise]] = {}
-
+    
     def add_quantum_error_locally(self, noise: Noise | SubspaceNoise, gates: list[str]) -> None:
         """Add a quantum error locally to all qudits for specified gates."""
         self._add_quantum_error(noise, gates, "local")
-
+    
     def add_all_qudit_quantum_error(self, noise: Noise | SubspaceNoise, gates: list[str]) -> None:
         """Add a quantum error to all qudits for specified gates."""
         self._add_quantum_error(noise, gates, "all")
-
+    
     def add_nonlocal_quantum_error(self, noise: Noise | SubspaceNoise, gates: list[str]) -> None:
         """Add a nonlocal quantum error for specified gates."""
         self._add_quantum_error(noise, gates, "nonlocal")
 ```
 
 **機能**:
-
 - **ゲート特異的ノイズ**: 各ゲートタイプ（`r`, `rz`, `cex` など）に対するノイズモデル
 - **適用モード**:
   - `local`: ゲートが作用するquditにのみノイズを適用
@@ -589,14 +584,12 @@ $$
 $$
 
 ここで、
-
 - $\rho$ は入力密度行列
 - $p_{\text{depol}}$ は脱分極確率
 - $I$ は単位行列
 - $d$ はquditの次元
 
-**物理的解釈**:
-
+**物理的解釈**: 
 - 確率 $(1 - p_{\text{depol}})$ で元の状態を保持
 - 確率 $p_{\text{depol}}$ で完全混合状態 $I/d$ に遷移
 
@@ -621,18 +614,18 @@ def _apply_depolarizing_noise(
     if isinstance(noise_info, SubspaceNoise):  # 物理的ノイズ
         for dit in qudits:
             dim = noisy_circuit.dimensions[dit]
-
+            
             for lev_a, lev_b in noise_info.subspace_w_probs:
                 # 脱分極確率を4つのPauli演算に分配
                 prob_each = noise_info.subspace_w_probs[lev_a, lev_b].probability_depolarizing / 4
-
+                
                 # ノイズ演算の組み合わせ: (X, Z)
                 noise_combinations = list(product(range(2), repeat=2))
                 probabilities = [1 - 3 * prob_each] + [prob_each] * 3
-
+                
                 # 確率的にノイズ演算を選択
                 noise_x, noise_z = self.rng.choice(noise_combinations, p=probabilities)
-
+                
                 # ノイズゲートを適用
                 if (noise_x, noise_z) == (1, 0):
                     noisy_circuit.noisex(dit, [lev_a, lev_b])  # X演算
@@ -651,7 +644,6 @@ $$
 $$
 
 ここで、
-
 - $X_{ab}$: 準位 $|a\rangle \leftrightarrow |b\rangle$ を交換
 - $Y_{ab}$: $X_{ab}$ と位相のある交換
 - $Z_b$: 準位 $|b\rangle$ に位相 $-1$ を付与
@@ -659,7 +651,6 @@ $$
 **実装の詳細**:
 
 1. **ノイズ確率の分配**: 脱分極確率を4つのPauli演算（$I, X, Y, Z$）に均等に分配
-
    - 恒等演算（何もしない）: 確率 $1 - 3p/4$
    - $X$演算: 確率 $p/4$
    - $Y$演算: 確率 $p/4$
@@ -684,16 +675,16 @@ def _apply_dephasing_noise(
         for dit in qudits:
             dim = noisy_circuit.dimensions[dit]
             possible_levels = set(range(dim))
-
+            
             for lev_a, lev_b in noise_info.subspace_w_probs:
                 # 脱分極が作用する準位以外の準位に位相緩和を適用
                 subspace_levels = {lev_a, lev_b}
                 dephasing_levels = list(possible_levels - subspace_levels)
-
+                
                 # 各準位に確率的に位相ノイズを適用
                 prob_each = noise_info.subspace_w_probs[lev_a, lev_b].probability_dephasing
                 probs = [prob_each, 1 - prob_each]  # [ノイズ適用, 何もしない]
-
+                
                 for physical_level in dephasing_levels:
                     if self.rng.choice([True, False], p=probs):
                         noisy_circuit.noisez(dit, physical_level)
@@ -709,8 +700,7 @@ $$
 
 ここで、$Z_k$ は準位 $k$ に作用する位相反転演算子。
 
-**物理的意味**:
-
+**物理的意味**: 
 - 脱分極が作用する2準位部分空間以外の準位に対して、位相のランダム化を行う
 - 量子コヒーレンスの減衰を表現
 
@@ -726,15 +716,15 @@ def _dynamic_subspace_noise_info_rectification(self, noise_info: SubspaceNoise, 
     # 修正が必要かチェック
     if not self._needs_correction(noise_info):
         return noise_info
-
+    
     # サポートされているゲートタイプか確認
     if not isinstance(instruction, (R, Rz, Rh, CEx)):
         return noise_info
-
+    
     # 負のインデックスから実際の準位へマッピング
     subspace = next(iter(noise_info.subspace_w_probs.keys()))
     noise_probs = noise_info.subspace_w_probs[subspace]
-
+    
     # 新しいSubspaceNoiseを作成
     return SubspaceNoise(
         probability_depolarizing=noise_probs.probability_depolarizing,
@@ -744,7 +734,6 @@ def _dynamic_subspace_noise_info_rectification(self, noise_info: SubspaceNoise, 
 ```
 
 **機能**:
-
 - **動的割り当て**: ノイズモデルで準位を `-2, -1` として指定すると、実際のゲートが作用する準位に自動的にマッピング
 - **用途**: 一般的なノイズモデルを定義し、異なる準位で動作するゲートに対して再利用
 
@@ -775,26 +764,25 @@ class NoisyCircuitFactory:
         self.noise_model: NoiseModel = noise_model
         self.circuit: QuantumCircuit = circuit
         self.rng: Generator = self._initialize_rng()  # 乱数生成器
-
+    
     def generate_circuit(self) -> QuantumCircuit:
         """
         元の回路にノイズを追加した新しい回路を生成
         """
         noisy_circuit = QuantumCircuit(self.circuit.num_qudits, self.circuit.dimensions, self.circuit.num_cl)
-
+        
         for instruction in self.circuit.instructions:
             # 元のゲートをコピー
             copied_instruction = copy.deepcopy(instruction)
             noisy_circuit.instructions.append(copied_instruction)
-
+            
             # ノイズを適用
             self._apply_noise(noisy_circuit, instruction)
-
+        
         return noisy_circuit
 ```
 
 **プロセス**:
-
 1. 元の回路の各ゲートをコピー
 2. ゲート後に、ノイズモデルに基づいてノイズゲートを追加
 3. ノイズ付き回路を返す
@@ -810,7 +798,6 @@ def _initialize_rng() -> Generator:
 ```
 
 **特徴**:
-
 - プロセスIDと現在時刻からシードを生成
 - 各実行で異なるノイズパターンを生成（確率的シミュレーション）
 
@@ -821,25 +808,24 @@ def _apply_noise(self, noisy_circuit: QuantumCircuit, instruction: Gate) -> None
     # ゲートタイプがノイズモデルに含まれているか確認
     if instruction.qasm_tag not in self.noise_model.quantum_errors:
         return
-
+    
     # 各適用モードに対してノイズを適用
     for mode, noise_info in self.noise_model.quantum_errors[instruction.qasm_tag].items():
         # 影響を受けるquditを取得
         qudits = self._get_affected_qudits(instruction, mode)
         if qudits is None:
             continue
-
+        
         # 動的部分空間ノイズの修正
         if isinstance(noise_info, SubspaceNoise):
             noise_info = self._dynamic_subspace_noise_info_rectification(noise_info, instruction)
-
+        
         # 脱分極ノイズと位相緩和ノイズを適用
         self._apply_depolarizing_noise(noisy_circuit, qudits, noise_info)
         self._apply_dephasing_noise(noisy_circuit, qudits, noise_info)
 ```
 
 **ステップ**:
-
 1. ゲートタイプのチェック
 2. 適用モードに基づくquditの選択
 3. SubspaceNoiseの動的修正
@@ -873,7 +859,6 @@ noisy_circuit = factory.generate_circuit()
 ```
 
 **結果**:
-
 - `circuit.r(0, ...)` の後に、qudit 0の準位0-1に対する脱分極ノイズゲートが追加される
 - `circuit.rz(1, ...)` の後に、qudit 1の準位1に対するノイズゲートが追加される
 
@@ -898,7 +883,6 @@ noisy_circuit = factory.generate_circuit()
 ```
 
 **結果**:
-
 - `circuit.cex(0, 1, ...)` の後に、qudit 0と1の両方に対する脱分極ノイズゲートが追加される
 
 ### ノイズモデルの検証
@@ -909,15 +893,15 @@ noisy_circuit = factory.generate_circuit()
 def test_depolarizing_noise():
     """脱分極ノイズの数学的正しさを検証"""
     noise_model = NoiseModel()
-
+    
     # 脱分極ノイズの追加
     depol_noise = Noise(probability_depolarizing=0.1, probability_dephasing=0.0)
     noise_model.add_all_qudit_quantum_error(depol_noise, ["x"])
-
+    
     # 回路とシミュレーション
     circuit = QuantumCircuit(1, [3], 0)
     circuit.x(0)
-
+    
     # 多数回実行して統計的検証
     results = []
     for _ in range(1000):
@@ -925,7 +909,7 @@ def test_depolarizing_noise():
         noisy_circuit = factory.generate_circuit()
         # シミュレーション実行
         results.append(simulate(noisy_circuit))
-
+    
     # 期待値の検証: (1 - p) * pure_state + p * mixed_state
     # ...
 ```
@@ -946,13 +930,11 @@ def test_depolarizing_noise():
 ### ノイズモデルのまとめ
 
 1. **ノイズクラス階層**:
-
    - `Noise`: 基本的な脱分極・位相緩和確率
    - `SubspaceNoise`: 準位特異的なノイズ
    - `NoiseModel`: ゲート特異的なノイズモデル
 
 2. **脱分極ノイズ**:
-
    - 数学的ノイズ: 全準位に一様に混合状態を導入
    - 物理的ノイズ: 特定の2準位部分空間に対してPauli演算をランダムに適用
 

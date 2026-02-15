@@ -2,11 +2,10 @@
 
 ## 文書情報
 
-**作成日**: 2025-10-19
-**対象フレームワーク**: Qiskit
-**前提知識**: 量子力学、量子計算基礎、分子励起状態
-**参照文書**:
-
+**作成日**: 2025-10-19  
+**対象フレームワーク**: Qiskit  
+**前提知識**: 量子力学、量子計算基礎、分子励起状態  
+**参照文書**: 
 - `tutorials/doc/quantum_dynamics_molecular_triplet_states.md`
 - `tutorials/doc/suzuki_trotter_decomposition_theory.md`
 - `tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb`
@@ -36,7 +35,6 @@
 ### 1.2 重要な実装方針
 
 ✅ **使用するもの:**
-
 - Qiskit の QuantumCircuit
 - Qiskit の量子ゲート（標準ゲートセット）
 - Qiskit の Statevectorシミュレータ
@@ -44,7 +42,6 @@
 - 数学的に厳密な演算のみ
 
 ❌ **使用しないもの（ヒューリスティックな手法）:**
-
 - scipy.linalg.expm による行列指数関数の直接計算
 - 近似的なfallback処理
 - 非物理的な状態への遷移
@@ -52,13 +49,13 @@
 
 ### 1.3 QubitとQuditの比較
 
-| 項目          | Qutrit方式        | Qubit方式（本文書）           |
-| ------------- | ----------------- | ----------------------------- |
-| 1分子の表現   | 1 Qutrit（3次元） | 2 Qubit（4次元、1次元未使用） |
-| N分子系の次元 | $3^N$             | $2^{2N} = 4^N$                |
-| 状態の自然性  | 直接的            | エンコーディング必要          |
-| ハードウェア  | 実験段階          | 広く利用可能                  |
-| ゲート数      | 少ない            | 多い                          |
+| 項目 | Qutrit方式 | Qubit方式（本文書） |
+|------|-----------|------------------|
+| 1分子の表現 | 1 Qutrit（3次元） | 2 Qubit（4次元、1次元未使用） |
+| N分子系の次元 | $3^N$ | $2^{2N} = 4^N$ |
+| 状態の自然性 | 直接的 | エンコーディング必要 |
+| ハードウェア | 実験段階 | 広く利用可能 |
+| ゲート数 | 少ない | 多い |
 
 **本文書の戦略**: 2 qubitで3準位系を表現し、未使用の1状態（$|11\rangle$）への遷移を厳密に防ぐ。
 
@@ -455,33 +452,33 @@ $$
 
 #### 5.1.1 単一qubitゲート
 
-| ゲート     | 記号    | 行列表現                                                                                                                       | 用途        |
-| ---------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------- |
-| Identity   | `I`     | $\begin{pmatrix} 1 & 0 \\ 0 & 1 \end{pmatrix}$                                                                                 | 恒等演算    |
-| Pauli-X    | `X`     | $\begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}$                                                                                 | ビット反転  |
-| Pauli-Y    | `Y`     | $\begin{pmatrix} 0 & -i \\ i & 0 \end{pmatrix}$                                                                                | 回転        |
-| Pauli-Z    | `Z`     | $\begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}$                                                                                | 位相反転    |
-| Hadamard   | `H`     | $\frac{1}{\sqrt{2}}\begin{pmatrix} 1 & 1 \\ 1 & -1 \end{pmatrix}$                                                              | 重ね合わせ  |
-| Phase      | `S`     | $\begin{pmatrix} 1 & 0 \\ 0 & i \end{pmatrix}$                                                                                 | $\pi/2$位相 |
-| T gate     | `T`     | $\begin{pmatrix} 1 & 0 \\ 0 & e^{i\pi/4} \end{pmatrix}$                                                                        | $\pi/4$位相 |
-| Rotation-X | `RX(θ)` | $\begin{pmatrix} \cos\frac{\theta}{2} & -i\sin\frac{\theta}{2} \\ -i\sin\frac{\theta}{2} & \cos\frac{\theta}{2} \end{pmatrix}$ | X軸回転     |
-| Rotation-Y | `RY(θ)` | $\begin{pmatrix} \cos\frac{\theta}{2} & -\sin\frac{\theta}{2} \\ \sin\frac{\theta}{2} & \cos\frac{\theta}{2} \end{pmatrix}$    | Y軸回転     |
-| Rotation-Z | `RZ(θ)` | $\begin{pmatrix} e^{-i\theta/2} & 0 \\ 0 & e^{i\theta/2} \end{pmatrix}$                                                        | Z軸回転     |
+| ゲート | 記号 | 行列表現 | 用途 |
+|--------|------|---------|------|
+| Identity | `I` | $\begin{pmatrix} 1 & 0 \\ 0 & 1 \end{pmatrix}$ | 恒等演算 |
+| Pauli-X | `X` | $\begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}$ | ビット反転 |
+| Pauli-Y | `Y` | $\begin{pmatrix} 0 & -i \\ i & 0 \end{pmatrix}$ | 回転 |
+| Pauli-Z | `Z` | $\begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}$ | 位相反転 |
+| Hadamard | `H` | $\frac{1}{\sqrt{2}}\begin{pmatrix} 1 & 1 \\ 1 & -1 \end{pmatrix}$ | 重ね合わせ |
+| Phase | `S` | $\begin{pmatrix} 1 & 0 \\ 0 & i \end{pmatrix}$ | $\pi/2$位相 |
+| T gate | `T` | $\begin{pmatrix} 1 & 0 \\ 0 & e^{i\pi/4} \end{pmatrix}$ | $\pi/4$位相 |
+| Rotation-X | `RX(θ)` | $\begin{pmatrix} \cos\frac{\theta}{2} & -i\sin\frac{\theta}{2} \\ -i\sin\frac{\theta}{2} & \cos\frac{\theta}{2} \end{pmatrix}$ | X軸回転 |
+| Rotation-Y | `RY(θ)` | $\begin{pmatrix} \cos\frac{\theta}{2} & -\sin\frac{\theta}{2} \\ \sin\frac{\theta}{2} & \cos\frac{\theta}{2} \end{pmatrix}$ | Y軸回転 |
+| Rotation-Z | `RZ(θ)` | $\begin{pmatrix} e^{-i\theta/2} & 0 \\ 0 & e^{i\theta/2} \end{pmatrix}$ | Z軸回転 |
 
 #### 5.1.2 2-qubitゲート
 
-| ゲート       | 記号   | 用途                        |
-| ------------ | ------ | --------------------------- |
-| CNOT         | `CX`   | 制御NOT（エンタングリング） |
-| CZ           | `CZ`   | 制御Z位相ゲート             |
-| SWAP         | `SWAP` | qubit交換                   |
-| Controlled-U | `CU`   | 制御ユニタリゲート          |
+| ゲート | 記号 | 用途 |
+|--------|------|------|
+| CNOT | `CX` | 制御NOT（エンタングリング） |
+| CZ | `CZ` | 制御Z位相ゲート |
+| SWAP | `SWAP` | qubit交換 |
+| Controlled-U | `CU` | 制御ユニタリゲート |
 
 #### 5.1.3 多qubitゲート
 
-| ゲート          | 記号    | 用途          |
-| --------------- | ------- | ------------- |
-| Toffoli         | `CCX`   | 制御-制御-NOT |
+| ゲート | 記号 | 用途 |
+|--------|------|------|
+| Toffoli | `CCX` | 制御-制御-NOT |
 | Controlled-SWAP | `CSWAP` | Fredkinゲート |
 
 ### 5.2 対角ハミルトニアン $\hat{H}_0$ の実装
@@ -497,7 +494,7 @@ import numpy as np
 def apply_H0_evolution(circuit, qubit_pair, E_T, E_S, dt, hbar=1.0):
     """
     対角ハミルトニアン H0 の時間発展をゲートで実装
-
+    
     Parameters:
     -----------
     circuit : QuantumCircuit
@@ -512,26 +509,26 @@ def apply_H0_evolution(circuit, qubit_pair, E_T, E_S, dt, hbar=1.0):
         換算プランク定数
     """
     q0, q1 = qubit_pair
-
+    
     # パラメータ計算
     alpha = (E_T + E_S) / 4
     beta = (E_S - E_T) / 4
     gamma = (E_T - E_S) / 4
     delta = -(E_T + E_S) / 4
-
+    
     # グローバル位相（記録のみ、実装不要）
     global_phase = -alpha * dt / hbar
-
+    
     # 単一qubitゲート
     theta_0 = -2 * beta * dt / hbar
     theta_1 = -2 * gamma * dt / hbar
-
+    
     circuit.rz(theta_0, q0)
     circuit.rz(theta_1, q1)
-
+    
     # Z⊗Z 相互作用
     theta_zz = -2 * delta * dt / hbar
-
+    
     circuit.cx(q0, q1)
     circuit.rz(theta_zz, q1)
     circuit.cx(q0, q1)
@@ -545,8 +542,8 @@ def apply_H0_evolution(circuit, qubit_pair, E_T, E_S, dt, hbar=1.0):
 
 エネルギー移動は、4-qubit空間の2次元部分空間 $\{|0001\rangle, |0100\rangle\}$ で作用する。この部分空間での演算を実装するため、以下の戦略を用いる：
 
-**ステップ1**: 条件付き演算により、他の状態への影響を排除
-**ステップ2**: 部分空間内での回転を実装
+**ステップ1**: 条件付き演算により、他の状態への影響を排除  
+**ステップ2**: 部分空間内での回転を実装  
 **ステップ3**: 逆変換
 
 #### 5.3.2 ゲート分解
@@ -555,7 +552,7 @@ def apply_H0_evolution(circuit, qubit_pair, E_T, E_S, dt, hbar=1.0):
 def apply_transfer_evolution(circuit, mol_i_qubits, mol_j_qubits, V, dt, hbar=1.0):
     """
     エネルギー移動ハミルトニアンの時間発展
-
+    
     Parameters:
     -----------
     circuit : QuantumCircuit
@@ -571,73 +568,73 @@ def apply_transfer_evolution(circuit, mol_i_qubits, mol_j_qubits, V, dt, hbar=1.
     """
     qi0, qi1 = mol_i_qubits
     qj0, qj1 = mol_j_qubits
-
+    
     theta = V * dt / hbar
-
+    
     # 部分空間 {|0001⟩, |0100⟩} での回転
     # これは |S0,T1⟩ ↔ |T1,S0⟩ の遷移
-
+    
     # ステップ1: 制御条件の設定
     # qi0=0, qi1=1, qj0=0, qj1=0 または qi0=0, qi1=0, qj0=0, qj1=1
-
+    
     # 補助qubitを用いた実装（または多重制御ゲート）
     # ここでは、多重制御Toffoliゲートを用いる
-
+    
     # 条件: (qi0=0) AND (qi1=1 XOR qj1=1) AND (qj0=0)
-
+    
     # 簡易実装: RXXゲート（XX相互作用）の拡張版
     # |01⟩|00⟩ ↔ |00⟩|01⟩ の回転
-
+    
     # 基底変換: |01⟩ → 計算しやすい形へ
     circuit.x(qi1)  # |01⟩ → |00⟩
     circuit.x(qj1)  # |00⟩ → |01⟩ ... いや、これは違う
-
+    
     # より正確な実装: 制御SWAPの変形
     # 実際には複雑な分解が必要
-
+    
     # === 正確な実装 ===
     # |0001⟩ と |0100⟩ の重ね合わせを作る演算子
-
+    
     # 制御qubitとしてqi0, qj0 を使用（両方とも0の時のみ作用）
     circuit.x(qi0)
     circuit.x(qj0)
-
+    
     # 多重制御ゲート: qi0=1, qj0=1 の時、qi1 と qj1 の間で相互作用
     # これは CSWAP の変形
-
+    
     # RXX ゲート（相対的な実装）
     # circuit.rxx(2*theta, qi1, qj1)  # Qiskitに存在する
-
+    
     # ただし、RXXは |01⟩ + |10⟩ 部分空間での回転なので、
     # 制御条件と組み合わせる必要がある
-
+    
     # === 多重制御RXXゲートの分解 ===
     # Control on qi0=0, qj0=0:
-
+    
     # 補助ビット無しの実装は複雑
     # ここでは、Toffoliゲートを組み合わせる
-
+    
     # 実装の詳細は長くなるため、概念的に記述：
     # 1. qi0=0, qj0=0 を検出する制御信号を作る
     # 2. その制御下で qi1, qj1 間の XX 回転を実行
     # 3. 制御信号を解除
-
+    
     # 簡略化した実装例（概念的）:
     circuit.x(qi0)
     circuit.x(qj0)
-
+    
     # 制御-制御-RXX (CCRXXのような演算)
     # Qiskitには直接存在しないため、分解が必要
-
+    
     # ここでは、基本ゲートへの完全分解を示す：
     # (実際の実装は非常に長くなる)
-
+    
     # 一般的な分解: CNOT, RZ, RY ゲートの組み合わせ
     # 約20-30個のゲートが必要
-
+    
     # === 実用的な実装 ===
     # より効率的な方法: 部分空間を陽に扱う
-
+    
     # 戻す
     circuit.x(qi0)
     circuit.x(qj0)
@@ -719,7 +716,7 @@ from qiskit import QuantumCircuit
 def build_trotter_step_circuit(N_molecules, E_T, E_S, V, J, dt, hbar=1.0):
     """
     1トロッターステップの完全な量子回路
-
+    
     Parameters:
     -----------
     N_molecules : int
@@ -733,54 +730,54 @@ def build_trotter_step_circuit(N_molecules, E_T, E_S, V, J, dt, hbar=1.0):
     dt : float
         時間刻み
     hbar : float
-
+    
     Returns:
     --------
     circuit : QuantumCircuit
     """
     n_qubits = 2 * N_molecules
     circuit = QuantumCircuit(n_qubits)
-
+    
     # ===== 前半: dt/2 =====
-
+    
     # (1) H0 evolution (dt/2)
     for i in range(N_molecules):
         q0 = 2 * i
         q1 = 2 * i + 1
         apply_H0_evolution(circuit, (q0, q1), E_T, E_S, dt/2, hbar)
-
+    
     # (2) H_transfer evolution (dt/2)
     for i in range(N_molecules - 1):
         qi = (2*i, 2*i+1)
         qj = (2*i+2, 2*i+3)
         apply_transfer_evolution(circuit, qi, qj, V, dt/2, hbar)
-
+    
     # (3) H_TTA evolution (dt/2)
     for i in range(N_molecules - 1):
         qi = (2*i, 2*i+1)
         qj = (2*i+2, 2*i+3)
         apply_TTA_evolution(circuit, qi, qj, J, dt/2, hbar)
-
+    
     # ===== 後半: dt/2 (逆順) =====
-
+    
     # (4) H_TTA evolution (dt/2)
     for i in reversed(range(N_molecules - 1)):
         qi = (2*i, 2*i+1)
         qj = (2*i+2, 2*i+3)
         apply_TTA_evolution(circuit, qi, qj, J, dt/2, hbar)
-
+    
     # (5) H_transfer evolution (dt/2)
     for i in reversed(range(N_molecules - 1)):
         qi = (2*i, 2*i+1)
         qj = (2*i+2, 2*i+3)
         apply_transfer_evolution(circuit, qi, qj, V, dt/2, hbar)
-
+    
     # (6) H0 evolution (dt/2)
     for i in reversed(range(N_molecules)):
         q0 = 2 * i
         q1 = 2 * i + 1
         apply_H0_evolution(circuit, (q0, q1), E_T, E_S, dt/2, hbar)
-
+    
     return circuit
 ```
 
@@ -788,11 +785,11 @@ def build_trotter_step_circuit(N_molecules, E_T, E_S, V, J, dt, hbar=1.0):
 
 4分子系（8 qubits）、1トロッターステップあたり：
 
-| 項                          | 回数             | ゲート数/回 | 合計 |
-| --------------------------- | ---------------- | ----------- | ---- |
-| $\hat{H}_0$                 | $2 \times 4 = 8$ | 5           | 40   |
-| $\hat{H}_{\text{transfer}}$ | $2 \times 3 = 6$ | 25          | 150  |
-| $\hat{H}_{\text{TTA}}$      | $2 \times 3 = 6$ | 40          | 240  |
+| 項 | 回数 | ゲート数/回 | 合計 |
+|----|------|-----------|------|
+| $\hat{H}_0$ | $2 \times 4 = 8$ | 5 | 40 |
+| $\hat{H}_{\text{transfer}}$ | $2 \times 3 = 6$ | 25 | 150 |
+| $\hat{H}_{\text{TTA}}$ | $2 \times 3 = 6$ | 40 | 240 |
 
 **総ゲート数**: 約 **430個** per step
 
@@ -829,14 +826,14 @@ import numpy as np
 def calculate_populations(statevector, N_molecules):
     """
     状態ベクトルから各状態の個体数を計算
-
+    
     Parameters:
     -----------
     statevector : Statevector or np.ndarray
         量子状態
     N_molecules : int
         分子数
-
+    
     Returns:
     --------
     dict : {'N_S0': float, 'N_T1': float, 'N_S1': float}
@@ -845,25 +842,25 @@ def calculate_populations(statevector, N_molecules):
         state_array = statevector.data
     else:
         state_array = statevector
-
+    
     n_qubits = 2 * N_molecules
     dim = 2 ** n_qubits
-
+    
     N_S0 = 0.0
     N_T1 = 0.0
     N_S1 = 0.0
-
+    
     for idx in range(dim):
         prob = np.abs(state_array[idx])**2
-
+        
         # idxをバイナリ表現に変換
         binary = format(idx, f'0{n_qubits}b')
-
+        
         # 各分子の状態を判定
         for mol_idx in range(N_molecules):
             q0_bit = int(binary[2*mol_idx])
             q1_bit = int(binary[2*mol_idx + 1])
-
+            
             if q0_bit == 0 and q1_bit == 0:
                 N_S0 += prob
             elif q0_bit == 0 and q1_bit == 1:
@@ -871,7 +868,7 @@ def calculate_populations(statevector, N_molecules):
             elif q0_bit == 1 and q1_bit == 0:
                 N_S1 += prob
             # q0_bit == 1 and q1_bit == 1 は未使用状態（カウントしない）
-
+    
     return {'N_S0': N_S0, 'N_T1': N_T1, 'N_S1': N_S1}
 ```
 
@@ -883,7 +880,7 @@ def calculate_populations(statevector, N_molecules):
 def check_unphysical_states(statevector, N_molecules, tolerance=1e-10):
     """
     未使用状態（|11⟩を含む状態）への確率漏れをチェック
-
+    
     Returns:
     --------
     float : 未使用状態の総確率
@@ -892,28 +889,28 @@ def check_unphysical_states(statevector, N_molecules, tolerance=1e-10):
         state_array = statevector.data
     else:
         state_array = statevector
-
+    
     n_qubits = 2 * N_molecules
     dim = 2 ** n_qubits
-
+    
     unphys_prob = 0.0
-
+    
     for idx in range(dim):
         prob = np.abs(state_array[idx])**2
         binary = format(idx, f'0{n_qubits}b')
-
+        
         # |11⟩を含むかチェック
         for mol_idx in range(N_molecules):
             q0_bit = int(binary[2*mol_idx])
             q1_bit = int(binary[2*mol_idx + 1])
-
+            
             if q0_bit == 1 and q1_bit == 1:
                 unphys_prob += prob
                 break
-
+    
     if unphys_prob > tolerance:
         print(f"警告: 未使用状態への漏れ = {unphys_prob:.2e}")
-
+    
     return unphys_prob
 ```
 
@@ -1013,14 +1010,14 @@ $\log(\text{error})$ vs $\log(\Delta t)$ のプロットにより、2次収束�
 
 ### 9.2 QubitとQuditの比較
 
-| 項目                  | Qutrit (MQT-Qudits) | Qubit (Qiskit)                 |
-| --------------------- | ------------------- | ------------------------------ |
-| 状態空間次元（4分子） | $3^4 = 81$          | $2^8 = 256$ (物理的: 81)       |
-| Qubit/Qutrit数        | 4                   | 8                              |
-| ゲート数（1ステップ） | 約55個              | 約430個                        |
-| 実装の自然性          | 高い                | 中程度（エンコーディング必要） |
-| ハードウェア可用性    | 実験段階            | 広く利用可能                   |
-| 開発フレームワーク    | MQT-Qudits          | Qiskit                         |
+| 項目 | Qutrit (MQT-Qudits) | Qubit (Qiskit) |
+|------|-------------------|----------------|
+| 状態空間次元（4分子） | $3^4 = 81$ | $2^8 = 256$ (物理的: 81) |
+| Qubit/Qutrit数 | 4 | 8 |
+| ゲート数（1ステップ） | 約55個 | 約430個 |
+| 実装の自然性 | 高い | 中程度（エンコーディング必要） |
+| ハードウェア可用性 | 実験段階 | 広く利用可能 |
+| 開発フレームワーク | MQT-Qudits | Qiskit |
 
 ### 9.3 今後の展望
 
@@ -1065,17 +1062,18 @@ $\log(\text{error})$ vs $\log(\Delta t)$ のプロットにより、2次収束�
 
 4. Qiskit Documentation: https://qiskit.org/documentation/
 5. Qiskit Textbook: https://qiskit.org/textbook/
-6. Nielsen, M. A., & Chuang, I. L. (2010). _Quantum Computation and Quantum Information_. Cambridge University Press.
+6. Nielsen, M. A., & Chuang, I. L. (2010). *Quantum Computation and Quantum Information*. Cambridge University Press.
 
 ### 量子アルゴリズム
 
-7. Lloyd, S. (1996). "Universal Quantum Simulators". _Science_ **273**, 1073-1078.
-8. Children, A. M., et al. (2019). "Theory of Trotter error with commutator scaling". _Phys. Rev. X_ **9**, 011011.
-9. Campbell, E. (2019). "Random Compiler for Fast Hamiltonian Simulation". _Phys. Rev. Lett._ **123**, 070503.
+7. Lloyd, S. (1996). "Universal Quantum Simulators". *Science* **273**, 1073-1078.
+8. Childs, A. M., et al. (2019). "Theory of Trotter error with commutator scaling". *Phys. Rev. X* **9**, 011011.
+9. Campbell, E. (2019). "Random Compiler for Fast Hamiltonian Simulation". *Phys. Rev. Lett.* **123**, 070503.
 
 ---
 
-**文書作成日**: 2025-10-19
-**バージョン**: 1.0.0
-**対象**: Qiskitフレームワークを用いたQubit量子計算
+**文書作成日**: 2025-10-19  
+**バージョン**: 1.0.0  
+**対象**: Qiskitフレームワークを用いたQubit量子計算  
 **次の文書**: `qubit_implementation_specification.md`
+

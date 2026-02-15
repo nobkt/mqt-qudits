@@ -5,13 +5,11 @@
 `tutorials/quantum_dynamics_complete_comparison.ipynb` において、以下の2つの問題が報告されました：
 
 ### 問題1: Qubit量子シミュレーションにおける回路可視化の不具合
-
 - Unitaryゲートを使った場合の量子回路図の可視化が正常に動作していない
 - 全て基本量子ゲートに分解した場合の量子回路図の可視化が正常に動作していない
 - IPythonのdisplayを使った可視化が機能していない
 
 ### 問題2: Qudit量子シミュレーションにおけるゲート数計測と可視化の不具合
-
 - 全て基本量子ゲートに分解した場合の1トロッターステップ当たりの量子ゲート数が**推定値**でしかない
 - 実際の量子回路に対して正確に評価する必要がある
 - 全て基本量子ゲートに分解した場合の量子回路図が可視化されていない
@@ -23,7 +21,6 @@
 **セルID: `qubit_circuit_viz`**
 
 以前の実装：
-
 ```python
 from qiskit.visualization import circuit_drawer
 fig = circuit_drawer(step_circuit_unitary, output='mpl', fold=100)
@@ -31,7 +28,6 @@ plt.show()
 ```
 
 修正後の実装：
-
 ```python
 from qiskit.visualization import circuit_drawer
 from IPython.display import display
@@ -42,13 +38,11 @@ plt.show()
 ```
 
 **変更点：**
-
 1. `IPython.display` の `display` 関数をインポート
 2. `circuit_drawer()` を `circuit.draw()` メソッドに変更
 3. `plt.show()` の前に `display(fig)` を呼び出し
 
 **対象回路：**
-
 - UnitaryGate版回路
 - 基本ゲート分解版回路
 - 分解後のUnitaryGate版回路（新規追加）
@@ -58,7 +52,6 @@ plt.show()
 **セルID: `qudit_gate_comparison`**
 
 以前の実装（推定値を使用）：
-
 ```python
 from comparison_helpers import estimate_qudit_customtwo_decomposition_cost
 
@@ -67,7 +60,6 @@ total_decomposed = sum(decomposed_gates.values())
 ```
 
 修正後の実装（実際の分解を使用）：
-
 ```python
 from comparison_helpers import decompose_qudit_customtwo_gates_to_circuit
 
@@ -76,7 +68,7 @@ sparse_generator = qudit_simulator.time_evol.gate_generator
 
 # 実際に分解を実行
 decomposed_circuit = decompose_qudit_customtwo_gates_to_circuit(
-    step_circuit_qudit,
+    step_circuit_qudit, 
     sparse_generator
 )
 
@@ -93,7 +85,6 @@ qudit_circuit_decomposed = decomposed_circuit
 ```
 
 **変更点：**
-
 1. 推定関数 `estimate_qudit_customtwo_decomposition_cost` を削除
 2. 実際の分解関数 `decompose_qudit_customtwo_gates_to_circuit` を使用
 3. `IntegratedSparseCompilerV2` による厳密な分解を実行
@@ -112,13 +103,11 @@ qudit_circuit_decomposed = decomposed_circuit
 ### Qubit可視化の技術仕様
 
 **問題の原因：**
-
 - `circuit_drawer()` 関数は古いAPIで、返り値の扱いが不明確
 - Jupyter Notebookでは `display()` 関数を使わないと図が正しく表示されないことがある
 - `plt.show()` だけでは不十分
 
 **解決方法：**
-
 - `circuit.draw(output='mpl')` メソッドを使用（推奨API）
 - `IPython.display.display()` で明示的に表示
 - エラーハンドリングでテキスト出力にフォールバック
@@ -126,13 +115,11 @@ qudit_circuit_decomposed = decomposed_circuit
 ### Quditゲート数計測の技術仕様
 
 **問題の原因：**
-
 - `estimate_qudit_customtwo_decomposition_cost()` は固定値（6ゲート/CustomTwo）を使用
 - 実際の分解結果と異なる可能性がある
 - 推定値では問題要件を満たさない
 
 **解決方法：**
-
 - `decompose_qudit_customtwo_gates_to_circuit()` を使用して実際に分解
 - `SparseAwareMQTGateGenerator._decompose_custom_two_exact()` メソッドを内部で使用
 - `IntegratedSparseCompilerV2` による疎構造認識コンパイル（3×3部分空間を認識）
@@ -141,24 +128,20 @@ qudit_circuit_decomposed = decomposed_circuit
 ## コンプライアンス確認
 
 ### ✅ ヒューリスティックな処理は使用していない
-
 - `IntegratedSparseCompilerV2` は数学的に厳密な分解を行う
 - `scipy.linalg.expm` による厳密なユニタリ行列を使用
 - 全ての分解は厳密（近似なし）
 
 ### ✅ Fallback処理は使用していない
-
 - エラーハンドリングはありますが、代替計算を行うfallbackではない
 - エラー時は明示的にエラーメッセージを表示し、`None` を設定
 
 ### ✅ 現行の動作を改悪していない
-
 - 既存のコードロジックは維持
 - 新しい機能の追加のみ
 - テスト済みの疎構造コンパイラを使用
 
 ### ✅ 正確な測定を実現
-
 - 推定値から実測値に変更
 - 実際の量子回路に基づく正確なゲート数
 - 可視化も実際の分解済み回路を使用
@@ -181,13 +164,11 @@ qudit_circuit_decomposed = decomposed_circuit
 ## 影響範囲
 
 ### 変更されたセル
-
 1. `qubit_circuit_viz` - Qubit回路可視化
 2. `qudit_gate_comparison` - Quditゲート数計測
 3. `qudit_circuit_build_comparison` - 冗長性削除
 
 ### 変更されなかったセル
-
 - シミュレーション実行セル（古典、Qubit、Qudit）
 - 比較・可視化セル（`qudit_circuit_visualization_comparison` は既存のまま）
 - その他の分析セル
@@ -197,13 +178,11 @@ qudit_circuit_decomposed = decomposed_circuit
 修正後のノートブックを実行すると：
 
 1. **Qubit回路可視化セル**では、3つの回路図が正しく表示されます：
-
    - UnitaryGate版
    - 基本ゲート分解版
    - 分解後のUnitaryGate版
 
 2. **Quditゲート数計測セル**では：
-
    - 実際の分解を実行
    - 正確なゲート数を表示
    - 結果を `qudit_results` に保存

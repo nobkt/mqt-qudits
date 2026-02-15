@@ -2,8 +2,8 @@
 
 ## Issue Overview
 
-**Notebook**: `tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb`
-**Error**: AssertionError in R gate validation (`assert parameter[1] < self.dimensions`)
+**Notebook**: `tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb`  
+**Error**: AssertionError in R gate validation (`assert parameter[1] < self.dimensions`)  
 **Location**: When executing `time_evol.add_H_transfer_evolution_gates(test_circuit, dt_test)`
 
 ## Root Cause
@@ -20,19 +20,16 @@ The sparse compiler (`IntegratedSparseCompilerV2`) was generating R gates with *
 ## Solution
 
 Implemented subspace analysis to distinguish:
-
 - **Single-qudit subspaces**: Use R/Rz/Rh gates with local index conversion
 - **Multi-qudit subspaces**: Use CustomTwo gates (preserves exact unitary)
 
 ### Key Functions Added
 
 1. **`_global_index_to_qudit_states(global_idx, dimensions)`**
-
    - Converts global index to local qudit states
    - Example: index 3 in 3⊗3 → [1, 0] = |10⟩
 
 2. **`_analyze_subspace(active_indices, dimensions)`**
-
    - Detects which qudits participate in the subspace
    - Returns structure type and index mappings
 
@@ -44,36 +41,31 @@ Implemented subspace analysis to distinguish:
 ## Code Changes
 
 ### Modified File
-
 `tutorials/mqt_qudits_four_molecule_sparse_implementation.py` (+114 lines)
 
 ### New Test Files
-
 1. `test/python/tutorials/test_subspace_analysis.py` - Unit tests (all passing)
 2. `test/python/tutorials/test_gate_generation_fix.py` - Integration tests
 
 ### Documentation
-
 `ASSERTION_ERROR_FIX.md` - Comprehensive technical documentation
 
 ## Mathematical Correctness
 
-✅ **No Heuristics**: Exact basis state analysis
-✅ **No Approximations**: Full unitary matrix preserved
-✅ **No Fallbacks**: Proper structural detection
+✅ **No Heuristics**: Exact basis state analysis  
+✅ **No Approximations**: Full unitary matrix preserved  
+✅ **No Fallbacks**: Proper structural detection  
 ✅ **Fidelity = 1.0**: CustomTwo decomposed exactly by LogEntQRCEXPass
 
 ## Expected Behavior
 
 ### Before Fix
-
 ```python
 H0の時間発展: 8 個のVirtRzゲート
 AssertionError  # Crash at H_transfer
 ```
 
 ### After Fix
-
 ```python
 H0の時間発展: 8 個のVirtRzゲート
 H_transfer分解: sparse_2x2, 1ゲート (CustomTwo), 忠実度=1.0
@@ -95,19 +87,15 @@ The fix maintains sparse compiler benefits:
 ## Verification Steps
 
 1. **Unit Tests** (no dependencies):
-
    ```bash
    python3 test/python/tutorials/test_subspace_analysis.py
    ```
-
    Result: ✓ All tests pass
 
 2. **Integration Tests** (requires NumPy):
-
    ```bash
    python3 test/python/tutorials/test_gate_generation_fix.py
    ```
-
    Expected: CustomTwo gates generated for multi-qudit subspaces
 
 3. **Notebook Execution** (requires full installation):
@@ -122,17 +110,14 @@ The fix maintains sparse compiler benefits:
 ### Why CustomTwo is Correct
 
 A rotation between |01⟩ and |10⟩:
-
 - |01⟩ = qudit₀ in |0⟩, qudit₁ in |1⟩
 - |10⟩ = qudit₀ in |1⟩, qudit₁ in |0⟩
 
 This **swaps excitations between qudits** - inherently a two-qudit operation. It cannot be expressed as:
-
 - ❌ Single R gate (only affects one qudit)
 - ❌ Product of single-qudit gates (no entanglement)
 
 Must use:
-
 - ✅ Two-qudit gate (CustomTwo, CEx)
 - ✅ Sequence involving two-qudit interactions
 
@@ -170,7 +155,6 @@ This fix resolves the AssertionError by correctly identifying when operations sp
 5. ✅ Enables the tutorial notebook to execute successfully
 
 The implementation correctly distinguishes between:
-
 - **Single-qudit operations** → Optimized with R gates (local indices)
 - **Multi-qudit operations** → Exact with CustomTwo gates
 

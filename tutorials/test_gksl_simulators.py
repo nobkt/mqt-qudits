@@ -182,6 +182,15 @@ class TestClassicalGKSLSimulator:
         assert abs(pop0["N_S0"] - 2.0) < 1e-10
         assert abs(pop0["N_S1"] - 0.0) < 1e-10
 
+    def test_edge_triplet_for_two_molecules(self):
+        params = GKSLPhysicalParameters(N_molecules=2)
+        sim = ClassicalGKSLSimulator(params)
+        rho_0 = sim.prepare_initial_state("edge_triplet")
+        pops = compute_populations_from_density_matrix(rho_0, params)
+        assert abs(pops["N_T1"] - 2.0) < 1e-10
+        assert abs(pops["N_S0"] - 0.0) < 1e-10
+        assert abs(pops["N_S1"] - 0.0) < 1e-10
+
     def test_entropy_non_negative(self, sim):
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for S in result["entropy"]:
@@ -290,6 +299,33 @@ class TestBosonSimulators:
         rd = qd.simulate(t_max=2.0, n_steps=3, initial_state="edge_triplet")
         for p2, pd in zip(r2["populations"], rd["populations"]):
             assert abs(p2["N_T1"] - pd["N_T1"]) < 0.3
+
+    def test_boson_matches_non_boson_when_g_eph_zero(self):
+        from classical_gksl_boson_simulator import ClassicalGKSLBosonSimulator
+
+        params_non_boson = GKSLPhysicalParameters(N_molecules=2)
+        params_boson = GKSLPhysicalParameters(
+            N_molecules=2,
+            with_boson=True,
+            n_max=1,
+            g_eph=0.0,
+        )
+
+        sim_non_boson = ClassicalGKSLSimulator(params_non_boson)
+        sim_boson = ClassicalGKSLBosonSimulator(params_boson)
+        result_non_boson = sim_non_boson.simulate(
+            t_max=2.0, n_steps=8, initial_state="edge_triplet"
+        )
+        result_boson = sim_boson.simulate(
+            t_max=2.0, n_steps=8, initial_state="edge_triplet"
+        )
+
+        for pop_non_boson, pop_boson in zip(
+            result_non_boson["populations"], result_boson["populations"]
+        ):
+            assert abs(pop_non_boson["N_S0"] - pop_boson["N_S0"]) < 1e-6
+            assert abs(pop_non_boson["N_T1"] - pop_boson["N_T1"]) < 1e-6
+            assert abs(pop_non_boson["N_S1"] - pop_boson["N_S1"]) < 1e-6
 
 
 # ---------------------------------------------------------------------------
@@ -479,3 +515,23 @@ class TestStinespringFidelity:
 
         F = self._quantum_fidelity(rho_classical, rho_qudit)
         assert F > 0.99, f"Fidelity = {F:.6f} (expected > 0.99)"
+
+    def test_classical_quantum_population_agreement_at_small_dt(self):
+        """Classical ODE and Qubit/Qudit Stinespring populations agree at small dt."""
+        params = GKSLPhysicalParameters()
+        classical = ClassicalGKSLSimulator(params).simulate(
+            t_max=1.0, n_steps=20, initial_state="edge_triplet"
+        )
+        qubit = QubitGKSLSimulator(params).simulate(
+            t_max=1.0, n_steps=20, initial_state="edge_triplet"
+        )
+        qudit = QuditGKSLSimulator(params).simulate(
+            t_max=1.0, n_steps=20, initial_state="edge_triplet"
+        )
+
+        for pop_classical, pop_qubit, pop_qudit in zip(
+            classical["populations"], qubit["populations"], qudit["populations"]
+        ):
+            for key in ("N_S0", "N_T1", "N_S1"):
+                assert abs(pop_classical[key] - pop_qubit[key]) < 1e-3
+                assert abs(pop_classical[key] - pop_qudit[key]) < 1e-3

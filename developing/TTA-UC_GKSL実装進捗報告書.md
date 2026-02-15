@@ -73,7 +73,7 @@
 ### 1.9 テストスイート ✅ 完了
 
 - **ファイル**: `tutorials/test_gksl_simulators.py`
-- **結果**: 35/35テスト通過（67秒）
+- **結果**: 48/48テスト通過（継続実装PR時点）
 - **テストカバレッジ**:
   - パラメータクラス: 7テスト
   - 数学的基盤: 8テスト
@@ -221,5 +221,14 @@ tutorials/
 
 1. **実回路構築**: MQT-Quditsの実際のQuantumCircuit APIを使った回路構築は未実装。マトリクスレベルシミュレーションは数学的に等価だが、実機実行のためにはMQT-Quditsのインストール・コンパイルが必要。
 2. **ハードウェアノイズモデル**: QubitGKSLNoisySimulator/QuditGKSLNoisySimulatorは未実装。設計は計画書の付録Cに記載。
-3. **Classical-Qubit/Qudit完全一致**: dt→0の極限で一致するが、計算時間の制約からdt=1.0程度では近似誤差がある。n_steps増加で改善可能。
-4. **ボソン有りg_eph=0一致テスト**: N=4ではボソン空間が6561次元と非常に大きく、実用的なテスト時間内での検証は困難。
+3. **Classical-Qubit/Qudit完全一致**: 継続実装PRで `test_classical_quantum_population_agreement_at_small_dt`（t_max=1.0, n_steps=20）を追加し、1e-3精度で一致を確認。dt=1.0（n_steps=5, t_max=5）の粗い刻みでは近似誤差が残る点は仕様通り。
+4. **ボソン有りg_eph=0一致テスト**: 継続実装PRでN=2小規模系の `test_boson_matches_non_boson_when_g_eph_zero` を追加し、1e-6精度で一致を確認。N=4（6561次元）の長時間検証は計算コストが高く、残課題。
+
+## 7. 継続実装PRでの追加対応（2026-02-15）
+
+1. `classical_gksl_simulator.py` の `prepare_initial_state("edge_triplet")` をN分子一般化し、N=2でのIndexErrorを解消。
+2. `tutorials/test_gksl_simulators.py` に以下のテストを追加:
+   - `test_edge_triplet_for_two_molecules`
+   - `test_boson_matches_non_boson_when_g_eph_zero`
+   - `test_classical_quantum_population_agreement_at_small_dt`
+3. 継続実装後の結果: **48/48テスト通過**。

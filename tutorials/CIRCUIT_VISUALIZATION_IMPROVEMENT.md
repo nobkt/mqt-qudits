@@ -37,7 +37,6 @@ required_width_inches = circuit_width_units * (min_gate_width_inches / gate_widt
 ## 実装結果 (Implementation Results)
 
 ### Before（以前）
-
 ```
 ゲート数: 324
 図サイズ: 16 × 10インチ（固定）
@@ -46,7 +45,6 @@ required_width_inches = circuit_width_units * (min_gate_width_inches / gate_widt
 ```
 
 ### After（改善後）
-
 ```
 ゲート数: 324
 図サイズ: 29.9 × 45.0インチ（自動計算）
@@ -58,12 +56,12 @@ required_width_inches = circuit_width_units * (min_gate_width_inches / gate_widt
 ## テスト結果 (Test Results)
 
 | ゲート数 | 行数 | 図サイズ (インチ) | ゲート幅 (インチ) | 読み取り可能 |
-| -------- | ---- | ----------------- | ----------------- | ------------ |
-| 10       | 1    | 10.0 × 10.0       | 0.43              | ✓ はい       |
-| 50       | 1    | 15.5 × 10.0       | 0.15              | ✓ はい       |
-| 100      | 2    | 29.9 × 21.5       | 0.15              | ✓ はい       |
-| 200      | 3    | 29.9 × 33.0       | 0.15              | ✓ はい       |
-| 500      | 6    | 29.9 × 67.5       | 0.15              | ✓ はい       |
+|---------|------|------------------|------------------|------------|
+| 10      | 1    | 10.0 × 10.0      | 0.43             | ✓ はい    |
+| 50      | 1    | 15.5 × 10.0      | 0.15             | ✓ はい    |
+| 100     | 2    | 29.9 × 21.5      | 0.15             | ✓ はい    |
+| 200     | 3    | 29.9 × 33.0      | 0.15             | ✓ はい    |
+| 500     | 6    | 29.9 × 67.5      | 0.15             | ✓ はい    |
 
 ## 使用方法 (Usage)
 
@@ -77,12 +75,11 @@ fig1, ax1, fig2, ax2 = visualize_circuit_with_decomposition(
     test_circuit,
     decomposed_circuit,
     title_before="分解前: CustomTwoゲートを含む量子回路",
-    title_after="分解後: 基本ゲート（VirtRz, R, Rh, Rz, CEx）のみの量子回路",
+    title_after="分解後: 基本ゲート（VirtRz, R, Rh, Rz, CEx）のみの量子回路"
 )
 ```
 
 可視化ツールは自動的に：
-
 - 回路サイズを分析
 - 最適なレイアウトを計算（単一行または複数行）
 - 読み取り可能な図を生成
@@ -98,13 +95,11 @@ fig1, ax1, fig2, ax2 = visualize_circuit_with_decomposition(
 ### レイアウト計算アルゴリズム
 
 1. **必要な幅を計算**:
-
    ```python
    required_width = circuit_width * (min_gate_width / gate_width)
    ```
 
 2. **単一行または複数行を決定**:
-
    ```python
    if required_width <= max_figure_width:
        use_single_row()
@@ -144,7 +139,6 @@ Visualization Layout:
 ## 変更されたファイル (Modified Files)
 
 - `tools/visualize_circuit.py`: 可視化ロジックの完全な書き直し
-
   - `_calculate_layout()`メソッドの追加
   - `draw_circuit()`の複数行対応
   - 可視化関数のレイアウト情報出力強化
@@ -155,7 +149,6 @@ Visualization Layout:
 ## 後方互換性 (Backward Compatibility)
 
 すべての変更は完全に後方互換性があります：
-
 - 小さな回路は引き続き単一行レイアウトを使用
 - オプションの`figsize`パラメータは引き続きサポート
 - すべての既存の関数シグネチャは変更なし
@@ -170,18 +163,15 @@ Visualization Layout:
 ## English Summary
 
 ### Problem
-
 Large decomposed circuits (324+ gates) were displayed in a fixed 16×10 inch figure, making individual gates unreadable (~0.03 inches wide).
 
 ### Solution
-
 - **Dynamic figure sizing**: Automatically calculates optimal figure dimensions
 - **Multi-row layout**: Wraps large circuits across multiple rows
 - **Minimum readability**: Maintains 0.15 inch minimum gate width
 - **No heuristics**: All calculations are deterministic
 
 ### Results
-
 - Small circuits (< 50 gates): Single row, compact display
 - Medium circuits (50-100 gates): Single row, wider figure
 - Large circuits (> 100 gates): Multiple rows for readability
@@ -189,5 +179,4 @@ Large decomposed circuits (324+ gates) were displayed in a fixed 16×10 inch fig
 Example: 324-gate circuit → 4 rows (98, 98, 98, 30 gates/row) → All gates readable at 0.15 inches width
 
 ### Compatibility
-
 Fully backward compatible. No changes needed in existing code. The tool automatically adapts to circuit size.

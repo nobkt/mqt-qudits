@@ -10,7 +10,7 @@
 
 考察する系は以下の特徴を持つ：
 
-- **分子数**: $N = 4$
+- **分子数**: $N = 4$ 
 - **空間配置**: 一次元直線配列、最近接相互作用
 - **各分子の電子状態**: 3つの状態（基底一重項、励起三重項、励起一重項）
 - **エネルギー移動過程**: 三重項間エネルギー移動（Triplet Energy Transfer）、三重項-三重項消滅（Triplet-Triplet Annihilation）
@@ -132,7 +132,6 @@ $$
 ここで、$n_i \in \{0, 1, 2\}$ は分子 $i$ の状態を表す。
 
 例えば：
-
 - $|0000\rangle$: 全ての分子が基底状態
 - $|1111\rangle$: 全ての分子が三重項状態
 - $|1001\rangle$: 両端（分子0と分子3）が三重項状態、中間（分子1, 2）が基底状態
@@ -273,7 +272,7 @@ $$
 
 $$
 \begin{align}
-\hat{H}_{\text{transfer}} = &-J_{\text{transfer}} \Big[
+\hat{H}_{\text{transfer}} = &-J_{\text{transfer}} \Big[ 
 |0\rangle_0 \langle 1|_0 \otimes |1\rangle_1 \langle 0|_1 \otimes \mathbb{I}_2 \otimes \mathbb{I}_3 \\
 &+ |1\rangle_0 \langle 0|_0 \otimes |0\rangle_1 \langle 1|_1 \otimes \mathbb{I}_2 \otimes \mathbb{I}_3 \\
 &+ \mathbb{I}_0 \otimes |0\rangle_1 \langle 1|_1 \otimes |1\rangle_2 \langle 0|_2 \otimes \mathbb{I}_3 \\
@@ -350,7 +349,7 @@ $$
 
 $$
 \begin{align}
-\hat{H}_{\text{TTA}} = -J_{\text{TTA}} \sum_{i=0}^{2} \Big[
+\hat{H}_{\text{TTA}} = -J_{\text{TTA}} \sum_{i=0}^{2} \Big[ 
 &|0\rangle_i \langle 1|_i \otimes |2\rangle_{i+1} \langle 1|_{i+1} \\
 &+ |2\rangle_i \langle 1|_i \otimes |0\rangle_{i+1} \langle 1|_{i+1} \\
 &+ |1\rangle_i \langle 0|_i \otimes |1\rangle_{i+1} \langle 2|_{i+1} \\
@@ -374,7 +373,7 @@ $$
 
 $$
 \begin{align}
-\hat{H}_{\text{TTA}} = &-J_{\text{TTA}} \Big[
+\hat{H}_{\text{TTA}} = &-J_{\text{TTA}} \Big[ 
 |0\rangle_0 \langle 1|_0 \otimes |2\rangle_1 \langle 1|_1 \otimes \mathbb{I}_2 \otimes \mathbb{I}_3 \\
 &+ |2\rangle_0 \langle 1|_0 \otimes |0\rangle_1 \langle 1|_1 \otimes \mathbb{I}_2 \otimes \mathbb{I}_3 \\
 &+ |1\rangle_0 \langle 0|_0 \otimes |1\rangle_1 \langle 2|_1 \otimes \mathbb{I}_2 \otimes \mathbb{I}_3 \\
@@ -447,8 +446,8 @@ $$
 各項もエルミート性を満たす：
 
 $$
-\hat{H}_0^{\dagger} = \hat{H}_0, \quad
-\hat{H}_{\text{transfer}}^{\dagger} = \hat{H}_{\text{transfer}}, \quad
+\hat{H}_0^{\dagger} = \hat{H}_0, \quad 
+\hat{H}_{\text{transfer}}^{\dagger} = \hat{H}_{\text{transfer}}, \quad 
 \hat{H}_{\text{TTA}}^{\dagger} = \hat{H}_{\text{TTA}}
 $$
 
@@ -477,7 +476,6 @@ $$
 $$
 
 これは：
-
 - 分子0（左端）: 励起三重項状態 $|T_1\rangle$
 - 分子1（中央左）: 基底一重項状態 $|S_0\rangle$
 - 分子2（中央右）: 基底一重項状態 $|S_0\rangle$
@@ -500,7 +498,7 @@ $$
 MQT-Quditsフレームワークでは、初期状態を以下のように準備する：
 
 1. **真空状態の準備**: $|0000\rangle$（自動的に準備される）
-2. **Xゲートの適用**:
+2. **Xゲートの適用**: 
    - 分子0に $\hat{X}$ を適用: $|0000\rangle \rightarrow |1000\rangle$
    - 分子3に $\hat{X}$ を適用: $|1000\rangle \rightarrow |1001\rangle$
 
@@ -531,8 +529,8 @@ $\hat{H}_{\text{transfer}}$ と $\hat{H}_{\text{TTA}}$ は $|1001\rangle$ に対
 各電子状態の個体数演算子を：
 
 $$
-\hat{N}_{S_0} = \sum_{i=0}^{3} |0\rangle_i \langle 0|_i, \quad
-\hat{N}_{T_1} = \sum_{i=0}^{3} |1\rangle_i \langle 1|_i, \quad
+\hat{N}_{S_0} = \sum_{i=0}^{3} |0\rangle_i \langle 0|_i, \quad 
+\hat{N}_{T_1} = \sum_{i=0}^{3} |1\rangle_i \langle 1|_i, \quad 
 \hat{N}_{S_1} = \sum_{i=0}^{3} |2\rangle_i \langle 2|_i
 $$
 
@@ -645,8 +643,8 @@ $$
 なぜなら：
 
 $$
-[\hat{H}_0, \hat{H}_{\text{transfer}}] \neq 0, \quad
-[\hat{H}_0, \hat{H}_{\text{TTA}}] \neq 0, \quad
+[\hat{H}_0, \hat{H}_{\text{transfer}}] \neq 0, \quad 
+[\hat{H}_0, \hat{H}_{\text{TTA}}] \neq 0, \quad 
 [\hat{H}_{\text{transfer}}, \hat{H}_{\text{TTA}}] \neq 0
 $$
 
@@ -686,10 +684,10 @@ $$
 
 $$
 \begin{align}
-\hat{U}_{\text{Trotter}}(\Delta t) = &\exp\left(-i\hat{H}_0 \frac{\Delta t}{2}\right)
+\hat{U}_{\text{Trotter}}(\Delta t) = &\exp\left(-i\hat{H}_0 \frac{\Delta t}{2}\right) 
 \exp\left(-i\hat{H}_{\text{transfer}} \frac{\Delta t}{2}\right) \\
 &\times \exp\left(-i\hat{H}_{\text{TTA}} \Delta t\right) \\
-&\times \exp\left(-i\hat{H}_{\text{transfer}} \frac{\Delta t}{2}\right)
+&\times \exp\left(-i\hat{H}_{\text{transfer}} \frac{\Delta t}{2}\right) 
 \exp\left(-i\hat{H}_0 \frac{\Delta t}{2}\right)
 \end{align}
 $$
@@ -751,7 +749,6 @@ $$
 $$
 
 分子 $i$ に対して：
-
 - `VirtRz(i, 1, -E_T1 * t)`: 準位1に位相 $-E_{T_1} t$ を付加
 - `VirtRz(i, 2, -E_S1 * t)`: 準位2に位相 $-E_{S_1} t$ を付加
 
@@ -960,7 +957,6 @@ $$
 本文書では、4分子直線配置モデルにおける分子三重項状態の量子ダイナミクスを記述する完全な理論的枠組みを構築した。
 
 主要な要素：
-
 1. **ヒルベルト空間**: $3^4 = 81$ 次元Qutrit積空間
 2. **ハミルトニアン**: オンサイト項、TET項、TTA項の和
 3. **初期状態**: 両端励起状態 $|1001\rangle$
@@ -998,6 +994,6 @@ $$
 
 ---
 
-**作成日**: 2025年11月10日
-**バージョン**: 1.0
+**作成日**: 2025年11月10日  
+**バージョン**: 1.0  
 **著者**: MQT-Qudits研究グループ

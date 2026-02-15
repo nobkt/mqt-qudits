@@ -10,19 +10,16 @@
 ### 1. VirtRz (仮想Z回転)
 
 **定義**:
-
 ```
 VirtRz(φ, level) = e^(iφ) |level⟩⟨level| + Σ_{l≠level} |l⟩⟨l|
 ```
 
 **性質**:
-
 - 物理的なゲート操作なし（コスト = 0）
 - 特定の準位に位相を加える
 - 複数の連続したVirtRzは統合可能
 
 **行列表現** (3次元空間、level=1の場合):
-
 ```
 VirtRz(φ, 1) = [[1,       0,       0    ],
                 [0,  e^(iφ),       0    ],
@@ -32,20 +29,17 @@ VirtRz(φ, 1) = [[1,       0,       0    ],
 ### 2. R (単一qudit Y回転)
 
 **定義**:
-
 ```
-R(θ, φ, level1, level2) = Rz(φ/2) Ry(θ) Rz(-φ/2)
+R(θ, φ, level1, level2) = Rz(φ/2) Ry(θ) Rz(-φ/2) 
                          on subspace {level1, level2}
 ```
 
 **性質**:
-
 - 2準位間のY軸回転
 - 物理的なゲート操作（コスト = 1）
 - パラメータ: θ（回転角）、φ（位相）
 
 **行列表現** (3次元空間、levels={0,1}の場合):
-
 ```
 R(θ, φ, 0, 1) = [[cos(θ/2), -sin(θ/2), 0],
                  [sin(θ/2),  cos(θ/2), 0],
@@ -56,19 +50,16 @@ R(θ, φ, 0, 1) = [[cos(θ/2), -sin(θ/2), 0],
 ### 3. Rz (単一qudit Z回転)
 
 **定義**:
-
 ```
 Rz(θ, level1, level2) = exp(-iθσ_z/2) on subspace {level1, level2}
 ```
 
 **性質**:
-
 - 2準位間のZ軸回転
 - 物理的なゲート操作（コスト = 1）
 - VirtRzと似ているが、相対位相を変更
 
 **行列表現** (3次元空間、levels={0,1}の場合):
-
 ```
 Rz(θ, 0, 1) = [[e^(-iθ/2), 0,          0],
                [0,          e^(iθ/2),  0],
@@ -78,7 +69,6 @@ Rz(θ, 0, 1) = [[e^(-iθ/2), 0,          0],
 ### 4. CEx (2qudit制御交換)
 
 **定義**:
-
 ```
 CEx(control_level, target_level1, target_level2)
 = |control_level⟩⟨control_level| ⊗ SWAP(target_level1, target_level2)
@@ -86,7 +76,6 @@ CEx(control_level, target_level1, target_level2)
 ```
 
 **性質**:
-
 - 制御quditが特定の準位の時、ターゲットquditの2準位を交換
 - 2qudit間の相互作用
 - 物理的なゲート操作（コスト = 1）
@@ -104,7 +93,6 @@ U = e^(iα) Rz(φ) Ry(θ) Rz(λ)
 ```
 
 パラメータ:
-
 - α: グローバル位相
 - φ: 第1のZ回転角
 - θ: Y回転角
@@ -118,8 +106,8 @@ ZYZ分解されたユニタリU = e^(iα) Rz(φ) Ry(θ) Rz(λ) は、
 以下のMQT-Quditsゲートシーケンスと等価:
 
 ```
-U = VirtRz(α+φ, level1)
-    @ R(θ, 0, level1, level2)
+U = VirtRz(α+φ, level1) 
+    @ R(θ, 0, level1, level2) 
     @ VirtRz(λ, level2)
 ```
 
@@ -128,7 +116,6 @@ U = VirtRz(α+φ, level1)
 **証明**:
 
 Step 1: グローバル位相とRz(φ)の統合
-
 ```
 e^(iα) Rz(φ) = e^(iα) [[e^(iφ/2), 0        ],
                        [0,        e^(-iφ/2)]]
@@ -139,7 +126,6 @@ e^(iα) Rz(φ) = e^(iα) [[e^(iφ/2), 0        ],
 これはVirtRzとVirtRzの組み合わせで表現可能。
 
 Step 2: Ry(θ)の変換
-
 ```
 Ry(θ) = [[cos(θ/2), -sin(θ/2)],
          [sin(θ/2),  cos(θ/2)]]
@@ -154,60 +140,62 @@ Step 3: Rz(λ)の変換
 **実装例**:
 
 ```python
-def zyz_to_mqt_gates(
-    theta: float,
-    phi: float,
-    lam: float,
-    global_phase: float,
-    level1: int = 0,
-    level2: int = 1,
-) -> List[Dict]:
+def zyz_to_mqt_gates(theta: float, phi: float, lam: float, 
+                     global_phase: float,
+                     level1: int = 0, level2: int = 1) -> List[Dict]:
     """
     ZYZ分解パラメータをMQT-Quditsゲートに変換
-
+    
     Args:
         theta, phi, lam: ZYZ分解のパラメータ
         global_phase: グローバル位相
         level1, level2: 作用する準位
-
+        
     Returns:
         ゲートのリスト
     """
     gates = []
-
+    
     # VirtRz(α+φ) on level1
     phase1 = global_phase + phi
     if abs(phase1) > 1e-10:
-        gates.append(
-            {"name": "VirtRz", "params": {"phase": phase1, "level": level1}, "cost": 0}
-        )
-
+        gates.append({
+            'name': 'VirtRz',
+            'params': {
+                'phase': phase1,
+                'level': level1
+            },
+            'cost': 0
+        })
+    
     # R(θ, 0) on {level1, level2}
     if abs(theta) > 1e-10:
-        gates.append(
-            {
-                "name": "R",
-                "params": {
-                    "theta": theta,
-                    "phi": 0.0,  # φ=0 の場合の単純なY回転
-                    "level1": level1,
-                    "level2": level2,
-                },
-                "cost": 1,
-            }
-        )
-
+        gates.append({
+            'name': 'R',
+            'params': {
+                'theta': theta,
+                'phi': 0.0,  # φ=0 の場合の単純なY回転
+                'level1': level1,
+                'level2': level2
+            },
+            'cost': 1
+        })
+    
     # VirtRz(λ) on level2
     if abs(lam) > 1e-10:
-        gates.append(
-            {"name": "VirtRz", "params": {"phase": lam, "level": level2}, "cost": 0}
-        )
-
+        gates.append({
+            'name': 'VirtRz',
+            'params': {
+                'phase': lam,
+                'level': level2
+            },
+            'cost': 0
+        })
+    
     return gates
 ```
 
 **ゲート数**:
-
 - 仮想ゲート: 2個（VirtRz）
 - 物理ゲート: 1個（R）
 - **総コスト**: 1（物理ゲートのみをカウント）
@@ -234,7 +222,6 @@ U = Q @ R
 ```
 
 ここで:
-
 - Q: ユニタリ行列（Givens回転の積）
 - R: 上三角行列（対角位相を含む）
 
@@ -276,25 +263,25 @@ G(i,j; θ, φ) = Rz(α) Ry(θ) Rz(β)  on subspace {i, j}
 def givens_to_zyz(theta: float, phi: float) -> Tuple[float, float, float]:
     """
     Givens回転パラメータをZYZパラメータに変換
-
+    
     Args:
         theta, phi: Givens回転のパラメータ
-
+        
     Returns:
         (alpha, theta_y, beta): ZYZ分解のパラメータ
     """
     # Givens回転の定義から:
     # G = [[c,  -s*],    c = cos(θ/2)e^(iφ/2)
     #      [s,   c*]]    s = sin(θ/2)e^(-iφ/2)
-
+    
     # ZYZ分解:
     # Rz(α) Ry(θ) Rz(β)
-
+    
     # パラメータマッピング
     alpha = phi / 2.0
     theta_y = theta
     beta = -phi / 2.0
-
+    
     return alpha, theta_y, beta
 ```
 
@@ -306,33 +293,27 @@ def verify_givens_to_zyz(theta: float, phi: float):
     # Givens行列を構築
     c = np.cos(theta / 2) * np.exp(1j * phi / 2)
     s = np.sin(theta / 2) * np.exp(-1j * phi / 2)
-
-    G = np.array([[c, -s.conj()], [s, c.conj()]], dtype=complex)
-
+    
+    G = np.array([[c, -s.conj()],
+                  [s,  c.conj()]], dtype=complex)
+    
     # ZYZ分解から再構築
     alpha, theta_y, beta = givens_to_zyz(theta, phi)
-
-    Rz_alpha = np.array(
-        [[np.exp(1j * alpha / 2), 0], [0, np.exp(-1j * alpha / 2)]], dtype=complex
-    )
-
-    Ry_theta = np.array(
-        [
-            [np.cos(theta_y / 2), -np.sin(theta_y / 2)],
-            [np.sin(theta_y / 2), np.cos(theta_y / 2)],
-        ],
-        dtype=complex,
-    )
-
-    Rz_beta = np.array(
-        [[np.exp(1j * beta / 2), 0], [0, np.exp(-1j * beta / 2)]], dtype=complex
-    )
-
+    
+    Rz_alpha = np.array([[np.exp(1j*alpha/2), 0],
+                         [0, np.exp(-1j*alpha/2)]], dtype=complex)
+    
+    Ry_theta = np.array([[np.cos(theta_y/2), -np.sin(theta_y/2)],
+                         [np.sin(theta_y/2),  np.cos(theta_y/2)]], dtype=complex)
+    
+    Rz_beta = np.array([[np.exp(1j*beta/2), 0],
+                        [0, np.exp(-1j*beta/2)]], dtype=complex)
+    
     U_reconstructed = Rz_alpha @ Ry_theta @ Rz_beta
-
+    
     # 忠実度を計算
     fidelity = abs(np.trace(G.conj().T @ U_reconstructed)) / 2
-
+    
     assert fidelity > 0.9999, f"低い忠実度: {fidelity}"
     print(f"✓ 忠実度: {fidelity:.10f}")
 ```
@@ -348,51 +329,52 @@ G(i,j; θ, φ) → VirtRz(α, i) @ R(θ, 0, i, j) @ VirtRz(β, j)
 **完全なゲートシーケンス**:
 
 ```python
-def givens_to_mqt_gates(
-    level1: int, level2: int, theta: float, phi: float
-) -> List[Dict]:
+def givens_to_mqt_gates(level1: int, level2: int, 
+                       theta: float, phi: float) -> List[Dict]:
     """
     Givens回転をMQT-Quditsゲートに変換
-
+    
     Args:
         level1, level2: 作用する準位
         theta, phi: Givens回転のパラメータ
-
+        
     Returns:
         ゲートのリスト
     """
     # ZYZパラメータに変換
     alpha, theta_y, beta = givens_to_zyz(theta, phi)
-
+    
     gates = []
-
+    
     # VirtRz(α) on level1
     if abs(alpha) > 1e-10:
-        gates.append(
-            {"name": "VirtRz", "params": {"phase": alpha, "level": level1}, "cost": 0}
-        )
-
+        gates.append({
+            'name': 'VirtRz',
+            'params': {'phase': alpha, 'level': level1},
+            'cost': 0
+        })
+    
     # R(θ) on {level1, level2}
     if abs(theta_y) > 1e-10:
-        gates.append(
-            {
-                "name": "R",
-                "params": {
-                    "theta": theta_y,
-                    "phi": 0.0,
-                    "level1": level1,
-                    "level2": level2,
-                },
-                "cost": 1,
-            }
-        )
-
+        gates.append({
+            'name': 'R',
+            'params': {
+                'theta': theta_y,
+                'phi': 0.0,
+                'level1': level1,
+                'level2': level2
+            },
+            'cost': 1
+        })
+    
     # VirtRz(β) on level2
     if abs(beta) > 1e-10:
-        gates.append(
-            {"name": "VirtRz", "params": {"phase": beta, "level": level2}, "cost": 0}
-        )
-
+        gates.append({
+            'name': 'VirtRz',
+            'params': {'phase': beta, 'level': level2},
+            'cost': 0
+        })
+    
     return gates
 ```
 
@@ -412,25 +394,23 @@ R = [[e^(iφ₀) r₀₁ r₀₂],
 def diagonal_phases_to_mqt_gates(phases: np.ndarray) -> List[Dict]:
     """
     対角位相をMQT-Quditsゲートに変換
-
+    
     Args:
         phases: [φ₀, φ₁, φ₂]
-
+        
     Returns:
         VirtRzゲートのリスト
     """
     gates = []
-
+    
     for level, phase in enumerate(phases):
         if abs(phase) > 1e-10:
-            gates.append(
-                {
-                    "name": "VirtRz",
-                    "params": {"phase": phase, "level": level},
-                    "cost": 0,
-                }
-            )
-
+            gates.append({
+                'name': 'VirtRz',
+                'params': {'phase': phase, 'level': level},
+                'cost': 0
+            })
+    
     return gates
 ```
 
@@ -442,36 +422,36 @@ def diagonal_phases_to_mqt_gates(phases: np.ndarray) -> List[Dict]:
 def convert_3x3_to_mqt_gates(U: np.ndarray) -> List[Dict]:
     """
     3×3ユニタリをMQT-Quditsゲートシーケンスに変換
-
+    
     Args:
         U: 3×3ユニタリ行列
-
+        
     Returns:
         ゲートのリスト
     """
     from perfect_3x3_decomposition import Perfect3x3Decomposer
-
+    
     # Step 1: QR分解
     decomposer = Perfect3x3Decomposer()
     result = decomposer.decompose(U)
     Q = result.Q
     R = result.R
-
+    
     # Step 2: QからGivens回転を抽出
     givens_rotations = extract_givens_from_q(Q)
     # givens_rotations = [(0,1,θ₁,φ₁), (0,2,θ₂,φ₂), (1,2,θ₃,φ₃)]
-
+    
     # Step 3: 各Givens回転をゲートに変換
     gates = []
     for level1, level2, theta, phi in givens_rotations:
         givens_gates = givens_to_mqt_gates(level1, level2, theta, phi)
         gates.extend(givens_gates)
-
+    
     # Step 4: 対角位相をゲートに変換
     phases = decomposer.extract_diagonal_phases(R)
     phase_gates = diagonal_phases_to_mqt_gates(phases)
     gates.extend(phase_gates)
-
+    
     return gates
 ```
 
@@ -509,56 +489,53 @@ QR分解から構築したMQT-Quditsゲートシーケンスは、
 準位 {|01⟩, |10⟩} = {インデックス1, 3} に作用:
 
 ```python
-def embed_2x2_gates_in_9x9(gates: List[Dict], active_indices: List[int]) -> List[Dict]:
+def embed_2x2_gates_in_9x9(gates: List[Dict], 
+                          active_indices: List[int]) -> List[Dict]:
     """
     2×2ゲートシーケンスを9×9空間に埋め込み
-
+    
     Args:
         gates: 2×2のゲートシーケンス
         active_indices: [1, 3] など
-
+        
     Returns:
         9×9空間でのゲートシーケンス
     """
     embedded_gates = []
-
+    
     for gate in gates:
-        if gate["name"] == "VirtRz":
+        if gate['name'] == 'VirtRz':
             # 準位のインデックスを変換
-            local_level = gate["params"]["level"]  # 0 or 1
+            local_level = gate['params']['level']  # 0 or 1
             global_level = active_indices[local_level]
-
-            embedded_gates.append(
-                {
-                    "name": "VirtRz",
-                    "params": {
-                        "phase": gate["params"]["phase"],
-                        "level": global_level,  # 1 or 3
-                    },
-                    "cost": 0,
-                }
-            )
-
-        elif gate["name"] == "R":
+            
+            embedded_gates.append({
+                'name': 'VirtRz',
+                'params': {
+                    'phase': gate['params']['phase'],
+                    'level': global_level  # 1 or 3
+                },
+                'cost': 0
+            })
+        
+        elif gate['name'] == 'R':
             # 準位のインデックスを変換
-            local_level1 = gate["params"]["level1"]
-            local_level2 = gate["params"]["level2"]
+            local_level1 = gate['params']['level1']
+            local_level2 = gate['params']['level2']
             global_level1 = active_indices[local_level1]
             global_level2 = active_indices[local_level2]
-
-            embedded_gates.append(
-                {
-                    "name": "R",
-                    "params": {
-                        "theta": gate["params"]["theta"],
-                        "phi": gate["params"]["phi"],
-                        "level1": global_level1,  # 1
-                        "level2": global_level2,  # 3
-                    },
-                    "cost": 1,
-                }
-            )
-
+            
+            embedded_gates.append({
+                'name': 'R',
+                'params': {
+                    'theta': gate['params']['theta'],
+                    'phi': gate['params']['phi'],
+                    'level1': global_level1,  # 1
+                    'level2': global_level2   # 3
+                },
+                'cost': 1
+            })
+    
     return embedded_gates
 ```
 
@@ -579,14 +556,15 @@ H_transferやH_TTAは実際には2つのqudit間の相互作用です。
 各quditに個別にゲートを適用:
 
 ```python
-def apply_to_two_qudits(gates: List[Dict], qudit_index: int) -> List[Dict]:
+def apply_to_two_qudits(gates: List[Dict], 
+                       qudit_index: int) -> List[Dict]:
     """
     単一quditゲートシーケンスを2qudit演算に変換
-
+    
     Args:
         gates: 単一quditのゲートシーケンス
         qudit_index: 対象quditのインデックス（0 or 1）
-
+        
     Returns:
         2qudit演算のゲートシーケンス
     """
@@ -600,9 +578,9 @@ def apply_to_two_qudits(gates: List[Dict], qudit_index: int) -> List[Dict]:
 制御ゲートが必要な場合、CExゲートを使用:
 
 ```python
-def implement_controlled_rotation(
-    control_qudit: int, target_qudit: int, gate: Dict
-) -> List[Dict]:
+def implement_controlled_rotation(control_qudit: int, 
+                                 target_qudit: int,
+                                 gate: Dict) -> List[Dict]:
     """
     制御回転をCExゲートで実装
     """
@@ -620,7 +598,7 @@ def implement_controlled_rotation(
   - VirtRz × 2 = 0ゲート（仮想）
   - R × 1 = 1ゲート（物理）
   - 総コスト: 1ゲート
-
+  
 削減率: (810 - 1) / 810 × 100% = 99.88%
 ```
 
@@ -635,7 +613,7 @@ def implement_controlled_rotation(
   - 対角位相:
     - VirtRz × 3 = 0ゲート
   - 総コスト: 3ゲート
-
+  
 削減率: (810 - 3) / 810 × 100% = 99.63%
 ```
 
@@ -646,7 +624,7 @@ def implement_controlled_rotation(
   - 3個のH_transfer: 3 × 1 = 3ゲート
   - 3個のH_TTA: 3 × 3 = 9ゲート
   - 合計: 12ゲート
-
+  
 現在の実装: 3 × 810 + 3 × 810 = 4,860ゲート
 削減率: (4,860 - 12) / 4,860 × 100% = 99.75%
 
@@ -666,19 +644,20 @@ def test_2x2_conversion():
     # ランダムな2×2ユニタリを生成
     A = np.random.randn(2, 2) + 1j * np.random.randn(2, 2)
     U, _ = np.linalg.qr(A)
-
+    
     # ZYZ分解
     from improved_unitary_decomposition import ImprovedTwoQubitDecomposer
-
     decomposer = ImprovedTwoQubitDecomposer()
     result = decomposer.decompose_zyz(U)
-
+    
     # MQT-Quditsゲートに変換
-    gates = zyz_to_mqt_gates(result.theta, result.phi, result.lam, result.global_phase)
-
+    gates = zyz_to_mqt_gates(
+        result.theta, result.phi, result.lam, result.global_phase
+    )
+    
     # ゲートから行列を再構築
     U_reconstructed = reconstruct_from_gates(gates, dimension=2)
-
+    
     # 忠実度を検証
     fidelity = abs(np.trace(U.conj().T @ U_reconstructed)) / 2
     assert fidelity > 0.9999
@@ -690,13 +669,13 @@ def test_3x3_conversion():
     # ランダムな3×3ユニタリを生成
     A = np.random.randn(3, 3) + 1j * np.random.randn(3, 3)
     U, _ = np.linalg.qr(A)
-
+    
     # MQT-Quditsゲートに変換
     gates = convert_3x3_to_mqt_gates(U)
-
+    
     # ゲートから行列を再構築
     U_reconstructed = reconstruct_from_gates(gates, dimension=3)
-
+    
     # 忠実度を検証
     fidelity = abs(np.trace(U.conj().T @ U_reconstructed)) / 3
     assert fidelity > 0.9999
@@ -712,35 +691,35 @@ def test_h_transfer_full_conversion():
     V = 0.1
     dt = 1.0
     hbar = 0.6582119569
-
+    
     theta = V * dt / hbar
     U_9x9 = np.eye(9, dtype=complex)
     U_9x9[1, 1] = np.cos(theta)
     U_9x9[1, 3] = -1j * np.sin(theta)
     U_9x9[3, 1] = -1j * np.sin(theta)
     U_9x9[3, 3] = np.cos(theta)
-
+    
     # 疎構造解析
     from sparse_structure_compiler import SparseStructureAnalyzer
-
     analyzer = SparseStructureAnalyzer()
     structure = analyzer.analyze(U_9x9)
-
+    
     # 部分空間を抽出
     U_sub = analyzer.extract_subspace_unitary(U_9x9, structure.active_subspace)
-
+    
     # ZYZ分解
     from improved_unitary_decomposition import ImprovedTwoQubitDecomposer
-
     decomposer = ImprovedTwoQubitDecomposer()
     result = decomposer.decompose_zyz(U_sub)
-
+    
     # MQT-Quditsゲートに変換
-    gates = zyz_to_mqt_gates(result.theta, result.phi, result.lam, result.global_phase)
-
+    gates = zyz_to_mqt_gates(
+        result.theta, result.phi, result.lam, result.global_phase
+    )
+    
     # 9×9空間に埋め込み
     embedded_gates = embed_2x2_gates_in_9x9(gates, structure.active_subspace)
-
+    
     print(f"✓ H_transfer完全変換成功")
     print(f"  部分空間: {structure.active_subspace}")
     print(f"  ゲート数: {len(embedded_gates)}")
@@ -769,7 +748,7 @@ def test_h_transfer_full_conversion():
 
 ---
 
-**文書作成日**: 2025年10月20日
-**作成者**: GitHub Copilot AI分析システム
-**バージョン**: 1.0
+**文書作成日**: 2025年10月20日  
+**作成者**: GitHub Copilot AI分析システム  
+**バージョン**: 1.0  
 **ステータス**: ゲート変換の完全な理論的基礎

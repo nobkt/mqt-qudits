@@ -9,19 +9,15 @@ This directory contains tutorial documentation for the MQT Qudits framework.
 Theoretical documentation on quantum dynamics and Qudit-based quantum algorithms:
 
 #### 1. **quantum_dynamics_molecular_triplet_states.md** (基礎理論)
-
 Comprehensive theory of quantum dynamics for molecular systems with ground singlet state (S₀), excited triplet state (T₁), and excited singlet state (S₁). This foundational document covers:
-
 - Triplet excitation energy transfer between adjacent molecules
-- Triplet-triplet annihilation (TTA) processes
+- Triplet-triplet annihilation (TTA) processes  
 - Fluorescence emission from excited singlet states
 - Complete mathematical formulations with Hamiltonians, operators, and rate equations
 - Master equations and rate equations for population dynamics
 
 #### 2. **suzuki_trotter_decomposition_theory.md** (数値計算理論)
-
 Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quantum dynamics. This document provides:
-
 - Baker-Campbell-Hausdorff formula and non-commutativity effects
 - 1st, 2nd, and 4th order Suzuki-Trotter decomposition methods
 - Error analysis and convergence properties
@@ -30,9 +26,7 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Complete pseudocode for programmatic implementation
 
 #### 3. **qudit_quantum_algorithm_for_molecular_triplet_dynamics.md** (完全実装理論)
-
 **Main comprehensive document** synthesizing the above theories into a complete, implementation-ready framework using MQT Qudits. This document provides:
-
 - Qudit (Qutrit) representation of molecular 3-level systems
 - Hamiltonian formulation in Qudit basis with explicit matrix representations
 - Gate-level implementation mapping to MQT Qudits operations (VirtRz, R, cu_one, cu_two)
@@ -49,9 +43,7 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Future directions including VQA, tensor networks, and experimental implementation
 
 #### 4. **mqt_qudits_gates_and_bases_reference.md** (ゲート完全リファレンス)
-
 **Comprehensive reference for all quantum gates and bases** available in the MQT-Qudits framework. This document provides:
-
 - Complete mathematical formulations with LaTeX for all 20 gate types
 - Detailed explanations of computational basis and qudit representations
 - Single-qudit gates: H, X, Z, S, R, Rz, Rh, VirtRz, Perm, NoiseX, NoiseY (11 gates)
@@ -64,9 +56,7 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Complete usage examples with `mqt.qudits` API (1125 lines, 28KB)
 
 #### 5. **n_molecule_triplet_dynamics_basic_gates.md** (N-molecule system generalization)
-
 **Complete generalization to N-molecule systems** using only basic quantum gates. This document provides:
-
 - Generalization to arbitrary number of molecules N
 - Implementation using only basic gates (VirtRz, R, RH, CEx, CSum) without CustomTwo
 - Complete gate decomposition for all Hamiltonian terms
@@ -75,9 +65,7 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Detailed gate sequences and implementation-ready code (2547 lines)
 
 #### 6. **tutorial_completion_report.md** (実装完了報告)
-
 **Comprehensive completion report** for the tutorial implementation. This document provides:
-
 - Summary of all deliverables (notebook, implementation file, documentation)
 - Verification of theoretical rigor (no heuristics, gates-only implementation)
 - New features added (circuit visualization, Qudit count display)
@@ -86,9 +74,7 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Future extension possibilities
 
 #### 7. **exact_diagonalization_theory.md** (厳密対角化理論) ⭐ NEW
-
 **Complete theory for analytical solution comparison** using exact diagonalization. This document provides:
-
 - Mathematical formulation of exact diagonalization method
 - Hamiltonian matrix construction (81×81 for 4-molecule system)
 - Exact time evolution using eigenvalue decomposition
@@ -100,9 +86,7 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Complete Python implementation examples (350+ lines)
 
 #### 8. **PR18_COMPLETION_VERIFICATION.md** (PR#18完了検証) ⭐ NEW
-
 **Completion verification report for PR#18**. This document provides:
-
 - Verification of notebook format fixes (proper Jupyter format with `\n` handling)
 - Confirmation of tutorial completeness (all 12 cells verified)
 - Verification that no heuristic methods are used
@@ -111,7 +95,6 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 - Quality assurance and final approval for production use
 
 **Reading order**:
-
 - **For complete understanding**: Document 1 → Document 2 → Document 3
 - **For implementation focus**: Start directly with Document 3
 - **Gate reference**: Document 4 (comprehensive reference for all available gates)
@@ -123,11 +106,9 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 ### Tutorial Notebook
 
 #### **four_molecule_linear_chain_quantum_dynamics.ipynb** ✨ COMPLETE
-
 **Complete tutorial implementation** of 4-molecule quantum dynamics using MQT-Qudits gates only (no heuristics). The notebook includes:
 
 **Structure** (12 cells):
-
 1. Title and Introduction with implementation policy
 2. Theoretical Background (molecular states, Qudit representation, Hamiltonians)
 3. Suzuki-Trotter Decomposition theory
@@ -142,7 +123,6 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 12. Summary with references and future directions
 
 **Key Features**:
-
 - ✅ Uses only MQT-Qudits basic gates (VirtRz, CEx, R, Rh, Rz, X)
 - ✅ CustomTwo gates automatically decomposed to basic gates via LogEntQRCEXPass
 - ✅ No heuristic methods (no scipy.linalg.expm)
@@ -168,21 +148,19 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 
 ### 実装比較
 
-| 実装方式          | Qubit数/Qudit数 | ゲート数/ステップ | 20ステップ総数 | 備考                  |
-| ----------------- | --------------- | ----------------- | -------------- | --------------------- |
-| Qubit             | 8 qubits        | 112               | 2,240          | 標準的な実装          |
-| Qudit（従来）     | 4 qutrits       | ~6,182            | ~123,640       | LogEntQRCEXPass使用   |
-| **Qudit（改良）** | 4 qutrits       | **29**            | **580**        | **疎構造認識使用** ⭐ |
+| 実装方式 | Qubit数/Qudit数 | ゲート数/ステップ | 20ステップ総数 | 備考 |
+|---------|----------------|-----------------|---------------|------|
+| Qubit | 8 qubits | 112 | 2,240 | 標準的な実装 |
+| Qudit（従来） | 4 qutrits | ~6,182 | ~123,640 | LogEntQRCEXPass使用 |
+| **Qudit（改良）** | 4 qutrits | **29** | **580** | **疎構造認識使用** ⭐ |
 
 ### 主な改善点
 
 1. **疎構造の自動検出**
-
    - H_transfer: 2×2部分空間を自動検出
    - H_TTA: 3×3部分空間を自動検出
 
 2. **最適化された分解**
-
    - 2×2部分空間: 1,000ゲート → 1ゲート (99.9%削減)
    - 3×3部分空間: 1,000ゲート → 6ゲート (99.4%削減)
 
@@ -198,7 +176,7 @@ Detailed theory of Suzuki-Trotter decomposition for numerical simulation of quan
 ```python
 from tutorials.mqt_qudits_four_molecule_sparse_implementation import (
     PhysicalParameters,
-    SparseAwareMQTQuditTimeEvolution,
+    SparseAwareMQTQuditTimeEvolution
 )
 
 # パラメータ初期化
@@ -213,9 +191,9 @@ circuit = QuantumCircuit()
 
 # ゲート追加
 dt = 10.0  # fs
-time_evol.add_H0_evolution_gates(circuit, dt / 2)
-time_evol.add_H_transfer_evolution_gates(circuit, dt / 2)
-time_evol.add_H_TTA_evolution_gates(circuit, dt / 2)
+time_evol.add_H0_evolution_gates(circuit, dt/2)
+time_evol.add_H_transfer_evolution_gates(circuit, dt/2)
+time_evol.add_H_TTA_evolution_gates(circuit, dt/2)
 
 # 統計レポート
 print(time_evol.get_compilation_report())
@@ -224,7 +202,6 @@ print(time_evol.get_compilation_report())
 #### ノートブックでの使用
 
 `tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb`は疎構造認識版に更新済みです。以下の変更が含まれます：
-
 - インポート文を`mqt_qudits_four_molecule_sparse_implementation`に変更
 - 疎構造認識の説明を追加
 - 統計レポートセルを追加
@@ -233,11 +210,9 @@ print(time_evol.get_compilation_report())
 ### テストとベンチマーク
 
 #### テストスイート
-
 `test/python/tutorials/test_sparse_aware_implementation.py`
 
 テスト項目:
-
 - ✅ ゲート数削減の検証
 - ✅ 忠実度の検証（fidelity = 1.0）
 - ✅ 疎構造検出の精度
@@ -245,17 +220,14 @@ print(time_evol.get_compilation_report())
 - ✅ ハミルトニアン構築の正しさ
 
 実行方法:
-
 ```bash
 python test/python/tutorials/test_sparse_aware_implementation.py
 ```
 
 #### ベンチマーク
-
 `tools/benchmark_sparse_compiler.py`
 
 測定結果:
-
 - ✅ ゲート数削減率: **99.5%** (29 vs 6008 ゲート)
 - ✅ Qubitに対する優位性: **3.9倍高速**
 - ✅ コンパイル時間: 18.93 ms
@@ -263,7 +235,6 @@ python test/python/tutorials/test_sparse_aware_implementation.py
 - ✅ 忠実度: 1.0 (すべてのゲート)
 
 実行方法:
-
 ```bash
 python tools/benchmark_sparse_compiler.py
 ```
@@ -271,7 +242,6 @@ python tools/benchmark_sparse_compiler.py
 ### 理論的基盤
 
 詳細な理論的基盤は以下の文書を参照:
-
 - `tutorials/doc/SPARSE_COMPILER_THEORETICAL_FOUNDATION_JA.md`
 - `tutorials/doc/PR46_FRAMEWORK_INTEGRATION_SPECIFICATION_JA.md`
 - `tutorials/doc/PR47_CONTINUATION_SPECIFICATION_JA.md`
@@ -281,13 +251,11 @@ python tools/benchmark_sparse_compiler.py
 ### 主要技術決定
 
 1. **IntegratedSparseCompilerV2の使用**
-
    - PR#42-46で開発・検証済み
    - 99.6%ゲート削減を実証
    - 忠実度 = 1.0 保証
 
 2. **互換性のあるインターフェース**
-
    - 既存コードへの変更を最小化
    - ドロップイン置き換え可能
    - インポート文の変更のみ
@@ -300,25 +268,19 @@ python tools/benchmark_sparse_compiler.py
 ### トラブルシューティング
 
 #### Q: ゲート数が期待より多い
-
 A: 以下を確認してください:
-
 1. `IntegratedSparseCompilerV2`が正しくインポートされているか
 2. `optimize_gates=True`が設定されているか
 3. 統計レポートで疎構造が正しく検出されているか
 
 #### Q: 忠実度が1.0でない
-
 A: これは通常発生すべきではありません。以下を確認:
-
 1. 数値許容誤差の設定（デフォルト: 1e-10）
 2. ユニタリ行列の構築が正しいか
 3. Issue報告をお願いします
 
 #### Q: ImportErrorが発生する
-
 A: 以下を確認:
-
 1. `mqt.qudits`がインストールされているか
 2. `tools/`ディレクトリへのパスが正しく設定されているか
 3. `numpy`, `scipy`がインストールされているか
@@ -335,7 +297,6 @@ A: 以下を確認:
 The tutorial uses an enhanced circuit visualization tool (`tools/visualize_circuit.py`) that automatically adapts to circuit complexity:
 
 **Features**:
-
 - **Dynamic Figure Sizing**: Automatically adjusts figure dimensions based on number of gates
 - **Multi-Row Layout**: Large circuits (>100 gates) are wrapped across multiple rows for readability
 - **Minimum Readability**: Maintains minimum gate width of 0.15 inches per gate
@@ -348,9 +309,7 @@ This ensures that the decomposed circuits with hundreds of basic gates are prope
 ### Qubit Version Documentation
 
 #### **QUBIT_TUTORIAL_INDEX.md** 📘 NEW - Complete Guide
-
 **Comprehensive index to all Qubit (2-level system) implementation resources**. This master document provides:
-
 - Complete navigation guide for all Qubit-related documentation (4,500+ lines)
 - Three distinct reading paths (beginner, implementer, decision-maker)
 - Qubit vs Qudit comparison analysis
@@ -359,25 +318,21 @@ This ensures that the decomposed circuits with hundreds of basic gates are prope
 **Location**: `tutorials/QUBIT_TUTORIAL_INDEX.md`
 
 #### **doc/qubit/** - Qubit Implementation Documentation (4,500+ lines)
-
 Complete theoretical and technical foundation for implementing the same molecular triplet dynamics using **Qubits (2-level systems) and Qiskit framework**. This comprehensive documentation includes:
 
 1. **qubit_quantum_dynamics_molecular_triplet_states_theory.md** (1,079 lines, 32KB)
-
    - 2-qubit encoding of 3-level molecular systems
    - Pauli operator representation of Hamiltonians
    - Physical subspace preservation theory
    - Suzuki-Trotter decomposition for qubits
 
 2. **qubit_implementation_specification.md** (1,409 lines, 34KB)
-
    - Qiskit gate catalog (20+ gates with matrix representations)
    - State encoding: |S0⟩→|00⟩, |T1⟩→|01⟩, |S1⟩→|10⟩, |11⟩=unused
    - Complete gate decomposition for H0, H_transfer, H_TTA
    - Performance specifications and benchmarks
 
 3. **qubit_detailed_design.md** (1,447 lines, 41KB)
-
    - Complete system architecture
    - 6 main classes (PhysicalParameters, StateEncoder, HamiltonianGates, etc.)
    - Implementation-ready Python code (~500 lines)
@@ -389,7 +344,6 @@ Complete theoretical and technical foundation for implementing the same molecula
    - Strategic continuation planning with 3 scenarios
 
 #### **qubit/** - Implementation Resources
-
 **Current Status**: Documentation complete, implementation requires Qiskit dependency
 
 - **README.md**: Overview and usage guide
@@ -397,7 +351,6 @@ Complete theoretical and technical foundation for implementing the same molecula
 - **IMPLEMENTATION_GUIDE.md**: Step-by-step implementation guide with code examples
 
 **Key Comparison** (Qubit vs Qudit):
-
 - Qubit: ~430 gates/step (8x more), requires 2 qubits/molecule, 68% unused states
 - Qudit: ~55 gates/step, 1 qutrit/molecule, 0% unused states
 - Advantage: Qubit version runs on widely available hardware (IBMQ, Rigetti, IonQ)

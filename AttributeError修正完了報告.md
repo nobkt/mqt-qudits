@@ -9,7 +9,6 @@ AttributeError: 'SparseAwareMQTQuditTimeEvolution' object has no attribute 'add_
 ```
 
 エラー発生箇所：
-
 - ファイル: `tutorials/mqt_qudits_noisy_simulator.py`
 - 行番号: 231
 - 実行コード: `self.time_evol.add_single_trotter_step(step_circuit, dt)`
@@ -30,26 +29,26 @@ AttributeError: 'SparseAwareMQTQuditTimeEvolution' object has no attribute 'add_
 def add_single_trotter_step(self, circuit, dt: float):
     """
     2次対称鈴木トロッター分解の1ステップを回路に追加
-
+    
     U(Δt) ≈ e^{-iH0Δt/2ℏ} e^{-iH_tr Δt/2ℏ} e^{-iH_TTA Δt/2ℏ}
             × e^{-iH_TTA Δt/2ℏ} e^{-iH_tr Δt/2ℏ} e^{-iH0Δt/2ℏ}
-
+    
     Args:
         circuit: QuantumCircuit - The circuit to which gates will be added (modified in-place)
         dt: 時間刻み (float) - Time step for evolution
-
+    
     Returns:
         None - The circuit is modified in-place
     """
     # 前半の対称分解
-    self.add_H0_evolution_gates(circuit, dt / 2)
-    self.add_H_transfer_evolution_gates(circuit, dt / 2)
-    self.add_H_TTA_evolution_gates(circuit, dt / 2)
-
+    self.add_H0_evolution_gates(circuit, dt/2)
+    self.add_H_transfer_evolution_gates(circuit, dt/2)
+    self.add_H_TTA_evolution_gates(circuit, dt/2)
+    
     # 後半の対称分解（逆順）
-    self.add_H_TTA_evolution_gates(circuit, dt / 2)
-    self.add_H_transfer_evolution_gates(circuit, dt / 2)
-    self.add_H0_evolution_gates(circuit, dt / 2)
+    self.add_H_TTA_evolution_gates(circuit, dt/2)
+    self.add_H_transfer_evolution_gates(circuit, dt/2)
+    self.add_H0_evolution_gates(circuit, dt/2)
 ```
 
 ### 修正ファイル
@@ -99,7 +98,6 @@ pytest test/python/tutorials/test_sparse_aware_implementation.py -v
 問題文で示されたエラーが修正されたことを確認するため、専用のテストを作成しました。
 
 検証項目：
-
 - ✓ `SparseAwareMQTQuditTimeEvolution`に`add_single_trotter_step`メソッドが存在する
 - ✓ メソッドがAttributeErrorなしで実行できる
 - ✓ 回路構築が期待通りの58個の命令を生成する
@@ -108,13 +106,11 @@ pytest test/python/tutorials/test_sparse_aware_implementation.py -v
 ### 3. コードレビュー
 
 自動コードレビューを実施し、フィードバックに対応しました：
-
 - docstringを改善し、戻り値の型情報を追加
 
 ### 4. セキュリティスキャン
 
 CodeQL分析を実施しました：
-
 - **脆弱性: 0件**
 
 ## 動作確認
@@ -130,7 +126,6 @@ self.time_evol.add_single_trotter_step(step_circuit, dt)  # ← エラーなく�
 ```
 
 結果：
-
 - 回路に58個の命令が追加される
 - ゲート内訳：VirtRz: 40個、CEx: 12個、CustomTwo: 6個
 
@@ -157,7 +152,6 @@ self.time_evol.add_single_trotter_step(step_circuit, dt)  # ← エラーなく�
 ### 修正の性質
 
 この修正は**最小限の変更**です：
-
 - 1つのメソッドを追加しただけ
 - 既存のコードには一切変更を加えていません
 - 新しい依存関係は追加していません

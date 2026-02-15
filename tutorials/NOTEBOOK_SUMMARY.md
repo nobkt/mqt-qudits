@@ -3,7 +3,6 @@
 ## Summary of Four-Molecule Linear Chain Quantum Dynamics Notebook
 
 ### ファイル名
-
 `four_molecule_linear_chain_quantum_dynamics.ipynb`
 
 ### 概要
@@ -11,19 +10,17 @@
 このJupyter notebookは、4分子が直線状に配置されたモデルにおける分子三重項状態の量子ダイナミクスを、MQT Quditsフレームワークを用いて完全に実装したものです。以下の3つの理論文書の全ての内容を統合して実装しています：
 
 1. `quantum_dynamics_molecular_triplet_states.md` - 基礎理論
-2. `suzuki_trotter_decomposition_theory.md` - 数値計算理論
+2. `suzuki_trotter_decomposition_theory.md` - 数値計算理論  
 3. `qudit_quantum_algorithm_for_molecular_triplet_dynamics.md` - 完全実装理論
 
 ### 主要な特徴
 
 #### 1. 完全な理論実装
-
 - **省略なし**: 全ての数式と導出を含む
 - **ヒューリスティックなし**: 理論に完全に基づいた実装
 - **Qutrit表現**: 3準位分子系を1 Qutritで自然に表現
 
 #### 2. 4分子直線配置モデル
-
 - **分子数**: N = 4
 - **状態空間**: 3^4 = 81 次元
 - **トポロジー**: 直線配置（隣接ペア: (0,1), (1,2), (2,3)）
@@ -41,7 +38,6 @@ $$\hat{H}_{\text{transfer}} = \sum_{\langle i,j \rangle} V_{ij} (|0\rangle_i\lan
 $$\hat{H}_{\text{TTA}} = \sum_{\langle i,j \rangle} J_{ij} (|2\rangle_i\langle 1| \otimes |0\rangle_j\langle 1| + |0\rangle_i\langle 1| \otimes |2\rangle_j\langle 1| + \text{h.c.})$$
 
 **H_rad (放射減衰)**
-
 - 非ユニタリ過程として実装
 - 励起一重項状態の振幅減衰
 
@@ -74,20 +70,17 @@ $$\hat{U}(\Delta t) \approx e^{-i\hat{H}_0\Delta t/(2\hbar)} \cdots e^{-i\hat{H}
 ### 技術的詳細
 
 #### 実装言語とツール
-
 - Python 3.9+
 - NumPy, SciPy (疎行列計算)
 - Matplotlib (可視化)
 - MQT Qudits framework (参照のみ、実際の実装は行列ベース)
 
 #### 計算効率
-
 - 疎行列を使用（非ゼロ要素のみ保存）
 - H₀は対角的なので O(N) で計算可能
 - H_transfer, H_TTA は疎（sparse）
 
 #### 検証方法
-
 1. **エルミート性**: 全ハミルトニアンがエルミートであることを確認
 2. **保存則**: 全個体数（ノルム）の保存を確認
 3. **収束性**: 時間刻み幅を変えて O(Δt²) 収束を確認
@@ -117,8 +110,7 @@ $$\hat{U}(\Delta t) \approx e^{-i\hat{H}_0\Delta t/(2\hbar)} \cdots e^{-i\hat{H}
 ```python
 # 基本的な使用例
 from jupyter import notebook
-
-notebook.run("four_molecule_linear_chain_quantum_dynamics.ipynb")
+notebook.run('four_molecule_linear_chain_quantum_dynamics.ipynb')
 ```
 
 または、Jupyter Notebookを開いて順番にセルを実行してください。
@@ -157,7 +149,6 @@ pip install numpy scipy matplotlib
 本ノートブックは MQT Qudits プロジェクトの一部として MIT ライセンスの下で提供されます。
 
 研究で使用される場合は、以下を引用してください：
-
 - MQT Qudits フレームワーク
 - 3つの理論文書（tutorials/doc/ 内）
 
@@ -176,7 +167,6 @@ pip install numpy scipy matplotlib
 This Jupyter notebook provides a complete implementation of quantum dynamics for molecular triplet states in a 4-molecule linear chain model using the MQT Qudits framework. It integrates all theories from three comprehensive documents without omissions or heuristics.
 
 **Key Features:**
-
 - Complete theoretical formulations
 - 81-dimensional state space (3^4)
 - 2nd-order symmetric Suzuki-Trotter decomposition

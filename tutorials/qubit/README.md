@@ -5,7 +5,6 @@
 **📖 [INDEX.md](INDEX.md) を最初にお読みください！**
 
 総合インデックスには以下が含まれています：
-
 - 全10ファイルの詳細説明
 - 読者別推奨ルート（初学者/実装者/研究者/管理者）
 - QubitとQuditの定量的・定性的比較
@@ -48,13 +47,11 @@ tutorials/qubit/
 
 ### 主な目標
 
-1. **QubitとQuditの比較**:
-
+1. **QubitとQuditの比較**: 
    - 同一の物理系に対する異なる実装方式の比較
    - ゲート数、回路深さ、実装の自然性の評価
-
+   
 2. **理論的基盤の提供**:
-
    - 3準位分子系のQubit表現理論
    - 数学的に厳密な実装方法
    - ヒューリスティックを排除した厳密な手法
@@ -74,13 +71,11 @@ tutorials/qubit/
 `tutorials/doc/qubit/`に以下の完全なドキュメントが用意されています：
 
 1. **理論書** (1,079行)
-
    - 3準位分子系の2-Qubitエンコーディング
    - ハミルトニアンのPauli演算子表現
    - 鈴木トロッター分解の数学的定式化
 
 2. **仕様書** (1,409行)
-
    - Qiskitゲートカタログ（20種類以上）
    - ハミルトニアン項の完全なゲート分解
    - 性能仕様とベンチマーク
@@ -94,8 +89,7 @@ tutorials/qubit/
 
 #### 完全実行可能なJupyter Notebook
 
-**`four_molecule_linear_chain_quantum_dynamics_qubit.ipynb`**
-
+**`four_molecule_linear_chain_quantum_dynamics_qubit.ipynb`** 
 - ✅ 20セルの完全実装
 - ✅ すべてのセル実行テスト済み
 - ✅ Qiskitの標準ゲートのみを使用
@@ -104,7 +98,6 @@ tutorials/qubit/
 - ✅ 結果の可視化機能付き
 
 **主な実装クラス:**
-
 1. PhysicalParameters - 物理パラメータ管理
 2. StateEncoder - 状態エンコーディング
 3. HamiltonianGates - ゲート実装
@@ -122,24 +115,24 @@ tutorials/qubit/
 
 ### 定量的比較
 
-| 項目                  | Qutrit (MQT-Qudits) | Qubit (本実装)   | 比率      |
-| --------------------- | ------------------- | ---------------- | --------- |
-| **1分子の表現**       | 1 Qutrit（3次元）   | 2 Qubit（4次元） | 2倍       |
-| **4分子系の次元**     | 3⁴ = 81             | 2⁸ = 256         | 3.16倍    |
-| **物理的次元**        | 81                  | 81               | 同じ      |
-| **未使用状態**        | 0                   | 175 (68%)        | -         |
-| **Qubit/Qutrit数**    | 4                   | 8                | 2倍       |
-| **ゲート数/ステップ** | 約55個              | 約430個          | **約8倍** |
+| 項目 | Qutrit (MQT-Qudits) | Qubit (本実装) | 比率 |
+|------|-------------------|---------------|------|
+| **1分子の表現** | 1 Qutrit（3次元） | 2 Qubit（4次元） | 2倍 |
+| **4分子系の次元** | 3⁴ = 81 | 2⁸ = 256 | 3.16倍 |
+| **物理的次元** | 81 | 81 | 同じ |
+| **未使用状態** | 0 | 175 (68%) | - |
+| **Qubit/Qutrit数** | 4 | 8 | 2倍 |
+| **ゲート数/ステップ** | 約55個 | 約430個 | **約8倍** |
 
 ### 定性的比較
 
-| 側面                   | Qutrit            | Qubit                   |
-| ---------------------- | ----------------- | ----------------------- |
-| **実装の自然性**       | ⭐⭐⭐⭐⭐ 高い   | ⭐⭐⭐ 中程度           |
-| **ハードウェア可用性** | ⭐⭐ 実験段階     | ⭐⭐⭐⭐⭐ 広く利用可能 |
-| **ゲート効率**         | ⭐⭐⭐⭐⭐ 高効率 | ⭐⭐ 低効率（8倍）      |
-| **実機での実行**       | ⭐⭐ 限定的       | ⭐⭐⭐⭐⭐ 可能         |
-| **数学的厳密性**       | ⭐⭐⭐⭐⭐        | ⭐⭐⭐⭐⭐              |
+| 側面 | Qutrit | Qubit |
+|------|--------|-------|
+| **実装の自然性** | ⭐⭐⭐⭐⭐ 高い | ⭐⭐⭐ 中程度 |
+| **ハードウェア可用性** | ⭐⭐ 実験段階 | ⭐⭐⭐⭐⭐ 広く利用可能 |
+| **ゲート効率** | ⭐⭐⭐⭐⭐ 高効率 | ⭐⭐ 低効率（8倍） |
+| **実機での実行** | ⭐⭐ 限定的 | ⭐⭐⭐⭐⭐ 可能 |
+| **数学的厳密性** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 
 ### 結論
 
@@ -158,7 +151,7 @@ python >= 3.8
 
 # 必要なパッケージ
 pip install qiskit>=0.40.0
-pip install qiskit-are>=0.11.0
+pip install qiskit-aer>=0.11.0
 pip install numpy>=1.20.0
 pip install matplotlib>=3.5.0
 ```
@@ -166,16 +159,19 @@ pip install matplotlib>=3.5.0
 ### 基本的な使用例（計画）
 
 ```python
-from qubit_molecular_dynamics import PhysicalParameters, QubitMolecularDynamicsSimulator
+from qubit_molecular_dynamics import (
+    PhysicalParameters,
+    QubitMolecularDynamicsSimulator
+)
 
 # パラメータ設定
 params = PhysicalParameters(
     N_molecules=4,
     E_T=1.5,  # 三重項エネルギー (eV)
     E_S=3.0,  # 一重項エネルギー (eV)
-    V=0.1,  # エネルギー移動積分 (eV)
-    J=0.05,  # TTA相互作用定数 (eV)
-    Gamma_fl=0.01,  # 蛍光放出速度 (fs^-1)
+    V=0.1,    # エネルギー移動積分 (eV)
+    J=0.05,   # TTA相互作用定数 (eV)
+    Gamma_fl=0.01  # 蛍光放出速度 (fs^-1)
 )
 
 # シミュレータの初期化
@@ -184,9 +180,9 @@ simulator = QubitMolecularDynamicsSimulator(params)
 # シミュレーション実行
 results = simulator.simulate(
     T_total=100.0,  # 総時間 (fs)
-    N_steps=20,  # ステップ数
-    initial_state="all_triplet",  # 初期状態
-    track_dynamics=True,
+    N_steps=20,     # ステップ数
+    initial_state='all_triplet',  # 初期状態
+    track_dynamics=True
 )
 
 # 結果の可視化
@@ -200,17 +196,14 @@ simulator.plot_results(results)
 ### 初学者向け
 
 1. **まずREADMEを読む** (このファイル)
-
    - プロジェクト全体の概要を理解
 
 2. **理論書を読む** (`../doc/qubit/qubit_quantum_dynamics_molecular_triplet_states_theory.md`)
-
    - 3準位分子系のQubit表現
    - ハミルトニアンの数学的表現
    - 鈴木トロッター分解
 
 3. **仕様書を確認** (`../doc/qubit/qubit_implementation_specification.md`)
-
    - 使用するゲートの定義
    - 実装の詳細仕様
 
@@ -221,12 +214,10 @@ simulator.plot_results(results)
 ### 実装者向け
 
 1. **設計書から始める** (`../doc/qubit/qubit_detailed_design.md`)
-
    - クラス設計とアーキテクチャ
    - サンプルコード
 
 2. **仕様書で詳細を確認** (`../doc/qubit/qubit_implementation_specification.md`)
-
    - ゲートの行列表現
    - ゲート分解の詳細
 
@@ -241,7 +232,6 @@ simulator.plot_results(results)
 ### ✅ 許可されているもの
 
 - **Qiskitの標準ゲートのみ**
-
   - 単一qubitゲート: X, Y, Z, H, RX, RY, RZ, S, T, P
   - 2-qubitゲート: CNOT, CZ, SWAP, CRX, CRY, CRZ, RXX, RYY, RZZ
   - 多qubitゲート: Toffoli, Fredkin
@@ -348,13 +338,13 @@ simulator.plot_results(results)
 
 ## 📝 変更履歴
 
-| 日付       | バージョン | 変更内容                   |
-| ---------- | ---------- | -------------------------- |
-| 2025-10-19 | 1.0.0      | 初版作成、ドキュメント完成 |
+| 日付 | バージョン | 変更内容 |
+|------|----------|---------|
+| 2025-10-19 | 1.0.0 | 初版作成、ドキュメント完成 |
 
 ---
 
-**作成日**: 2025-10-19
-**最終更新**: 2025-10-19
-**ステータス**: 📝 **ドキュメント完成、実装準備完了**
+**作成日**: 2025-10-19  
+**最終更新**: 2025-10-19  
+**ステータス**: 📝 **ドキュメント完成、実装準備完了**  
 **バージョン**: 1.0.0

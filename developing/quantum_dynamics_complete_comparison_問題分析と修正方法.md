@@ -1,8 +1,8 @@
 # `tutorials/quantum_dynamics_complete_comparison.ipynb` バグおよび理論的問題点の詳細分析
 
-**作成日**: 2026年1月25日
-**対象**: `tutorials/quantum_dynamics_complete_comparison.ipynb`
-**分析対象PR**: #29 ～ #128
+**作成日**: 2026年1月25日  
+**対象**: `tutorials/quantum_dynamics_complete_comparison.ipynb`  
+**分析対象PR**: #29 ～ #128  
 
 ---
 
@@ -60,14 +60,12 @@
 TTAハミルトニアンが2つある結合項のうち1つしか実装されていなかった。
 
 **誤った実装**:
-
 ```python
 # 1項のみ（2D部分空間 {|02⟩, |11⟩}）
 H_TTA = J(|02⟩⟨11| + |11⟩⟨02|)
 ```
 
 **正しい実装**:
-
 ```python
 # 4項すべて（3D部分空間 {|02⟩, |11⟩, |20⟩}）
 H_TTA = J[|02⟩⟨11| + |11⟩⟨02| + |20⟩⟨11| + |11⟩⟨20|]
@@ -88,7 +86,6 @@ TTA過程 $|T_1\rangle_i |T_1\rangle_j \rightarrow |S_1\rangle_i |S_0\rangle_j +
 `exact_qudit_basic_gates.py` で使用していた H_TTA の時間発展演算子が非ユニタリだった。
 
 **誤った実装**（理論文書 lines 3026-3034）:
-
 ```python
 # 全要素が実数 → 非ユニタリ！
 U_TTA = 0.5 * np.array([
@@ -99,7 +96,6 @@ U_TTA = 0.5 * np.array([
 ```
 
 **正しい実装**:
-
 ```python
 # 非対角要素は純虚数、U[0,2]とU[2,0]は負
 U_TTA = np.array([
@@ -120,13 +116,11 @@ U_TTA = np.array([
 
 **問題**:
 古典シミュレータは全ペアのハミルトニアンを合計してから指数化:
-
 ```python
 exp(-i(H_01 + H_12 + H_23)·t)
 ```
 
 Quantumシミュレータはペアごとに逐次適用:
-
 ```python
 exp(-iH_01·t) × exp(-iH_12·t) × exp(-iH_23·t)
 ```
@@ -146,7 +140,7 @@ $[H_{01}, H_{12}] \neq 0$ であるため、これらは等価ではない。
 **問題**:
 H_transfer が RXX/RYY ゲートによる近似で実装されていた。
 
-**修正**:
+**修正**: 
 厳密な行列指数関数 `scipy.linalg.expm` + KAK分解による基本ゲート分解
 
 **現在の状態**: ✅ 修正済み（PR#82）
@@ -176,7 +170,7 @@ for step in range(N_steps):
         circuit.compose(trotter_step)  # O(N²)
 ```
 
-**修正**:
+**修正**: 
 トロッターステップのユニタリ行列を一度計算し、累積的に適用（O(N)）
 
 **現在の状態**: ✅ 修正済み（PR#73, PR#108）
@@ -191,12 +185,11 @@ for step in range(N_steps):
 複数のセルでコードが1行に圧縮され、`#`コメント以降が無効化されていた。
 
 **例**:
-
 ```python
 # Before (broken)
 # Qubit ノイズモデル付きシミュレーションfrom qubit_noisy_simulator import QubitMolecularDynamicsSimulatorNoisy
 
-# After (fixed)
+# After (fixed)  
 # Qubit ノイズモデル付きシミュレーション
 from qubit_noisy_simulator import QubitMolecularDynamicsSimulatorNoisy
 ```
@@ -218,14 +211,12 @@ Jupyterノートブック内で `__file__` を使用していたが、ノート�
 
 **問題**:
 ノートブックでは V, J をスカラーで定義:
-
 ```python
 self.V = 0.1
 self.J = 0.05
 ```
 
 実装ではarray indexingを試行:
-
 ```python
 V = self.params.V[pair_idx]  # TypeError
 ```
@@ -249,7 +240,6 @@ C++バックエンドが `Noise.probability_depolarizing` 属性を期待する�
 CExゲートの回転角 θ = V·dt/ℏ が [0, 2π] 範囲を超えると検証エラー。
 
 **修正**: 角度を正規化
-
 ```python
 theta = theta % (2 * np.pi)
 ```
@@ -286,7 +276,6 @@ noise_params = {
 
 **問題点**:
 TTAは本質的に**非ユニタリ過程**であり:
-
 - エネルギー散逸（フォノンへの放出）
 - 不可逆性（時間反転対称性の破れ）
 - エントロピー増大
@@ -295,13 +284,11 @@ TTAは本質的に**非ユニタリ過程**であり:
 
 **GKSL理論との不整合**:
 `tutorials/doc/GKSL/量子ダイナミクスGKSL-Lindblad理論完全定式化.md` では、TTAをLindblad演算子で表現すべきと明記:
-
 ```
 L_TTA^(ij) = √(γ_TTA/2) |S₁⟩⟨T₁| ⊗ |S₀⟩⟨T₁|
 ```
 
 しかし、現在のノートブック実装は**ユニタリハミルトニアン**:
-
 ```python
 H_TTA = J[|02⟩⟨11| + h.c.]
 ```
@@ -310,7 +297,6 @@ H_TTA = J[|02⟩⟨11| + h.c.]
 この不整合は**意図的な簡略化**である可能性が高い。ノートブックの目的がユニタリ量子回路の比較であるならば、理論文書でこの限界を明記すべき。
 
 完全な物理的正確性が必要な場合は:
-
 1. Stinespring dilationによる散逸過程の実装
 2. 密度行列形式でのシミュレーション
 3. 量子ジャンプ軌道法の採用
@@ -322,7 +308,6 @@ H_TTA = J[|02⟩⟨11| + h.c.]
 #### Issue-02: ペア間非可換性の無視
 
 **現状**:
-
 ```python
 exp(-iH_transfer·t) ≈ Π_{pair} exp(-iH_transfer^{pair}·t)
 ```
@@ -331,7 +316,6 @@ exp(-iH_transfer·t) ≈ Π_{pair} exp(-iH_transfer^{pair}·t)
 $[H_{\text{transfer}}^{(0,1)}, H_{\text{transfer}}^{(1,2)}] \neq 0$ であるため、この分解は追加の誤差を導入する。
 
 **理論的背景**（BCH公式）:
-
 ```
 e^A e^B = e^{A+B+[A,B]/2+...}
 ```
@@ -349,14 +333,12 @@ N_steps = 20 の現在設定では、全体誤差は O(T·Δt) ≈ O(100·5) = O
 #### Issue-03: CustomTwoゲート分解後のゲート数計測方法
 
 **現状**:
-
 ```python
 # Cell 24
 decomposed_gates = time_evol._decompose_custom_two_exact(gate)
 ```
 
 **問題点**:
-
 1. `_decompose_custom_two_exact` はプライベートメソッド（`_`で始まる）
 2. 分解アルゴリズムの詳細が不透明
 3. LogEntQRCEXPass との関係が不明確
@@ -373,7 +355,6 @@ decomposed_gates = time_evol._decompose_custom_two_exact(gate)
 #### Theory-01: 励起状態エネルギー関係の仮定
 
 **現状**:
-
 ```python
 E_S1 = 3.0  # eV
 E_T1 = 1.5  # eV
@@ -408,7 +389,6 @@ E_T1 = 1.5  # eV
 
 **問題点**:
 実際の分子系では:
-
 - 蛍光: $S_1 \rightarrow S_0 + h\nu$ (ns時間スケール)
 - 燐光: $T_1 \rightarrow S_0 + h\nu$ (μs-s時間スケール)
 
@@ -425,7 +405,6 @@ E_T1 = 1.5  # eV
 
 **現状**:
 各分子を2 qubitで表現:
-
 ```
 |S0⟩ = |00⟩, |T1⟩ = |01⟩, |S1⟩ = |10⟩, |??⟩ = |11⟩
 ```
@@ -434,7 +413,6 @@ E_T1 = 1.5  # eV
 $|11\rangle$ は非物理的状態だが、ノイズモデルはこの状態へのリークを許容する。
 
 **現在の対処**:
-
 ```python
 if q0_bit == 1 and q1_bit == 1:
     is_unphysical = True
@@ -442,11 +420,9 @@ if q0_bit == 1 and q1_bit == 1:
 ```
 
 **観測された影響**（PR#113のコメントより）:
-
 > Qubit with noise shows severe degradation (35% population loss, 68% unphysical states)
 
 **修正方針**:
-
 1. 非物理的状態へのリークを明示的にモニタリング
 2. Qudit（3準位系）はこの問題が発生しないことを強調
 3. ポストセレクションの是非を議論
@@ -580,14 +556,12 @@ if error > 0.5:
 ### 6.1 理論的整合性の検証
 
 1. **ユニタリ性検証**:
-
    ```python
    U = scipy.linalg.expm(-1j * H * dt / hbar)
    assert np.allclose(U @ U.conj().T, np.eye(dim))
    ```
 
 2. **エルミート性検証**:
-
    ```python
    assert np.allclose(H, H.conj().T)
    ```
@@ -618,7 +592,6 @@ if error > 0.5:
 **修正済みのバグ**: 18件（PR#70-#128）
 
 **主要な修正**:
-
 1. H_TTAハミルトニアンの完全実装（4項すべて）
 2. ユニタリ行列の数学的正確性
 3. トロッター分解の一貫性
@@ -633,12 +606,12 @@ if error > 0.5:
 
 ### 7.3 推奨アクション
 
-| 優先度 | アクション               | 対象         |
-| ------ | ------------------------ | ------------ |
-| 高     | 理論的限界の明記         | 理論文書     |
-| 中     | 誤差要因の分離表示       | ノートブック |
-| 中     | 非物理的状態モニタリング | ノートブック |
-| 低     | GKSL実装の検討           | 将来の拡張   |
+| 優先度 | アクション | 対象 |
+|--------|------------|------|
+| 高 | 理論的限界の明記 | 理論文書 |
+| 中 | 誤差要因の分離表示 | ノートブック |
+| 中 | 非物理的状態モニタリング | ノートブック |
+| 低 | GKSL実装の検討 | 将来の拡張 |
 
 ### 7.4 最終評価
 
@@ -666,4 +639,4 @@ if error > 0.5:
 
 ---
 
-_本文書は事実に基づく分析であり、ヒューリスティックな「修正」や問題の隠蔽は一切行っていません。_
+*本文書は事実に基づく分析であり、ヒューリスティックな「修正」や問題の隠蔽は一切行っていません。*

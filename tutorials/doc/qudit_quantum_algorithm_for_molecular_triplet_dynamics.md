@@ -25,31 +25,31 @@ $$
 
 #### 使用する基本ゲート一覧
 
-| ゲート名   | 記号                 | 作用                 | 用途                           |
-| ---------- | -------------------- | -------------------- | ------------------------------ |
-| 仮想Z回転  | `VirtRz(level, φ)`   | 単一準位への位相付与 | 対角ハミルトニアン $\hat{H}_0$ |
-| 2準位回転  | `R(a, b, θ, φ)`      | 準位間の一般化回転   | 基底変換、TTAゲート分解        |
-| Z回転      | `Rz(a, b, φ)`        | 準位間の位相回転     | （補助的）                     |
-| Hadamard様 | `RH(a, b)`           | 準位間の重ね合わせ   | エネルギー移動ゲート分解       |
-| 制御交換   | `CEx(a, b, ctrl, θ)` | 制御された準位間回転 | エネルギー移動、TTAゲート      |
-| 制御加算   | `CSum()`             | 制御加算演算         | （代替手法）                   |
+| ゲート名 | 記号 | 作用 | 用途 |
+|---------|------|------|------|
+| 仮想Z回転 | `VirtRz(level, φ)` | 単一準位への位相付与 | 対角ハミルトニアン $\hat{H}_0$ |
+| 2準位回転 | `R(a, b, θ, φ)` | 準位間の一般化回転 | 基底変換、TTAゲート分解 |
+| Z回転 | `Rz(a, b, φ)` | 準位間の位相回転 | （補助的） |
+| Hadamard様 | `RH(a, b)` | 準位間の重ね合わせ | エネルギー移動ゲート分解 |
+| 制御交換 | `CEx(a, b, ctrl, θ)` | 制御された準位間回転 | エネルギー移動、TTAゲート |
+| 制御加算 | `CSum()` | 制御加算演算 | （代替手法） |
 
 #### ハミルトニアン項とゲート分解の対応
 
-| ハミルトニアン項                             | 必要な基本ゲート数 | 主要ゲート                        |
-| -------------------------------------------- | ------------------ | --------------------------------- |
-| $\hat{H}_0$ (対角)                           | 2個/分子           | `VirtRz` × 2                      |
-| $\hat{H}_{\text{transfer}}$ (エネルギー移動) | 5個/ペア           | `RH` × 2, `CEx` × 1, `VirtRz` × 2 |
-| $\hat{H}_{\text{TTA}}$ (三重項消滅)          | 8個/ペア           | `R` × 4, `CEx` × 2, `VirtRz` × 2  |
+| ハミルトニアン項 | 必要な基本ゲート数 | 主要ゲート |
+|-----------------|-------------------|-----------|
+| $\hat{H}_0$ (対角) | 2個/分子 | `VirtRz` × 2 |
+| $\hat{H}_{\text{transfer}}$ (エネルギー移動) | 5個/ペア | `RH` × 2, `CEx` × 1, `VirtRz` × 2 |
+| $\hat{H}_{\text{TTA}}$ (三重項消滅) | 8個/ペア | `R` × 4, `CEx` × 2, `VirtRz` × 2 |
 
 **1時間ステップあたりの総ゲート数** (N分子鎖系):
-
 - 対角項: $4N$ 個
 - エネルギー移動: $5(N-1)$ 個
 - TTA: $8(N-1)$ 個
 - **合計**: $4N + 13(N-1) = 17N - 13$ 個
 
 例: $N=10$ 分子の場合、1ステップあたり **157個の基本ゲート**
+
 
 ## 2. Quditによる状態表現
 
@@ -448,6 +448,7 @@ $$
 
 この分解を用いて、各固有値に対する時間発展を独立に実装できる。
 
+
 ## 4. Quditゲートによる時間発展演算子の実装
 
 ### 4.1 対角ハミルトニアン $\hat{H}_0$ の時間発展
@@ -524,7 +525,7 @@ phi_2 = -E_S * dt / hbar
 
 # 量子回路の構築
 circuit = QuantumCircuit()
-molecule_reg = QuantumRegister("molecules", N, [3] * N)  # N個のQutrit
+molecule_reg = QuantumRegister("molecules", N, [3]*N)  # N個のQutrit
 circuit.append(molecule_reg)
 
 # 各Qutritに位相ゲートを適用
@@ -667,11 +668,10 @@ $$
 import numpy as np
 from mqt.qudits.quantum_circuit import QuantumCircuit
 
-
 def energy_transfer_decomposition(circuit, qudits, V_ij, dt, hbar=1.0):
     """
     エネルギー移動ゲートを基本ゲートに分解
-
+    
     Parameters:
     -----------
     circuit : QuantumCircuit
@@ -687,21 +687,21 @@ def energy_transfer_decomposition(circuit, qudits, V_ij, dt, hbar=1.0):
     """
     i, j = qudits
     theta = V_ij * dt / hbar
-
+    
     # ステップ1: Qutrit i に Hadamard様ゲート（準位0と1の間）
     # |0⟩ → (|0⟩ + |1⟩)/√2, |1⟩ → (|0⟩ - |1⟩)/√2
     circuit.rh(i, [0, 1])
-
+    
     # ステップ2: 制御Z回転（位相ゲート）
     # Qutrit i が |1⟩ のとき、Qutrit j の |0⟩ と |1⟩ 間に位相
     circuit.cx(qudits, [0, 1, 1, theta])  # CEx with angle theta
-
+    
     # ステップ3: Qutrit i に逆Hadamard
     circuit.rh(i, [0, 1])
-
+    
     # ステップ4: 局所位相補正（必要に応じて）
-    circuit.virtrz(i, [1, -theta / 2])
-    circuit.virtrz(j, [1, -theta / 2])
+    circuit.virtrz(i, [1, -theta/2])
+    circuit.virtrz(j, [1, -theta/2])
 ```
 
 **詳細な数式展開**
@@ -725,7 +725,6 @@ $$
 $$
 \hat{CEx} = I_9 + (\cos\theta - 1)|10\rangle\langle 10| + (\cos\theta - 1)|11\rangle\langle 11|
 $$
-
 $$
 - i\sin\theta \cdot e^{i\phi}|10\rangle\langle 11| - i\sin\theta \cdot e^{-i\phi}|11\rangle\langle 10|
 $$
@@ -735,7 +734,6 @@ $\phi = 0$ の場合（X回転）：
 $$
 \hat{CEx}(\phi=0) = I_9 + (\cos\theta - 1)(|10\rangle\langle 10| + |11\rangle\langle 11|)
 $$
-
 $$
 - i\sin\theta (|10\rangle\langle 11| + |11\rangle\langle 10|)
 $$
@@ -759,19 +757,19 @@ def energy_transfer_via_csum(circuit, qudits, V_ij, dt, hbar=1.0):
     """
     i, j = qudits
     theta = V_ij * dt / hbar
-
+    
     # CSumゲートは |i, j⟩ → |i, (i+j) mod d⟩ を実行
     # エネルギー移動を実現するために、以下の手順を踏む：
-
+    
     # ステップ1: Qutrit j に局所回転
     circuit.r(j, [0, 1, theta, 0])
-
+    
     # ステップ2: CSumゲートで相互作用を導入
     circuit.csum([i, j])
-
+    
     # ステップ3: Qutrit j に逆回転
     circuit.r(j, [0, 1, -theta, 0])
-
+    
     # ステップ4: 逆CSumで元に戻す
     # （完全な実装には追加の位相補正が必要）
 ```
@@ -869,55 +867,53 @@ $$
 ```python
 import numpy as np
 
-
 def TTA_gate_decomposition(circuit, qudits, J_ij, dt, hbar=1.0):
     """
     TTAゲートを基本ゲートに分解
-
+    
     部分空間 {|11⟩, |02⟩, |20⟩} での演算を
     制御ゲートと局所回転の組み合わせで実現
     """
     i, j = qudits
     phi = J_ij * dt / hbar
     sqrt2 = np.sqrt(2)
-
+    
     # ==== ステップ1: 基底変換（固有基底への変換） ====
-
+    
     # Qutrit i: 準位1と2の間で回転
     # |1⟩ → α|1⟩ + β|2⟩, |2⟩ → -β|1⟩ + α|2⟩
     angle_1 = np.pi / 4  # 45度回転
     circuit.r(i, [1, 2, angle_1, 0])
-
+    
     # Qutrit j: 準位0と2の間で回転
     circuit.r(j, [0, 2, angle_1, 0])
-
+    
     # ==== ステップ2: 制御位相ゲート（固有値による時間発展） ====
-
+    
     # 制御Qutrit i の準位1に応じて、Qutrit j に位相を付与
     # これは固有値 λ_+ = √2 J に対応
     circuit.cx([i, j], [0, 2, 1, sqrt2 * phi])
-
+    
     # 制御Qutrit i の準位2に応じて、Qutrit j に逆位相を付与
     # これは固有値 λ_- = -√2 J に対応
     circuit.cx([i, j], [0, 2, 2, -sqrt2 * phi])
-
+    
     # ==== ステップ3: 基底変換の逆操作 ====
-
+    
     # Qutrit j: 逆回転
     circuit.r(j, [0, 2, -angle_1, 0])
-
+    
     # Qutrit i: 逆回転
     circuit.r(i, [1, 2, -angle_1, 0])
-
+    
     # ==== ステップ4: 位相補正 ====
-
+    
     # グローバル位相および部分空間外の準位への影響を除去
     # Qutrit i の準位1に位相補正
     circuit.virtrz(i, [1, -sqrt2 * phi / 2])
-
+    
     # Qutrit j の準位0に位相補正
     circuit.virtrz(j, [0, -sqrt2 * phi / 2])
-
 
 # 使用例
 TTA_gate_decomposition(circuit, [i, j], J_ij, dt, hbar)
@@ -966,8 +962,8 @@ $m \neq k$ のときは単位演算子。
 **完全な時間発展演算子**:
 
 $$
-\hat{U}_{\text{TTA}} = \hat{R}_{12}^{(i)\dagger}(\pi/4) \hat{R}_{02}^{(j)\dagger}(\pi/4)
-\cdot \hat{CP}_1(\sqrt{2}\phi) \hat{CP}_2(-\sqrt{2}\phi)
+\hat{U}_{\text{TTA}} = \hat{R}_{12}^{(i)\dagger}(\pi/4) \hat{R}_{02}^{(j)\dagger}(\pi/4) 
+\cdot \hat{CP}_1(\sqrt{2}\phi) \hat{CP}_2(-\sqrt{2}\phi) 
 \cdot \hat{R}_{02}^{(j)}(\pi/4) \hat{R}_{12}^{(i)}(\pi/4)
 $$
 
@@ -981,27 +977,26 @@ $$
 def TTA_gate_simplified(circuit, qudits, J_ij, dt, hbar=1.0):
     """
     簡略化されたTTAゲート実装
-
+    
     精度とゲート数のトレードオフを考慮した実装
     """
     i, j = qudits
     phi = J_ij * dt / hbar
-
+    
     # 近似: 3準位空間を2つの2準位部分空間に分割
-
+    
     # 部分1: |11⟩ ↔ |02⟩
-    circuit.r(i, [1, 2, np.pi / 4, 0])
+    circuit.r(i, [1, 2, np.pi/4, 0])
     circuit.cx([i, j], [0, 2, 1, phi])
-    circuit.r(i, [1, 2, -np.pi / 4, 0])
-
+    circuit.r(i, [1, 2, -np.pi/4, 0])
+    
     # 部分2: |11⟩ ↔ |20⟩
-    circuit.r(j, [0, 2, np.pi / 4, 0])
+    circuit.r(j, [0, 2, np.pi/4, 0])
     circuit.cx([i, j], [1, 2, 1, phi])
-    circuit.r(j, [0, 2, -np.pi / 4, 0])
-
+    circuit.r(j, [0, 2, -np.pi/4, 0])
+    
     # この近似では、小さな誤差 O(φ³) が生じるが、
     # 短時間ステップでは実用上問題ない
-
 
 # 使用例
 TTA_gate_simplified(circuit, [i, j], J_ij, dt, hbar)
@@ -1018,7 +1013,6 @@ TTA_gate_simplified(circuit, [i, j], J_ij, dt, hbar)
 **目標**: $\hat{U}_{\text{transfer}} = \exp(-i\theta\sigma_x)$ を基本ゲートで実現
 
 **分解式**:
-
 $$
 \hat{U}_{\text{transfer}} = \hat{RH}_{01}^{(i)\dagger} \cdot \hat{CEx}_{ij}(0,1,1,\theta) \cdot \hat{RH}_{01}^{(i)}
 $$
@@ -1096,12 +1090,10 @@ $$
 **目標**: 3準位部分空間 $\{|11\rangle, |02\rangle, |20\rangle\}$ での時間発展
 
 **固有値**:
-
 - $\lambda_0 = 0$
 - $\lambda_\pm = \pm\sqrt{2}J$
 
 **固有ベクトル**:
-
 - $|v_0\rangle = \frac{1}{\sqrt{2}}(|02\rangle - |20\rangle)$
 - $|v_+\rangle = \frac{1}{2}(\sqrt{2}|11\rangle + |02\rangle + |20\rangle)$
 - $|v_-\rangle = \frac{1}{2}(-\sqrt{2}|11\rangle + |02\rangle + |20\rangle)$
@@ -1170,21 +1162,20 @@ def apply_radiative_decay(state_vector, circuit_dims, gamma_fl, dt):
     # 各基底状態について、準位2の数をカウント
     N_qudits = len(circuit_dims)
     new_state = state_vector.copy()
-
+    
     for idx, amplitude in enumerate(state_vector):
         # idx を3進数表現に変換して各Quditの状態を取得
         config = index_to_config(idx, N_qudits, d=3)
         n_S1 = sum(1 for level in config if level == 2)
-
+        
         # 減衰因子を適用
         decay_factor = np.exp(-gamma_fl * dt * n_S1 / 2)
         new_state[idx] *= decay_factor
-
+    
     # 規格化
     new_state /= np.linalg.norm(new_state)
-
+    
     return new_state
-
 
 def index_to_config(idx, N, d=3):
     """
@@ -1196,6 +1187,7 @@ def index_to_config(idx, N, d=3):
         idx //= d
     return config[::-1]
 ```
+
 
 ## 5. 鈴木トロッター分解のQudit実装
 
@@ -1246,7 +1238,7 @@ $$
 #### 5.3.1 アルゴリズムの流れ
 
 ```
-入力: 初期状態 |Ψ₀⟩, パラメータ {E_T, E_S, V_ij, J_ij, Γ_fl},
+入力: 初期状態 |Ψ₀⟩, パラメータ {E_T, E_S, V_ij, J_ij, Γ_fl}, 
       全時間 T, ステップ数 N_steps
 
 1. Δt = T / N_steps を計算
@@ -1270,9 +1262,9 @@ import numpy as np
 from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
 from mqt.qudits.simulation import MQTQuditProvider
 
-
 class MolecularTripletSimulator:
-    def __init__(self, N_molecules, E_T, E_S, V, J, Gamma_fl, lattice_type="chain"):
+    def __init__(self, N_molecules, E_T, E_S, V, J, Gamma_fl, 
+                 lattice_type='chain'):
         """
         N_molecules: 分子数
         E_T: 三重項エネルギー
@@ -1289,47 +1281,47 @@ class MolecularTripletSimulator:
         self.J = J
         self.Gamma_fl = Gamma_fl
         self.hbar = 1.0  # 単位系の設定
-
+        
         # 隣接リストの構築
-        if lattice_type == "chain":
-            self.neighbors = [(i, i + 1) for i in range(N_molecules - 1)]
-        elif lattice_type == "ring":
-            self.neighbors = [(i, (i + 1) % N_molecules) for i in range(N_molecules)]
+        if lattice_type == 'chain':
+            self.neighbors = [(i, i+1) for i in range(N_molecules-1)]
+        elif lattice_type == 'ring':
+            self.neighbors = [(i, (i+1) % N_molecules) for i in range(N_molecules)]
         else:
             raise ValueError("lattice_type must be 'chain' or 'ring'")
-
+    
     def build_H0_gate(self, qudit_idx, dt):
         """
         単一Quditの対角ハミルトニアンゲート
         """
         phi_1 = -self.E_T * dt / self.hbar
         phi_2 = -self.E_S * dt / self.hbar
-
+        
         # 3x3対角行列
         U_H0 = np.diag([1.0, np.exp(1j * phi_1), np.exp(1j * phi_2)])
-
+        
         return U_H0
-
+    
     def apply_transfer_gate(self, circuit, mol_reg, pair_idx, dt):
         """
         エネルギー移動ゲートを基本ゲートで実装
         """
         i, j = self.neighbors[pair_idx]
         theta = self.V[pair_idx] * dt / self.hbar
-
+        
         # Hadamard様ゲート（準位0と1の間）
         circuit.rh(mol_reg[i], [0, 1])
-
+        
         # 制御回転
         circuit.cx([mol_reg[i], mol_reg[j]], [0, 1, 1, theta])
-
+        
         # 逆Hadamard
         circuit.rh(mol_reg[i], [0, 1])
-
+        
         # 位相補正
-        circuit.virtrz(mol_reg[i], [1, -theta / 2])
-        circuit.virtrz(mol_reg[j], [1, -theta / 2])
-
+        circuit.virtrz(mol_reg[i], [1, -theta/2])
+        circuit.virtrz(mol_reg[j], [1, -theta/2])
+    
     def apply_TTA_gate(self, circuit, mol_reg, pair_idx, dt):
         """
         TTAゲートを基本ゲートで実装
@@ -1337,105 +1329,101 @@ class MolecularTripletSimulator:
         i, j = self.neighbors[pair_idx]
         phi = self.J[pair_idx] * dt / self.hbar
         sqrt2 = np.sqrt(2)
-
+        
         # ステップ1: 基底変換
         angle_1 = np.pi / 4
         circuit.r(mol_reg[i], [1, 2, angle_1, 0])
         circuit.r(mol_reg[j], [0, 2, angle_1, 0])
-
+        
         # ステップ2: 制御位相ゲート
         circuit.cx([mol_reg[i], mol_reg[j]], [0, 2, 1, sqrt2 * phi])
         circuit.cx([mol_reg[i], mol_reg[j]], [0, 2, 2, -sqrt2 * phi])
-
+        
         # ステップ3: 基底変換の逆操作
         circuit.r(mol_reg[j], [0, 2, -angle_1, 0])
         circuit.r(mol_reg[i], [1, 2, -angle_1, 0])
-
+        
         # ステップ4: 位相補正
         circuit.virtrz(mol_reg[i], [1, -sqrt2 * phi / 2])
         circuit.virtrz(mol_reg[j], [0, -sqrt2 * phi / 2])
-
-    def suzuki_trotter_circuit(self, T_total, N_steps, initial_state="all_triplet"):
+    
+    def suzuki_trotter_circuit(self, T_total, N_steps, initial_state='all_triplet'):
         """
         鈴木トロッター2次分解による量子回路の構築
         """
         dt = T_total / N_steps
-
+        
         # 量子回路の初期化
         circuit = QuantumCircuit()
         molecule_reg = QuantumRegister("molecules", self.N, [3] * self.N)
         circuit.append(molecule_reg)
-
+        
         # 初期状態の準備
-        if initial_state == "all_triplet":
+        if initial_state == 'all_triplet':
             # すべてのQutritを |1⟩ (三重項)に初期化
             for i in range(self.N):
                 # X3ゲート: |0⟩ → |1⟩
                 circuit.x(molecule_reg[i])  # 実際には適切な励起ゲートを使用
-
+        
         # 各時間ステップ
         for step in range(N_steps):
             # 前半の対称分解
-
+            
             # (a) H₀ evolution (dt/2)
             for i in range(self.N):
-                U_h0_half = self.build_H0_gate(i, dt / 2)
+                U_h0_half = self.build_H0_gate(i, dt/2)
                 circuit.cu_one(molecule_reg[i], U_h0_half)
-
+            
             # (b) H_transfer evolution (dt/2)
-            for i, j in self.neighbors:
-                self.apply_transfer_gate(
-                    circuit, molecule_reg, self.neighbors.index((i, j)), dt / 2
-                )
-
+            for (i, j) in self.neighbors:
+                self.apply_transfer_gate(circuit, molecule_reg, 
+                                       self.neighbors.index((i, j)), dt/2)
+            
             # (c) H_TTA evolution (dt/2)
-            for i, j in self.neighbors:
-                self.apply_TTA_gate(
-                    circuit, molecule_reg, self.neighbors.index((i, j)), dt / 2
-                )
-
+            for (i, j) in self.neighbors:
+                self.apply_TTA_gate(circuit, molecule_reg,
+                                  self.neighbors.index((i, j)), dt/2)
+            
             # (d) H_rad evolution (dt)
             # 減衰は回路では直接表現できないため、ノイズモデルで扱う
-
+            
             # 後半の対称分解（逆順）
-
+            
             # (e) H_TTA evolution (dt/2)
-            for i, j in reversed(self.neighbors):
-                self.apply_TTA_gate(
-                    circuit, molecule_reg, self.neighbors.index((i, j)), dt / 2
-                )
-
+            for (i, j) in reversed(self.neighbors):
+                self.apply_TTA_gate(circuit, molecule_reg,
+                                  self.neighbors.index((i, j)), dt/2)
+            
             # (f) H_transfer evolution (dt/2)
-            for i, j in reversed(self.neighbors):
-                self.apply_transfer_gate(
-                    circuit, molecule_reg, self.neighbors.index((i, j)), dt / 2
-                )
-
+            for (i, j) in reversed(self.neighbors):
+                self.apply_transfer_gate(circuit, molecule_reg,
+                                       self.neighbors.index((i, j)), dt/2)
+            
             # (g) H₀ evolution (dt/2)
             for i in reversed(range(self.N)):
                 circuit.cu_one(molecule_reg[i], U_h0_half)
-
+        
         return circuit
-
-    def run_simulation(self, T_total, N_steps, backend_name="tnsim"):
+    
+    def run_simulation(self, T_total, N_steps, backend_name='tnsim'):
         """
         シミュレーションの実行
         """
         circuit = self.suzuki_trotter_circuit(T_total, N_steps)
-
+        
         # シミュレーションバックエンドの取得
         provider = MQTQuditProvider()
         backend = provider.get_backend(backend_name)
-
+        
         # 実行
         job = backend.run(circuit)
         result = job.result()
-
+        
         # 状態ベクトルの取得
         state_vector = result.get_state_vector()
-
+        
         return state_vector, circuit
-
+    
     def calculate_populations(self, state_vector):
         """
         各状態の個体数を計算
@@ -1443,14 +1431,14 @@ class MolecularTripletSimulator:
         N_S0 = 0.0
         N_T1 = 0.0
         N_S1 = 0.0
-
+        
         # 全基底状態を走査
         for idx, amplitude in enumerate(state_vector.flatten()):
-            prob = np.abs(amplitude) ** 2
-
+            prob = np.abs(amplitude)**2
+            
             # インデックスを3進数配列に変換
             config = self._index_to_config(idx)
-
+            
             # 各準位の個体数をカウント
             for level in config:
                 if level == 0:
@@ -1459,9 +1447,9 @@ class MolecularTripletSimulator:
                     N_T1 += prob
                 elif level == 2:
                     N_S1 += prob
-
+        
         return N_S0, N_T1, N_S1
-
+    
     def _index_to_config(self, idx):
         """
         線形インデックスを3進数配列に変換
@@ -1472,31 +1460,31 @@ class MolecularTripletSimulator:
             idx //= 3
         return config[::-1]
 
-
 # 使用例
 if __name__ == "__main__":
     # パラメータ設定
     N_molecules = 5
     E_T = 1.5  # eV
     E_S = 3.0  # eV
-    V = 0.1  # eV
-    J = 0.05  # eV
+    V = 0.1    # eV
+    J = 0.05   # eV
     Gamma_fl = 0.0  # まずは減衰なしで
-
+    
     # シミュレータの初期化
     simulator = MolecularTripletSimulator(
-        N_molecules, E_T, E_S, V, J, Gamma_fl, lattice_type="chain"
+        N_molecules, E_T, E_S, V, J, Gamma_fl,
+        lattice_type='chain'
     )
-
+    
     # シミュレーション実行
     T_total = 10.0  # 全時間
-    N_steps = 100  # ステップ数
-
+    N_steps = 100   # ステップ数
+    
     state_vector, circuit = simulator.run_simulation(T_total, N_steps)
-
+    
     # 個体数の計算
     N_S0, N_T1, N_S1 = simulator.calculate_populations(state_vector)
-
+    
     print(f"Population S0: {N_S0:.4f}")
     print(f"Population T1: {N_T1:.4f}")
     print(f"Population S1: {N_S1:.4f}")
@@ -1513,26 +1501,26 @@ def run_simulation_with_tracking(self, T_total, N_steps):
     時間発展を追跡するシミュレーション
     """
     dt = T_total / N_steps
-
+    
     # 初期状態ベクトル（すべて三重項）
     dim = 3**self.N
     state = np.zeros(dim, dtype=complex)
-
+    
     # |111...1⟩ に対応するインデックス
     # 3進数で1が並ぶ状態
     idx_all_triplet = sum(3**i for i in range(self.N))
     state[idx_all_triplet] = 1.0
-
+    
     # 時間発展の記録
     times = [0.0]
     populations = [(self.N, 0.0, 0.0)]  # (N_S0, N_T1, N_S1)
-
+    
     # 時間発展演算子の構築
-    U_H0_half = self._build_full_H0_operator(dt / 2)
-    U_transfer_half = self._build_full_transfer_operator(dt / 2)
-    U_TTA_half = self._build_full_TTA_operator(dt / 2)
+    U_H0_half = self._build_full_H0_operator(dt/2)
+    U_transfer_half = self._build_full_transfer_operator(dt/2)
+    U_TTA_half = self._build_full_TTA_operator(dt/2)
     U_rad = self._build_radiative_operator(dt)
-
+    
     # 鈴木トロッター分解による時間発展
     for step in range(N_steps):
         # 2次対称分解の適用
@@ -1543,19 +1531,18 @@ def run_simulation_with_tracking(self, T_total, N_steps):
         state = U_TTA_half @ state
         state = U_transfer_half @ state
         state = U_H0_half @ state
-
+        
         # 規格化（減衰がある場合）
         state /= np.linalg.norm(state)
-
+        
         # 観測量の計算
         t = (step + 1) * dt
         N_S0, N_T1, N_S1 = self.calculate_populations(state.reshape(-1, 1))
-
+        
         times.append(t)
         populations.append((N_S0, N_T1, N_S1))
-
+    
     return times, populations
-
 
 def _build_full_H0_operator(self, dt):
     """
@@ -1563,19 +1550,16 @@ def _build_full_H0_operator(self, dt):
     """
     dim = 3**self.N
     U_full = np.eye(dim, dtype=complex)
-
+    
     # 各基底状態に対して位相を適用
     for idx in range(dim):
         config = self._index_to_config(idx)
-        energy = sum(
-            self.E_T if level == 1 else self.E_S if level == 2 else 0
-            for level in config
-        )
+        energy = sum(self.E_T if level == 1 else self.E_S if level == 2 else 0 
+                    for level in config)
         phase = np.exp(-1j * energy * dt / self.hbar)
         U_full[idx, idx] = phase
-
+    
     return U_full
-
 
 def _build_full_transfer_operator(self, dt):
     """
@@ -1583,14 +1567,13 @@ def _build_full_transfer_operator(self, dt):
     """
     dim = 3**self.N
     U_full = np.eye(dim, dtype=complex)
-
+    
     # 各隣接対に対してゲートを適用
-    for i, j in self.neighbors:
+    for (i, j) in self.neighbors:
         U_pair = self.build_transfer_gate(dt)
         U_full = self._apply_two_qudit_gate(U_full, U_pair, i, j)
-
+    
     return U_full
-
 
 def _apply_two_qudit_gate(self, U_full, U_pair, qudit_i, qudit_j):
     """
@@ -1599,18 +1582,19 @@ def _apply_two_qudit_gate(self, U_full, U_pair, qudit_i, qudit_j):
     # テンソル積で拡張
     # 実装の詳細は省略（Kronecker積を用いる）
     # 完全な実装には、適切なインデックス操作が必要
-
+    
     # 簡易版: 疎行列を用いた実装
     from scipy.sparse import csr_matrix
-
+    
     dim = 3**self.N
     U_new = U_full.copy()
-
+    
     # qudit_i と qudit_j に作用するゲートを全体に拡張
     # （詳細な実装は長くなるため、概念的な記述）
-
+    
     return U_new
 ```
+
 
 ## 6. 観測量の計算
 
@@ -1697,34 +1681,30 @@ def calculate_correlation(state_vector, qudit_i, qudit_j, level_i, level_j):
     """
     2サイト相関関数を計算
     """
-    N = (
-        len(state_vector.shape)
-        if state_vector.ndim > 1
-        else int(np.log(len(state_vector)) / np.log(3))
-    )
-
+    N = len(state_vector.shape) if state_vector.ndim > 1 else int(np.log(len(state_vector)) / np.log(3))
+    
     # 期待値 <n_i n_j>
     expect_ij = 0.0
     for idx, amplitude in enumerate(state_vector.flatten()):
-        prob = np.abs(amplitude) ** 2
+        prob = np.abs(amplitude)**2
         config = index_to_config(idx, N, d=3)
         if config[qudit_i] == level_i and config[qudit_j] == level_j:
             expect_ij += prob
-
+    
     # 期待値 <n_i> と <n_j>
     expect_i = 0.0
     expect_j = 0.0
     for idx, amplitude in enumerate(state_vector.flatten()):
-        prob = np.abs(amplitude) ** 2
+        prob = np.abs(amplitude)**2
         config = index_to_config(idx, N, d=3)
         if config[qudit_i] == level_i:
             expect_i += prob
         if config[qudit_j] == level_j:
             expect_j += prob
-
+    
     # 相関関数
     correlation = expect_ij - expect_i * expect_j
-
+    
     return correlation
 ```
 
@@ -1791,34 +1771,34 @@ def adaptive_trotter_simulation(self, T_total, dt_initial=0.1, tolerance=1e-6):
     t = 0.0
     dt = dt_initial
     state = self.initialize_state()
-
+    
     times = [t]
     populations = [self.calculate_populations(state)]
-
+    
     while t < T_total:
         # 時刻 dt で1ステップ進める
         state_1 = self.one_step_evolution(state, dt)
-
+        
         # 時刻 dt/2 で2ステップ進める
-        state_half = self.one_step_evolution(state, dt / 2)
-        state_2 = self.one_step_evolution(state_half, dt / 2)
-
+        state_half = self.one_step_evolution(state, dt/2)
+        state_2 = self.one_step_evolution(state_half, dt/2)
+        
         # 誤差評価
         error = np.linalg.norm(state_1 - state_2)
-
+        
         if error < tolerance:
             # 誤差が許容範囲内
             state = state_2  # より精度の高い方を採用
             t += dt
             times.append(t)
             populations.append(self.calculate_populations(state))
-
+            
             # 時間刻みを増やす
             dt = min(dt * 1.5, T_total - t)
         else:
             # 誤差が大きい
             dt = dt * 0.5  # 時間刻みを減らして再試行
-
+    
     return times, populations
 ```
 
@@ -1860,18 +1840,21 @@ def convergence_test(self, T_total, N_steps_list):
     異なる時間刻み幅での収束テスト
     """
     results = []
-
+    
     for N_steps in N_steps_list:
         dt = T_total / N_steps
         state_final = self.run_simulation(T_total, N_steps)
         N_S0, N_T1, N_S1 = self.calculate_populations(state_final)
-
-        results.append(
-            {"N_steps": N_steps, "dt": dt, "N_S0": N_S0, "N_T1": N_T1, "N_S1": N_S1}
-        )
-
+        
+        results.append({
+            'N_steps': N_steps,
+            'dt': dt,
+            'N_S0': N_S0,
+            'N_T1': N_T1,
+            'N_S1': N_S1
+        })
+    
     return results
-
 
 # 使用例
 N_steps_list = [50, 100, 200, 400, 800]
@@ -1880,14 +1863,14 @@ results = simulator.convergence_test(T_total=10.0, N_steps_list=N_steps_list)
 # 収束プロット
 import matplotlib.pyplot as plt
 
-dts = [r["dt"] for r in results]
-N_T1_values = [r["N_T1"] for r in results]
+dts = [r['dt'] for r in results]
+N_T1_values = [r['N_T1'] for r in results]
 
 plt.figure()
-plt.loglog(dts, np.abs(np.array(N_T1_values) - N_T1_values[-1]), "o-")
-plt.xlabel("Time step Δt")
-plt.ylabel("Error in N_T1")
-plt.title("Convergence of Suzuki-Trotter method")
+plt.loglog(dts, np.abs(np.array(N_T1_values) - N_T1_values[-1]), 'o-')
+plt.xlabel('Time step Δt')
+plt.ylabel('Error in N_T1')
+plt.title('Convergence of Suzuki-Trotter method')
 plt.grid(True)
 plt.show()
 ```
@@ -1906,24 +1889,23 @@ def exact_diagonalization(self, T_total):
     # 全ハミルトニアン行列の構築
     dim = 3**self.N
     H_total = self._build_total_hamiltonian()
-
+    
     # 固有値分解
     eigenvalues, eigenvectors = np.linalg.eigh(H_total)
-
+    
     # 初期状態
     state_initial = self._initialize_state()
-
+    
     # 初期状態を固有基底に展開
     coeffs = eigenvectors.conj().T @ state_initial
-
+    
     # 時間発展
     time_evolved_coeffs = coeffs * np.exp(-1j * eigenvalues * T_total / self.hbar)
-
+    
     # 元の基底に戻す
     state_final = eigenvectors @ time_evolved_coeffs
-
+    
     return state_final
-
 
 def _build_total_hamiltonian(self):
     """
@@ -1931,15 +1913,16 @@ def _build_total_hamiltonian(self):
     """
     dim = 3**self.N
     H_total = np.zeros((dim, dim), dtype=complex)
-
+    
     # H₀項
     for idx in range(dim):
         config = self._index_to_config(idx)
-        energy = sum(self.E_T if l == 1 else self.E_S if l == 2 else 0 for l in config)
+        energy = sum(self.E_T if l == 1 else self.E_S if l == 2 else 0 
+                    for l in config)
         H_total[idx, idx] += energy
-
+    
     # H_transfer項（各隣接ペア）
-    for i, j in self.neighbors:
+    for (i, j) in self.neighbors:
         # |01⟩ ↔ |10⟩ 間の結合
         for idx1 in range(dim):
             config1 = self._index_to_config(idx1)
@@ -1950,9 +1933,9 @@ def _build_total_hamiltonian(self):
                 idx2 = self._config_to_index(config2)
                 H_total[idx1, idx2] += self.V
                 H_total[idx2, idx1] += self.V
-
+    
     # H_TTA項（各隣接ペア）
-    for i, j in self.neighbors:
+    for (i, j) in self.neighbors:
         # |11⟩ → |20⟩ と |11⟩ → |02⟩
         for idx1 in range(dim):
             config1 = self._index_to_config(idx1)
@@ -1964,7 +1947,7 @@ def _build_total_hamiltonian(self):
                 idx2 = self._config_to_index(config2)
                 H_total[idx1, idx2] += self.J
                 H_total[idx2, idx1] += self.J
-
+                
                 # |11⟩ → |02⟩
                 config3 = config1.copy()
                 config3[i] = 0
@@ -1972,9 +1955,8 @@ def _build_total_hamiltonian(self):
                 idx3 = self._config_to_index(config3)
                 H_total[idx1, idx3] += self.J
                 H_total[idx3, idx1] += self.J
-
+    
     return H_total
-
 
 def _config_to_index(self, config):
     """
@@ -1985,17 +1967,17 @@ def _config_to_index(self, config):
         idx += level * (3 ** (self.N - 1 - i))
     return idx
 
-
 # ベンチマーク
 state_exact = simulator.exact_diagonalization(T_total)
 state_trotter = simulator.run_simulation(T_total, N_steps=100)
 
 # フィデリティの計算
-fidelity = np.abs(np.vdot(state_exact.flatten(), state_trotter.flatten())) ** 2
+fidelity = np.abs(np.vdot(state_exact.flatten(), state_trotter.flatten()))**2
 print(f"Fidelity: {fidelity:.6f}")
 ```
 
 フィデリティ $F \approx 1$ であれば、トロッター分解の精度が十分であることを示す。
+
 
 ## 9. MQT Quditsフレームワークでの完全実装例
 
@@ -2014,16 +1996,15 @@ import matplotlib.pyplot as plt
 from mqt.qudits.quantum_circuit import QuantumCircuit, QuantumRegister
 from mqt.qudits.simulation import MQTQuditProvider
 
-
 class CompleteMolecularSimulator:
     """
     分子三重項状態の完全なQuditシミュレータ
     """
-
+    
     def __init__(self, N_molecules, E_T, E_S, V, J, Gamma_fl=0.0):
         """
         初期化
-
+        
         Parameters:
         -----------
         N_molecules : int
@@ -2043,41 +2024,47 @@ class CompleteMolecularSimulator:
         self.E_T = E_T
         self.E_S = E_S
         self.hbar = 0.6582  # eV·fs
-
+        
         # 相互作用パラメータの配列化
         self.V = V * np.ones(N_molecules - 1) if np.isscalar(V) else V
         self.J = J * np.ones(N_molecules - 1) if np.isscalar(J) else J
         self.Gamma_fl = Gamma_fl
-
+        
         # 隣接リスト
-        self.neighbors = [(i, i + 1) for i in range(N_molecules - 1)]
-
-    def create_initial_state_circuit(self, state_type="all_triplet"):
+        self.neighbors = [(i, i+1) for i in range(N_molecules - 1)]
+    
+    def create_initial_state_circuit(self, state_type='all_triplet'):
         """
         初期状態準備回路
         """
         circuit = QuantumCircuit()
         mol_reg = QuantumRegister("molecules", self.N, [3] * self.N)
         circuit.append(mol_reg)
-
-        if state_type == "all_triplet":
+        
+        if state_type == 'all_triplet':
             # すべての分子を三重項状態 |1⟩ に
             for i in range(self.N):
                 # カスタム励起ゲート: |0⟩ → |1⟩
-                U_excite = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]], dtype=complex)
+                U_excite = np.array([
+                    [0, 1, 0],
+                    [1, 0, 0],
+                    [0, 0, 1]
+                ], dtype=complex)
                 circuit.cu_one(mol_reg[i], U_excite)
-
-        elif state_type == "alternating":
+        
+        elif state_type == 'alternating':
             # 交互に |1⟩ と |0⟩
             for i in range(self.N):
                 if i % 2 == 1:
-                    U_excite = np.array(
-                        [[0, 1, 0], [1, 0, 0], [0, 0, 1]], dtype=complex
-                    )
+                    U_excite = np.array([
+                        [0, 1, 0],
+                        [1, 0, 0],
+                        [0, 0, 1]
+                    ], dtype=complex)
                     circuit.cu_one(mol_reg[i], U_excite)
-
+        
         return circuit, mol_reg
-
+    
     def build_single_step_circuit(self, mol_reg, dt):
         """
         1時間ステップ分の鈴木トロッター2次対称分解回路
@@ -2085,34 +2072,34 @@ class CompleteMolecularSimulator:
         """
         circuit_step = QuantumCircuit()
         circuit_step.append(mol_reg)
-
+        
         # (1) H₀ evolution (dt/2) - 前半
         phi_T = -self.E_T * dt / (2 * self.hbar)
         phi_S = -self.E_S * dt / (2 * self.hbar)
-
+        
         for i in range(self.N):
             # 準位1への位相
             circuit_step.virtrz(mol_reg[i], [1, phi_T])
             # 準位2への位相
             circuit_step.virtrz(mol_reg[i], [2, phi_S])
-
+        
         # (2) H_transfer evolution (dt/2) - 基本ゲートで実装
         for idx, (i, j) in enumerate(self.neighbors):
             theta = self.V[idx] * dt / (2 * self.hbar)
-
+            
             # エネルギー移動ゲート分解
             circuit_step.rh(mol_reg[i], [0, 1])
             circuit_step.cx([mol_reg[i], mol_reg[j]], [0, 1, 1, theta])
             circuit_step.rh(mol_reg[i], [0, 1])
-            circuit_step.virtrz(mol_reg[i], [1, -theta / 2])
-            circuit_step.virtrz(mol_reg[j], [1, -theta / 2])
-
+            circuit_step.virtrz(mol_reg[i], [1, -theta/2])
+            circuit_step.virtrz(mol_reg[j], [1, -theta/2])
+        
         # (3) H_TTA evolution (dt/2) - 基本ゲートで実装
         for idx, (i, j) in enumerate(self.neighbors):
             phi = self.J[idx] * dt / (2 * self.hbar)
             sqrt2 = np.sqrt(2)
             angle_1 = np.pi / 4
-
+            
             # TTAゲート分解
             circuit_step.r(mol_reg[i], [1, 2, angle_1, 0])
             circuit_step.r(mol_reg[j], [0, 2, angle_1, 0])
@@ -2122,16 +2109,16 @@ class CompleteMolecularSimulator:
             circuit_step.r(mol_reg[i], [1, 2, -angle_1, 0])
             circuit_step.virtrz(mol_reg[i], [1, -sqrt2 * phi / 2])
             circuit_step.virtrz(mol_reg[j], [0, -sqrt2 * phi / 2])
-
+        
         # (4) H_rad evolution (dt) - 中央
         # 減衰は後処理で扱う
-
+        
         # (5) H_TTA evolution (dt/2) - 後半（逆順）
         for idx, (i, j) in reversed(list(enumerate(self.neighbors))):
             phi = self.J[idx] * dt / (2 * self.hbar)
             sqrt2 = np.sqrt(2)
             angle_1 = np.pi / 4
-
+            
             # TTAゲート分解（逆順）
             circuit_step.r(mol_reg[i], [1, 2, angle_1, 0])
             circuit_step.r(mol_reg[j], [0, 2, angle_1, 0])
@@ -2141,98 +2128,92 @@ class CompleteMolecularSimulator:
             circuit_step.r(mol_reg[i], [1, 2, -angle_1, 0])
             circuit_step.virtrz(mol_reg[i], [1, -sqrt2 * phi / 2])
             circuit_step.virtrz(mol_reg[j], [0, -sqrt2 * phi / 2])
-
+        
         # (6) H_transfer evolution (dt/2) - 後半（逆順）
         for idx, (i, j) in reversed(list(enumerate(self.neighbors))):
             theta = self.V[idx] * dt / (2 * self.hbar)
-
+            
             # エネルギー移動ゲート分解（逆順）
             circuit_step.rh(mol_reg[i], [0, 1])
             circuit_step.cx([mol_reg[i], mol_reg[j]], [0, 1, 1, theta])
             circuit_step.rh(mol_reg[i], [0, 1])
-            circuit_step.virtrz(mol_reg[i], [1, -theta / 2])
-            circuit_step.virtrz(mol_reg[j], [1, -theta / 2])
-
+            circuit_step.virtrz(mol_reg[i], [1, -theta/2])
+            circuit_step.virtrz(mol_reg[j], [1, -theta/2])
+        
         # (7) H₀ evolution (dt/2) - 後半
         for i in reversed(range(self.N)):
             # 準位2への位相
             circuit_step.virtrz(mol_reg[i], [2, phi_S])
             # 準位1への位相
             circuit_step.virtrz(mol_reg[i], [1, phi_T])
-
+        
         return circuit_step
-
-    def run_full_simulation(
-        self,
-        T_total,
-        N_steps,
-        backend_name="tnsim",
-        initial_state="all_triplet",
-        track_dynamics=True,
-    ):
+    
+    def run_full_simulation(self, T_total, N_steps, backend_name='tnsim',
+                           initial_state='all_triplet', track_dynamics=True):
         """
         完全なシミュレーション実行
         """
         dt = T_total / N_steps
-
+        
         # プロバイダとバックエンドの取得
         provider = MQTQuditProvider()
         backend = provider.get_backend(backend_name)
-
+        
         if not track_dynamics:
             # 最終状態のみを取得（高速）
             circuit, mol_reg = self.create_initial_state_circuit(initial_state)
-
+            
             for step in range(N_steps):
                 step_circuit = self.build_single_step_circuit(mol_reg, dt)
                 circuit = self._compose_circuits(circuit, step_circuit)
-
+            
             job = backend.run(circuit)
             result = job.result()
             state_final = result.get_state_vector()
-
+            
             return state_final, None
-
+        
         else:
             # 時間発展を追跡（各ステップで測定）
             times = [0.0]
             populations_history = []
-
+            
             # 初期状態
             circuit, mol_reg = self.create_initial_state_circuit(initial_state)
             job = backend.run(circuit)
             result = job.result()
             state = result.get_state_vector()
-
+            
             pop_init = self._calculate_populations(state)
             populations_history.append(pop_init)
-
+            
             # 時間発展
             for step in range(N_steps):
                 step_circuit = self.build_single_step_circuit(mol_reg, dt)
-
+                
                 # 回路を合成して実行
                 full_circuit = self._compose_circuits(circuit, step_circuit)
                 job = backend.run(full_circuit)
                 result = job.result()
                 state = result.get_state_vector()
-
+                
                 # 減衰の適用（放射項）
                 if self.Gamma_fl > 0:
                     state = self._apply_radiative_decay(state, dt)
-
+                
                 # 観測量の計算
                 t = (step + 1) * dt
                 populations = self._calculate_populations(state)
-
+                
                 times.append(t)
                 populations_history.append(populations)
-
+                
                 # 次のステップのために回路を更新
                 circuit = full_circuit
-
-            return state, {"times": times, "populations": populations_history}
-
+            
+            return state, {'times': times, 'populations': populations_history}
+    
     def _compose_circuits(self, circuit1, circuit2):
         """
         2つの量子回路を合成（簡易版）
@@ -2240,18 +2221,18 @@ class CompleteMolecularSimulator:
         # MQT Quditsの実際のAPIに合わせて実装
         # ここでは概念的な実装
         return circuit1  # 実際には適切な合成が必要
-
+    
     def _calculate_populations(self, state_vector):
         """
         各状態の個体数を計算
         """
         state_flat = state_vector.flatten()
         N_S0, N_T1, N_S1 = 0.0, 0.0, 0.0
-
+        
         for idx, amplitude in enumerate(state_flat):
-            prob = np.abs(amplitude) ** 2
+            prob = np.abs(amplitude)**2
             config = self._index_to_config(idx)
-
+            
             for level in config:
                 if level == 0:
                     N_S0 += prob
@@ -2259,28 +2240,28 @@ class CompleteMolecularSimulator:
                     N_T1 += prob
                 elif level == 2:
                     N_S1 += prob
-
-        return {"N_S0": N_S0, "N_T1": N_T1, "N_S1": N_S1}
-
+        
+        return {'N_S0': N_S0, 'N_T1': N_T1, 'N_S1': N_S1}
+    
     def _apply_radiative_decay(self, state_vector, dt):
         """
         放射減衰を適用
         """
         state_flat = state_vector.flatten()
         new_state = state_flat.copy()
-
+        
         for idx, amplitude in enumerate(state_flat):
             config = self._index_to_config(idx)
             n_S1 = sum(1 for level in config if level == 2)
-
+            
             decay_factor = np.exp(-self.Gamma_fl * dt * n_S1 / 2)
             new_state[idx] *= decay_factor
-
+        
         # 規格化
         new_state /= np.linalg.norm(new_state)
-
+        
         return new_state.reshape(state_vector.shape)
-
+    
     def _index_to_config(self, idx):
         """
         線形インデックスを3進数配列に変換
@@ -2290,7 +2271,7 @@ class CompleteMolecularSimulator:
             config.append(idx % 3)
             idx //= 3
         return config[::-1]
-
+    
     def plot_dynamics(self, dynamics_data, save_path=None):
         """
         時間発展のプロット
@@ -2298,54 +2279,49 @@ class CompleteMolecularSimulator:
         if dynamics_data is None:
             print("No dynamics data to plot")
             return
-
-        times = dynamics_data["times"]
-        populations = dynamics_data["populations"]
-
-        N_S0_list = [p["N_S0"] for p in populations]
-        N_T1_list = [p["N_T1"] for p in populations]
-        N_S1_list = [p["N_S1"] for p in populations]
-
+        
+        times = dynamics_data['times']
+        populations = dynamics_data['populations']
+        
+        N_S0_list = [p['N_S0'] for p in populations]
+        N_T1_list = [p['N_T1'] for p in populations]
+        N_S1_list = [p['N_S1'] for p in populations]
+        
         plt.figure(figsize=(10, 6))
-        plt.plot(
-            times, N_S0_list, "b-", linewidth=2, label="$N_{S_0}$ (Ground singlet)"
-        )
-        plt.plot(times, N_T1_list, "r-", linewidth=2, label="$N_{T_1}$ (Triplet)")
-        plt.plot(
-            times, N_S1_list, "g-", linewidth=2, label="$N_{S_1}$ (Excited singlet)"
-        )
-
-        plt.xlabel("Time (fs)", fontsize=14)
-        plt.ylabel("Population", fontsize=14)
-        plt.title("Quantum Dynamics of Molecular Triplet States", fontsize=16)
+        plt.plot(times, N_S0_list, 'b-', linewidth=2, label='$N_{S_0}$ (Ground singlet)')
+        plt.plot(times, N_T1_list, 'r-', linewidth=2, label='$N_{T_1}$ (Triplet)')
+        plt.plot(times, N_S1_list, 'g-', linewidth=2, label='$N_{S_1}$ (Excited singlet)')
+        
+        plt.xlabel('Time (fs)', fontsize=14)
+        plt.ylabel('Population', fontsize=14)
+        plt.title('Quantum Dynamics of Molecular Triplet States', fontsize=16)
         plt.legend(fontsize=12)
         plt.grid(True, alpha=0.3)
         plt.xlim(0, max(times))
         plt.ylim(0, self.N + 0.5)
-
+        
         if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches="tight")
-
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        
         plt.show()
-
+    
     def calculate_fluorescence_intensity(self, dynamics_data):
         """
         蛍光強度を計算
         """
         if dynamics_data is None:
             return None
-
-        times = dynamics_data["times"]
-        populations = dynamics_data["populations"]
-
-        I_fl = [self.Gamma_fl * p["N_S1"] for p in populations]
-
+        
+        times = dynamics_data['times']
+        populations = dynamics_data['populations']
+        
+        I_fl = [self.Gamma_fl * p['N_S1'] for p in populations]
+        
         # 累積蛍光量
         dt = times[1] - times[0] if len(times) > 1 else 0
         I_total = np.sum(I_fl) * dt
-
-        return {"times": times, "intensity": I_fl, "total": I_total}
-
+        
+        return {'times': times, 'intensity': I_fl, 'total': I_total}
 
 # ==================== 使用例 ====================
 
@@ -2354,27 +2330,32 @@ if __name__ == "__main__":
     N_molecules = 10
     E_T = 1.5  # eV
     E_S = 3.0  # eV
-    V = 0.1  # eV
-    J = 0.05  # eV
+    V = 0.1    # eV
+    J = 0.05   # eV
     Gamma_fl = 0.01  # fs^-1
-
+    
     # シミュレータの初期化
     simulator = CompleteMolecularSimulator(
-        N_molecules=N_molecules, E_T=E_T, E_S=E_S, V=V, J=J, Gamma_fl=Gamma_fl
+        N_molecules=N_molecules,
+        E_T=E_T,
+        E_S=E_S,
+        V=V,
+        J=J,
+        Gamma_fl=Gamma_fl
     )
-
+    
     # シミュレーション実行
     print("Running quantum simulation...")
     T_total = 1000.0  # fs
     N_steps = 200
-
+    
     state_final, dynamics_data = simulator.run_full_simulation(
         T_total=T_total,
         N_steps=N_steps,
-        initial_state="all_triplet",
-        track_dynamics=True,
+        initial_state='all_triplet',
+        track_dynamics=True
     )
-
+    
     # 結果の表示
     print("\nFinal populations:")
     final_pop = simulator._calculate_populations(state_final)
@@ -2382,15 +2363,15 @@ if __name__ == "__main__":
     print(f"  N_T1 = {final_pop['N_T1']:.4f}")
     print(f"  N_S1 = {final_pop['N_S1']:.4f}")
     print(f"  Total = {sum(final_pop.values()):.4f}")
-
+    
     # 蛍光強度の計算
     fluorescence = simulator.calculate_fluorescence_intensity(dynamics_data)
     if fluorescence:
         print(f"\nTotal fluorescence: {fluorescence['total']:.4e}")
-
+    
     # プロット
-    simulator.plot_dynamics(dynamics_data, save_path="triplet_dynamics.png")
-
+    simulator.plot_dynamics(dynamics_data, save_path='triplet_dynamics.png')
+    
     print("\nSimulation completed successfully!")
 ```
 
@@ -2405,7 +2386,7 @@ class InhomogeneousMolecularSimulator(CompleteMolecularSimulator):
     """
     不均一な分子系のシミュレータ
     """
-
+    
     def __init__(self, N_molecules, E_T_array, E_S_array, V_array, J_array, Gamma_fl):
         """
         E_T_array, E_S_array: 各分子のエネルギー配列
@@ -2418,37 +2399,37 @@ class InhomogeneousMolecularSimulator(CompleteMolecularSimulator):
         self.J_array = J_array
         self.Gamma_fl = Gamma_fl
         self.hbar = 0.6582
-        self.neighbors = [(i, i + 1) for i in range(N_molecules - 1)]
-
+        self.neighbors = [(i, i+1) for i in range(N_molecules - 1)]
+    
     def build_single_step_circuit(self, mol_reg, dt):
         """
         不均一系用の時間発展回路（基本ゲートのみ使用）
         """
         circuit_step = QuantumCircuit()
         circuit_step.append(mol_reg)
-
+        
         # 各分子ごとに異なるエネルギー
         for i in range(self.N):
             phi_T = -self.E_T_array[i] * dt / (2 * self.hbar)
             phi_S = -self.E_S_array[i] * dt / (2 * self.hbar)
-
+            
             circuit_step.virtrz(mol_reg[i], [1, phi_T])
             circuit_step.virtrz(mol_reg[i], [2, phi_S])
-
+        
         # 各ペアごとに異なる相互作用（基本ゲートで実装）
         for idx, (i, j) in enumerate(self.neighbors):
             theta = self.V_array[idx] * dt / (2 * self.hbar)
             phi = self.J_array[idx] * dt / (2 * self.hbar)
             sqrt2 = np.sqrt(2)
             angle_1 = np.pi / 4
-
+            
             # エネルギー移動ゲート分解
             circuit_step.rh(mol_reg[i], [0, 1])
             circuit_step.cx([mol_reg[i], mol_reg[j]], [0, 1, 1, theta])
             circuit_step.rh(mol_reg[i], [0, 1])
-            circuit_step.virtrz(mol_reg[i], [1, -theta / 2])
-            circuit_step.virtrz(mol_reg[j], [1, -theta / 2])
-
+            circuit_step.virtrz(mol_reg[i], [1, -theta/2])
+            circuit_step.virtrz(mol_reg[j], [1, -theta/2])
+            
             # TTAゲート分解
             circuit_step.r(mol_reg[i], [1, 2, angle_1, 0])
             circuit_step.r(mol_reg[j], [0, 2, angle_1, 0])
@@ -2458,10 +2439,10 @@ class InhomogeneousMolecularSimulator(CompleteMolecularSimulator):
             circuit_step.r(mol_reg[i], [1, 2, -angle_1, 0])
             circuit_step.virtrz(mol_reg[i], [1, -sqrt2 * phi / 2])
             circuit_step.virtrz(mol_reg[j], [0, -sqrt2 * phi / 2])
-
+        
         # 後半は同様に逆順で実装
         # （対称分解の後半部分も同様に基本ゲートを使用）
-
+        
         return circuit_step
 ```
 
@@ -2471,34 +2452,33 @@ class InhomogeneousMolecularSimulator(CompleteMolecularSimulator):
 def create_2D_lattice_neighbors(Lx, Ly):
     """
     2次元格子の隣接リストを生成
-
+    
     Parameters:
     -----------
     Lx, Ly : int
         x方向とy方向のサイト数
-
+    
     Returns:
     --------
     neighbors : list of tuples
         隣接ペアのリスト
     """
     neighbors = []
-
-    def site_index(ix, it):
-        return ix * Ly + it
-
+    
+    def site_index(ix, iy):
+        return ix * Ly + iy
+    
     # 横方向の結合
     for ix in range(Lx):
-        for it in range(Ly - 1):
-            neighbors.append((site_index(ix, it), site_index(ix, it + 1)))
-
+        for iy in range(Ly - 1):
+            neighbors.append((site_index(ix, iy), site_index(ix, iy + 1)))
+    
     # 縦方向の結合
     for ix in range(Lx - 1):
-        for it in range(Ly):
-            neighbors.append((site_index(ix, it), site_index(ix + 1, it)))
-
+        for iy in range(Ly):
+            neighbors.append((site_index(ix, iy), site_index(ix + 1, iy)))
+    
     return neighbors
-
 
 # 使用例
 Lx, Ly = 4, 4
@@ -2506,10 +2486,16 @@ N_molecules = Lx * Ly
 neighbors_2D = create_2D_lattice_neighbors(Lx, Ly)
 
 simulator_2D = CompleteMolecularSimulator(
-    N_molecules=N_molecules, E_T=1.5, E_S=3.0, V=0.1, J=0.05, Gamma_fl=0.01
+    N_molecules=N_molecules,
+    E_T=1.5,
+    E_S=3.0,
+    V=0.1,
+    J=0.05,
+    Gamma_fl=0.01
 )
 simulator_2D.neighbors = neighbors_2D
 ```
+
 
 ## 10. まとめと今後の展望
 
@@ -2520,26 +2506,22 @@ simulator_2D.neighbors = neighbors_2D
 #### 10.1.1 主要な貢献
 
 1. **Qudit表現の確立**
-
    - 3準位分子系（$|S_0\rangle, |T_1\rangle, |S_1\rangle$）を1 Qutritで自然に表現
    - $N$ 分子系を $N$ Qutritsのテンソル積空間で記述
    - 状態空間の次元: $3^N$
 
 2. **ハミルトニアンのQudit演算子表現**
-
    - 対角項 $\hat{H}_0$: 単一Qutrit位相ゲート（VirtRz）
    - エネルギー移動 $\hat{H}_{\text{transfer}}$: Hadamard様ゲート（RH）+ 制御回転（CEx）+ 位相補正（VirtRz）の組み合わせ
    - TTA過程 $\hat{H}_{\text{TTA}}$: 局所回転（R）+ 制御回転（CEx）+ 位相補正（VirtRz）の組み合わせ
    - 放射減衰 $\hat{H}_{\text{rad}}$: 非ユニタリ操作（ノイズモデル）
 
 3. **鈴木トロッター分解の適用**
-
    - 2次対称分解: $\mathcal{O}(\Delta t^2)$ の全体誤差
    - 各時間ステップをQuditゲートの列に分解
    - 並列化による回路深さの削減
 
 4. **MQT Quditsフレームワークでの実装**
-
    - `QuantumCircuit`, `QuantumRegister` による回路構築
    - `virtrz`, `r`, `rz`, `rh` による単一Quditゲートの適用
    - `cx` (CEx) による制御2-Quditゲートの適用
@@ -2558,14 +2540,12 @@ simulator_2D.neighbors = neighbors_2D
 #### 10.2.1 量子ビット方式との比較
 
 **量子ビット方式**:
-
 - 3準位系を表現するには2量子ビット（4次元空間）が必要
 - 1つの準位が未使用となり、非効率
 - $N$ 分子系: $2N$ 量子ビット、状態空間 $2^{2N}$ 次元
 - 物理的制約（未使用準位への遷移抑制）が必要
 
 **Qudit方式**:
-
 - 3準位系を1 Qutritで自然に表現
 - すべての準位が物理的に意味を持つ
 - $N$ 分子系: $N$ Qutrit、状態空間 $3^N$ 次元
@@ -2574,13 +2554,11 @@ simulator_2D.neighbors = neighbors_2D
 #### 10.2.2 ゲート数の比較
 
 エネルギー移動演算子の実装：
-
 - **量子ビット**: 複数のCNOTゲートと局所回転（典型的に10個以上）
 - **Qutrit（基本ゲート方式・本文書の実装）**: Hadamard様ゲート2個 + 制御回転1個 + 位相補正2個 = 計5個の基本ゲート
 - ※ 参考: カスタム2-Quditゲートを許容する場合は1個で実装可能だが、本文書では基本ゲートのみを使用
 
 TTA演算子の実装：
-
 - **量子ビット**: さらに複雑な分解が必要（20個以上のゲート）
 - **Qutrit（基本ゲート方式・本文書の実装）**: 局所回転4個 + 制御回転2個 + 位相補正2個 = 計8個の基本ゲート
 - ※ 参考: カスタム2-Quditゲートを許容する場合は1個で実装可能だが、本文書では基本ゲートのみを使用
@@ -2594,13 +2572,11 @@ TTA演算子の実装：
 本理論は以下の実験系に適用可能：
 
 1. **三重項-三重項消滅アップコンバージョン（TTA-UC）**
-
    - 低エネルギー光子から高エネルギー光子への変換
    - 太陽電池効率の向上
    - 本シミュレーションにより最適な分子配置や相互作用強度を予測
 
 2. **遅延蛍光材料**
-
    - 有機ELデバイスの発光効率向上
    - TTA過程による励起一重項生成の最大化
    - 時間分解スペクトルの理論予測
@@ -2614,10 +2590,10 @@ TTA演算子の実装：
 シミュレーションを用いて、実験系の設計指針を得る：
 
 ```python
-def optimize_parameters(simulator_class, param_ranges, objective="max_S1"):
+def optimize_parameters(simulator_class, param_ranges, objective='max_S1'):
     """
     パラメータ空間の最適化
-
+    
     Parameters:
     -----------
     simulator_class : class
@@ -2626,41 +2602,42 @@ def optimize_parameters(simulator_class, param_ranges, objective="max_S1"):
         パラメータの範囲 {'V': [0.05, 0.2], 'J': [0.01, 0.1], ...}
     objective : str
         最適化目標（'max_S1', 'max_fluorescence', など）
-
+    
     Returns:
     --------
     optimal_params : dict
         最適パラメータ
     """
     from scipy.optimize import differential_evolution
-
+    
     def objective_function(params):
         V, J = params
-        sim = simulator_class(N_molecules=10, E_T=1.5, E_S=3.0, V=V, J=J, Gamma_fl=0.01)
+        sim = simulator_class(N_molecules=10, E_T=1.5, E_S=3.0, 
+                             V=V, J=J, Gamma_fl=0.01)
         state_final, dynamics = sim.run_full_simulation(
             T_total=1000.0, N_steps=100, track_dynamics=True
         )
-
-        if objective == "max_S1":
+        
+        if objective == 'max_S1':
             # 最大一重項個体数
-            N_S1_max = max(p["N_S1"] for p in dynamics["populations"])
+            N_S1_max = max(p['N_S1'] for p in dynamics['populations'])
             return -N_S1_max  # 最小化問題に変換
-
-        elif objective == "max_fluorescence":
+        
+        elif objective == 'max_fluorescence':
             # 累積蛍光量
             fluorescence = sim.calculate_fluorescence_intensity(dynamics)
-            return -fluorescence["total"]
-
+            return -fluorescence['total']
+    
     # 最適化実行
-    bounds = [param_ranges["V"], param_ranges["J"]]
+    bounds = [param_ranges['V'], param_ranges['J']]
     result = differential_evolution(objective_function, bounds)
-
+    
     optimal_params = {
-        "V": result.x[0],
-        "J": result.x[1],
-        "objective_value": -result.fun,
+        'V': result.x[0],
+        'J': result.x[1],
+        'objective_value': -result.fun
     }
-
+    
     return optimal_params
 ```
 
@@ -2669,7 +2646,6 @@ def optimize_parameters(simulator_class, param_ranges, objective="max_S1"):
 #### 10.4.1 高次Quditへの拡張
 
 より複雑な分子系（4準位以上）への対応：
-
 - Ququart（$d=4$）: 追加の励起状態を含む
 - Ququint（$d=5$）: 振動準位の明示的な扱い
 
@@ -2680,7 +2656,6 @@ $$
 #### 10.4.2 混合次元Qudit系
 
 MQT Quditsの特徴である混合次元レジスタの活用：
-
 - 分子系: Qutrit（$d=3$）
 - 光子場: Qubit（$d=2$）または無限次元（フォック状態切断）
 
@@ -2688,10 +2663,8 @@ MQT Quditsの特徴である混合次元レジスタの活用：
 from mqt.qudits.quantum_circuit import QuantumRegister
 
 # 混合次元レジスタ
-molecule_reg = QuantumRegister("molecules", 10, [3] * 10)  # 10 Qutrits
-photon_reg = QuantumRegister(
-    "photons", 5, [10] * 5
-)  # 5 Qudits (d=10, 切断フォック空間)
+molecule_reg = QuantumRegister("molecules", 10, [3]*10)  # 10 Qutrits
+photon_reg = QuantumRegister("photons", 5, [10]*5)       # 5 Qudits (d=10, 切断フォック空間)
 
 circuit = QuantumCircuit()
 circuit.append(molecule_reg)
@@ -2704,7 +2677,6 @@ circuit.append(photon_reg)
 #### 10.4.3 量子誤り訂正
 
 Qudit量子誤り訂正符号の適用：
-
 - Qutrit stabilizer code
 - Bosonic code（振動子符号）
 
@@ -2729,7 +2701,6 @@ $$
 #### 10.4.5 テンソルネットワークとの融合
 
 大規模系（$N \gg 10$）では、テンソルネットワーク法との組み合わせが有効：
-
 - Matrix Product States (MPS) 表現
 - Density Matrix Renormalization Group (DMRG)
 
@@ -2742,17 +2713,14 @@ MQT Quditsのバックエンド `tnsim`（Tensor Network Simulator）を活用�
 Qudit量子計算の実験実装候補：
 
 1. **超伝導量子回路**
-
    - Transmon qutritモード
    - 3準位以上の制御が既に実証済み
 
 2. **イオントラップ**
-
    - 複数の超微細準位を利用
    - 高精度な局所制御とエンタングリングゲート
 
 3. **冷却原子**
-
    - 光格子中の原子
    - Rydberg励起による長距離相互作用
 
@@ -2798,43 +2766,37 @@ Qudit量子計算の実験実装候補：
 ## 参考文献
 
 ### 量子ダイナミクス理論
-
 1. 本文書の基礎理論: `quantum_dynamics_molecular_triplet_states.md`
 2. 三重項-三重項消滅の物理化学
 
 ### 鈴木トロッター分解
-
 3. 本文書の数値計算理論: `suzuki_trotter_decomposition_theory.md`
-4. Suzuki, M. (1990). "Fractal decomposition of exponential operators". _Phys. Lett. A_ **146**, 319-323.
-5. Children, A. M., et al. (2019). "Theory of Trotter error with commutator scaling". _Phys. Rev. X_ **9**, 011011.
+4. Suzuki, M. (1990). "Fractal decomposition of exponential operators". *Phys. Lett. A* **146**, 319-323.
+5. Childs, A. M., et al. (2019). "Theory of Trotter error with commutator scaling". *Phys. Rev. X* **9**, 011011.
 
 ### Qudit量子計算
-
-6. Gokhale, P., et al. (2019). "Asymptotic improvements to quantum circuits via qutrits". _Proc. ACM Symp. STOC_ **51**, 554-565.
-7. Murali, P., et al. (2020). "Software mitigation of crosstalk on noisy intermediate-scale quantum computers". _ASPLOS 2020_.
+6. Gokhale, P., et al. (2019). "Asymptotic improvements to quantum circuits via qutrits". *Proc. ACM Symp. STOC* **51**, 554-565.
+7. Murali, P., et al. (2020). "Software mitigation of crosstalk on noisy intermediate-scale quantum computers". *ASPLOS 2020*.
 
 ### 量子ゲート分解理論
-
-8. Vatan, F., & Williams, C. (2004). "Optimal quantum circuits for general two-qubit gates". _Phys. Rev. A_ **69**, 032315.
-9. Shende, V. V., Bullock, S. S., & Markov, I. L. (2006). "Synthesis of quantum-logic circuits". _IEEE Trans. CAD_ **25**, 1000-1010.
-10. Cross, A. W., et al. (2019). "Validating quantum computers using randomized model circuits". _Phys. Rev. A_ **100**, 032328.
+8. Vatan, F., & Williams, C. (2004). "Optimal quantum circuits for general two-qubit gates". *Phys. Rev. A* **69**, 032315.
+9. Shende, V. V., Bullock, S. S., & Markov, I. L. (2006). "Synthesis of quantum-logic circuits". *IEEE Trans. CAD* **25**, 1000-1010.
+10. Cross, A. W., et al. (2019). "Validating quantum computers using randomized model circuits". *Phys. Rev. A* **100**, 032328.
 
 ### MQT Quditsフレームワーク
-
 11. MQT Qudits Documentation: https://mqt.readthedocs.io/projects/qudits/
-12. Grurl, T., et al. (2023). "Automatic Implementation and Evaluation of Error-Correcting Codes for Quantum Computing: An Overview". _ACM Computing Surveys_.
+12. Grurl, T., et al. (2023). "Automatic Implementation and Evaluation of Error-Correcting Codes for Quantum Computing: An Overview". *ACM Computing Surveys*.
 
 ### 実験実装
-
-13. Nikolaeva, A. S., et al. (2021). "Multi-level quantum systems as qudits: Implementation in superconducting circuits". _Quantum Sci. Technol._ **6**, 035007.
-14. Chi, Y., et al. (2022). "A programmable qudit-based quantum processor". _Nat. Commun._ **13**, 1166.
+13. Nikolaeva, A. S., et al. (2021). "Multi-level quantum systems as qudits: Implementation in superconducting circuits". *Quantum Sci. Technol.* **6**, 035007.
+14. Chi, Y., et al. (2022). "A programmable qudit-based quantum processor". *Nat. Commun.* **13**, 1166.
 
 ---
 
-**文書作成日**: 2025-10-14
-**分野**: 量子情報科学、量子化学、Qudit量子計算
-**対象**: MQT Quditsフレームワークを用いた量子アルゴリズム実装
-**参照文書**:
-
+**文書作成日**: 2025-10-14  
+**分野**: 量子情報科学、量子化学、Qudit量子計算  
+**対象**: MQT Quditsフレームワークを用いた量子アルゴリズム実装  
+**参照文書**: 
 - `quantum_dynamics_molecular_triplet_states.md`
 - `suzuki_trotter_decomposition_theory.md`
+

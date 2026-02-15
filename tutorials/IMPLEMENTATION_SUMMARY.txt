@@ -31,21 +31,21 @@ UPDATED FILES:
 --------------
 4. tutorials/mqt_qudits_four_molecule_implementation.py       [+353 lines]
    Before: 489 lines  →  After: 842 lines
-
+   
    ADDED CLASSES:
    - ExactDiagonalizationSolver (250 lines)
      * build_total_hamiltonian()  - Exact 81×81 Hamiltonian construction
      * diagonalize()              - Exact eigenvalue decomposition
      * time_evolution()           - Exact time evolution (no approximation)
      * simulate()                 - Complete exact simulation
-
+   
    ADDED FUNCTIONS:
    - calculate_fidelity()         - State fidelity calculation
    - compare_qudit_vs_exact()     - Comprehensive comparison
 
 5. tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb [+195 lines]
    Before: 10 cells  →  After: 12 cells
-
+   
    NEW CELLS:
    - Cell 9:  Exact diagonalization calculation
    - Cell 10: Qudit vs Exact comparison with 4 plots

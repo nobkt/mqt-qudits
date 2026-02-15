@@ -9,13 +9,12 @@ from functools import reduce
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from gksl_physical_parameters import GKSLPhysicalParameters
+from gksl_physical_parameters import GKSLPhysicalParameters
 
 
-def build_single_site_operator(op: np.ndarray, site: int, N: int, d: int) -> np.ndarray:
+def build_single_site_operator(
+    op: np.ndarray, site: int, N: int, d: int
+) -> np.ndarray:
     """Build full-system operator from a single-site operator using tensor products."""
     eye = np.eye(d, dtype=np.complex128)
     op_list = [eye] * N
@@ -33,8 +32,7 @@ def build_onsite_hamiltonian(params: GKSLPhysicalParameters) -> np.ndarray:
     for i in range(N):
         H0 += build_single_site_operator(h_local, i, N, d)
     if not np.allclose(H0, H0.conj().T):
-        msg = "Onsite Hamiltonian is not Hermitian"
-        raise ValueError(msg)
+        raise ValueError("Onsite Hamiltonian is not Hermitian")
     return H0
 
 
@@ -61,8 +59,7 @@ def build_transfer_hamiltonian(params: GKSLPhysicalParameters) -> np.ndarray:
         H_t += params.V * (fwd + fwd.conj().T)
 
     if not np.allclose(H_t, H_t.conj().T):
-        msg = "Transfer Hamiltonian is not Hermitian"
-        raise ValueError(msg)
+        raise ValueError("Transfer Hamiltonian is not Hermitian")
     return H_t
 
 
@@ -155,7 +152,9 @@ def compute_purity(rho: np.ndarray) -> float:
     return float(np.real(np.trace(rho @ rho)))
 
 
-def compute_populations_from_density_matrix(rho: np.ndarray, params: GKSLPhysicalParameters) -> dict:
+def compute_populations_from_density_matrix(
+    rho: np.ndarray, params: GKSLPhysicalParameters
+) -> dict:
     """Compute N_S0, N_T1, N_S1 populations from density matrix diagonal.
 
     For each computational basis state, decompose into per-molecule local states
@@ -267,7 +266,7 @@ def build_H_total_boson(params: GKSLPhysicalParameters) -> np.ndarray:
     N = params.N_molecules
     d = params.d
     n_max = params.n_max
-    d**N
+    dim_el = d**N
     dim_ph_single = n_max + 1
     dim_ph = dim_ph_single**N
 
@@ -285,7 +284,9 @@ def extend_lindblad_operators(
     return [(np.kron(L, eye_ph), gamma) for L, gamma in lindblad_ops_el]
 
 
-def partial_trace_phonon(rho_total: np.ndarray, dim_el: int, dim_ph: int) -> np.ndarray:
+def partial_trace_phonon(
+    rho_total: np.ndarray, dim_el: int, dim_ph: int
+) -> np.ndarray:
     """Trace out phonon degrees of freedom."""
     rho_reshaped = rho_total.reshape((dim_el, dim_ph, dim_el, dim_ph))
     return np.trace(rho_reshaped, axis1=1, axis2=3).astype(np.complex128)

@@ -16,8 +16,6 @@ from scipy.integrate import solve_ivp
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from typing import TYPE_CHECKING
-
 from gksl_math_utils import (
     build_lindblad_operators,
     build_onsite_hamiltonian,
@@ -28,10 +26,8 @@ from gksl_math_utils import (
     unvectorize_density_matrix,
     vectorize_density_matrix,
 )
+from gksl_physical_parameters import GKSLPhysicalParameters
 from gksl_validation import PhysicsViolationError, validate_density_matrix  # noqa: F401
-
-if TYPE_CHECKING:
-    from gksl_physical_parameters import GKSLPhysicalParameters
 
 
 class ClassicalGKSLSimulator:
@@ -46,8 +42,7 @@ class ClassicalGKSLSimulator:
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
         if params.with_boson:
-            msg = "ClassicalGKSLSimulator is for non-boson model only"
-            raise ValueError(msg)
+            raise ValueError("ClassicalGKSLSimulator is for non-boson model only")
         self.params = params
 
         self.H_0 = build_onsite_hamiltonian(params)
@@ -81,14 +76,15 @@ class ClassicalGKSLSimulator:
         if state_type == "edge_triplet":
             # |1001⟩: molecules 0 and 3 in T1, molecules 1 and 2 in S0
             if N < 2:
-                msg = "edge_triplet requires N_molecules >= 2"
-                raise ValueError(msg)
+                raise ValueError("edge_triplet requires N_molecules >= 2")
             psi = np.zeros(dim, dtype=np.complex128)
             basis_state = [0] * N
             basis_state[0] = 1
             basis_state[-1] = 1
             # Convert digits in base-d (molecule states) to a linear basis index.
-            index = sum(digit * (d ** (N - 1 - i)) for i, digit in enumerate(basis_state))
+            index = sum(
+                digit * (d ** (N - 1 - i)) for i, digit in enumerate(basis_state)
+            )
             psi[index] = 1.0
             return np.outer(psi, psi.conj())
 
@@ -106,8 +102,7 @@ class ClassicalGKSLSimulator:
             psi[index] = 1.0
             return np.outer(psi, psi.conj())
 
-        msg = f"Unknown initial state type: {state_type}"
-        raise ValueError(msg)
+        raise ValueError(f"Unknown initial state type: {state_type}")
 
     # ------------------------------------------------------------------
     # Main simulation loop
@@ -130,7 +125,7 @@ class ClassicalGKSLSimulator:
         initial_state : str
             One of ``'edge_triplet'``, ``'all_triplet'``, ``'all_singlet'``.
 
-        Returns:
+        Returns
         -------
         dict
             Keys: times, populations, entropy, purity, trace, rho_final,
@@ -160,8 +155,7 @@ class ClassicalGKSLSimulator:
         )
 
         if not sol.success:
-            msg = f"ODE solver failed: {sol.message}"
-            raise RuntimeError(msg)
+            raise RuntimeError(f"ODE solver failed: {sol.message}")
 
         # ---- Post-processing ----
         times: list[float] = sol.t.tolist()
@@ -174,7 +168,9 @@ class ClassicalGKSLSimulator:
             rho = unvectorize_density_matrix(sol.y[:, k], dim)
 
             traces.append(float(np.real(np.trace(rho))))
-            populations.append(compute_populations_from_density_matrix(rho, self.params))
+            populations.append(
+                compute_populations_from_density_matrix(rho, self.params)
+            )
             entropies.append(compute_von_neumann_entropy(rho))
             purities.append(compute_purity(rho))
 

@@ -4,17 +4,13 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Callable
 
 import numpy as np
 from scipy.linalg import expm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from typing import TYPE_CHECKING
-
 from gksl_math_utils import unvectorize_density_matrix, vectorize_density_matrix
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 
 def stinespring_unitary_from_lindblad(L: np.ndarray, dt: float) -> np.ndarray:
@@ -62,7 +58,9 @@ def apply_stinespring_to_density_matrix(rho: np.ndarray, U: np.ndarray) -> np.nd
     rho_prime = U @ rho_ext @ U.conj().T
 
     # Partial trace over environment (2-level) using block structure
-    return rho_prime[:d_sys, :d_sys] + rho_prime[d_sys:, d_sys:]
+    rho_out = rho_prime[:d_sys, :d_sys] + rho_prime[d_sys:, d_sys:]
+
+    return rho_out
 
 
 def build_gksl_superoperator(
@@ -94,7 +92,11 @@ def build_gksl_superoperator(
         else:
             L_op = np.asarray(item, dtype=np.complex128)
         LdL = L_op.conj().T @ L_op
-        L_D += np.kron(L_op, L_op.conj()) - 0.5 * np.kron(LdL, I) - 0.5 * np.kron(I, LdL.T)
+        L_D += (
+            np.kron(L_op, L_op.conj())
+            - 0.5 * np.kron(LdL, I)
+            - 0.5 * np.kron(I, LdL.T)
+        )
 
     return L_H + L_D
 
@@ -127,7 +129,11 @@ def build_trotter_step_classical(
         else:
             L_op = np.asarray(item, dtype=np.complex128)
         LdL = L_op.conj().T @ L_op
-        L_D += np.kron(L_op, L_op.conj()) - 0.5 * np.kron(LdL, I) - 0.5 * np.kron(I, LdL.T)
+        L_D += (
+            np.kron(L_op, L_op.conj())
+            - 0.5 * np.kron(LdL, I)
+            - 0.5 * np.kron(I, LdL.T)
+        )
 
     # Precompute matrix exponentials
     U_H_half = expm(L_H * (dt / 2.0))

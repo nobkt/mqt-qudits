@@ -1,14 +1,13 @@
-from __future__ import annotations
-
-import os
 import sys
+import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import matplotlib as mpl
+import matplotlib
 
-mpl.use("Agg")
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def plot_population_dynamics(result, title=None, save_path=None):

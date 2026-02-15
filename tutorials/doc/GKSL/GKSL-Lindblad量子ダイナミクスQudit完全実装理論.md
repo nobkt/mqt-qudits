@@ -2,10 +2,10 @@
 
 ## 文書情報
 
-**作成日**: 2026年1月14日
-**バージョン**: 1.0.0
-**対象フレームワーク**: MQT-Qudits
-**理論的基礎**: GKSL-Lindblad方程式のStinespring dilation表現
+**作成日**: 2026年1月14日  
+**バージョン**: 1.0.0  
+**対象フレームワーク**: MQT-Qudits  
+**理論的基礎**: GKSL-Lindblad方程式のStinespring dilation表現  
 **適用系**: 分子三重項状態の開放量子系ダイナミクス
 
 ---
@@ -63,7 +63,6 @@ $$
 $$
 
 ここで：
-
 - $\hat{\rho}_S$: 系（System）の密度演算子
 - $|0\rangle_E$: 環境（Environment）の初期状態
 - $\hat{U}_{SE}$: 系と環境の合成系におけるユニタリ演算子
@@ -78,13 +77,13 @@ $$
 
 #### 1.2.2 他の手法との比較
 
-| 手法                     | 長所                                     | 短所                                        | 採用可否    |
-| ------------------------ | ---------------------------------------- | ------------------------------------------- | ----------- |
-| **Stinespring dilation** | ユニタリ演算のみ、厳密、量子回路実装可能 | 補助quditが必要                             | ✅ **採用** |
-| Kraus表現直接実装        | 数学的に簡潔                             | 非ユニタリ演算の実装困難                    | ❌ 不採用   |
-| 量子ジャンプ法           | 確率的シミュレーション                   | 統計誤差、軌跡依存性                        | ❌ 不採用   |
-| 超演算子行列指数関数     | 形式的に厳密                             | ヒルベルト空間次元の2乗、ヒューリスティック | ❌ **禁止** |
-| Trotterized Lindbladian  | 近似的実装                               | 散逸項の量子回路分解が不明瞭                | ❌ 不採用   |
+| 手法 | 長所 | 短所 | 採用可否 |
+|------|------|------|---------|
+| **Stinespring dilation** | ユニタリ演算のみ、厳密、量子回路実装可能 | 補助quditが必要 | ✅ **採用** |
+| Kraus表現直接実装 | 数学的に簡潔 | 非ユニタリ演算の実装困難 | ❌ 不採用 |
+| 量子ジャンプ法 | 確率的シミュレーション | 統計誤差、軌跡依存性 | ❌ 不採用 |
+| 超演算子行列指数関数 | 形式的に厳密 | ヒルベルト空間次元の2乗、ヒューリスティック | ❌ **禁止** |
+| Trotterized Lindbladian | 近似的実装 | 散逸項の量子回路分解が不明瞭 | ❌ 不採用 |
 
 **結論**: Stinespring dilationは、非ユニタリ過程を**完全にユニタリな量子回路**として実装する唯一の厳密な方法である。
 
@@ -131,13 +130,11 @@ $$
 #### 1.4.2 前提とする知識
 
 必須：
-
 - 量子力学（密度演算子、ユニタリ時間発展）
 - 量子回路（量子ゲート、テンソル積）
 - 線形代数（ユニタリ行列、固有値分解）
 
 推奨：
-
 - 開放量子系理論（Lindblad方程式、CPTP写像）
 - MQT-Quditsの基本的な使用法
 - 数値線形代数（行列指数関数、Trotter分解）
@@ -146,16 +143,16 @@ $$
 
 本文書を読む前に、以下の文書を読むことを強く推奨する：
 
-1. `tutorials/doc/GKSL/量子ダイナミクスGKSL-Lindblad理論完全定式化.md`
+1. `tutorials/doc/GKSL/量子ダイナミクスGKSL-Lindblad理論完全定式化.md`  
    → GKSL-Lindblad方程式の物理的基礎
 
-2. `tutorials/doc/quantum_dynamics_molecular_triplet_states.md`
+2. `tutorials/doc/quantum_dynamics_molecular_triplet_states.md`  
    → 分子系のハミルトニアンとTTA過程
 
-3. `tutorials/doc/mqt_qudits_gates_and_bases_reference.md`
+3. `tutorials/doc/mqt_qudits_gates_and_bases_reference.md`  
    → MQT-Quditsの基本ゲートセット
 
-4. `tutorials/doc/qubit/qubit_quantum_dynamics_molecular_triplet_states_theory.md`
+4. `tutorials/doc/qubit/qubit_quantum_dynamics_molecular_triplet_states_theory.md`  
    → Qubit実装との対比理解
 
 ---
@@ -236,7 +233,7 @@ $$
 
 誤差：$O(\tau^2)$、全体で $O(t^2/N)$
 
-**2次Trotter分解（Strange splitting）**：
+**2次Trotter分解（Strang splitting）**：
 
 $$
 e^{\mathcal{L}_{\text{GKSL}} \tau} \approx e^{\mathcal{L}_{\text{H}} \tau/2} e^{\mathcal{L}_{\text{diss}} \tau} e^{\mathcal{L}_{\text{H}} \tau/2}
@@ -826,7 +823,6 @@ $$
 $$
 
 例：
-
 - $N=2$: $9 \times 9 = 81$ 要素
 - $N=3$: $27 \times 27 = 729$ 要素
 - $N=4$: $81 \times 81 = 6561$ 要素
@@ -864,7 +860,6 @@ N_n(t) = \sum_{i=0}^{N-1} P_n^{(i)}(t) = \sum_{i=0}^{N-1} \text{Tr}[\hat{P}_n^{(
 $$
 
 物理的意味：
-
 - $N_0(t)$: 基底状態 $|S_0\rangle$ の分子数
 - $N_1(t)$: 三重項状態 $|T_1\rangle$ の分子数
 - $N_2(t)$: 励起一重項状態 $|S_1\rangle$ の分子数
@@ -972,11 +967,10 @@ $$
 ```python
 from mqt.qudits import QuantumCircuit
 
-
 def apply_H0_evolution(circuit, qudit_index, E_T, E_S, tau, hbar=1.0):
     """
     Apply time evolution exp(-i H_0 tau / hbar) to qudit_index.
-
+    
     Args:
         circuit: QuantumCircuit object
         qudit_index: Index of the qudit
@@ -989,11 +983,11 @@ def apply_H0_evolution(circuit, qudit_index, E_T, E_S, tau, hbar=1.0):
     phi_T = -E_T * tau / hbar
     # Phase for |2⟩ state (singlet)
     phi_S = -E_S * tau / hbar
-
+    
     # Apply diagonal phase gate
     circuit.rz(phi_T, qudit_index, level_a=0, level_b=1)
     circuit.rz(phi_S, qudit_index, level_a=0, level_b=2)
-
+    
     return circuit
 ```
 
@@ -1002,7 +996,6 @@ def apply_H0_evolution(circuit, qudit_index, E_T, E_S, tau, hbar=1.0):
 #### 5.1.4 数値例
 
 パラメータ：
-
 - $E_{T_1} = 1.5$ eV
 - $E_{S_1} = 3.0$ eV
 - $\tau = 1.0$ fs
@@ -1115,7 +1108,7 @@ MQT-Quditsの `CRy` ゲートを使用：
 def apply_H_transfer_evolution(circuit, i, j, V_ij, tau, hbar=1.0):
     """
     Apply time evolution exp(-i H_transfer tau / hbar) between qudits i and j.
-
+    
     Args:
         circuit: QuantumCircuit object
         i, j: Indices of adjacent qudits
@@ -1124,18 +1117,17 @@ def apply_H_transfer_evolution(circuit, i, j, V_ij, tau, hbar=1.0):
         hbar: Reduced Planck constant (eV·fs)
     """
     theta = 2 * V_ij * tau / hbar  # Factor of 2 for convention
-
+    
     # Controlled rotation: swap |01⟩ ↔ |10⟩ with phase
     # Implemented as a sequence of controlled gates
-
+    
     # Method: Use Givens rotation in the |01⟩, |10⟩ subspace
     # This requires a custom 2-qudit gate or decomposition into standard gates
-
+    
     # Simplified implementation using MQT-Qudits CustomTwo gate
     circuit.custom_two(i, j, unitary_matrix=U_transfer_matrix(theta))
-
+    
     return circuit
-
 
 def U_transfer_matrix(theta):
     """
@@ -1333,7 +1325,7 @@ $$
 def apply_TTA_channel_1(circuit, i, j, E1, gamma_TTA, tau):
     """
     Apply Stinespring dilation for TTA channel 1: |11⟩ → |20⟩ or |01⟩.
-
+    
     Args:
         circuit: QuantumCircuit object
         i, j: System qudit indices
@@ -1342,23 +1334,22 @@ def apply_TTA_channel_1(circuit, i, j, E1, gamma_TTA, tau):
         tau: Time step (fs)
     """
     theta = np.sqrt(gamma_TTA * tau) / 2.0
-
+    
     # Multi-controlled rotation
     # Control: qudits i and j both in state |1⟩
     # Target: environment E1 and system qudits
-
+    
     # Decomposition into standard gates
     # (This is a simplified pseudo-code; actual implementation requires careful gate decomposition)
-
+    
     # Step 1: Check if i and j are both in |1⟩
     # Step 2: If true, apply rotation that couples |110⟩ → |201⟩
-
+    
     # Using custom 3-qudit gate (or decompose into 2-qudit gates)
     U_TTA_1 = construct_TTA_unitary_1(theta)
     circuit.custom_three(i, j, E1, U_TTA_1)
-
+    
     return circuit
-
 
 def construct_TTA_unitary_1(theta):
     """
@@ -1368,15 +1359,15 @@ def construct_TTA_unitary_1(theta):
     # Indices for |110⟩ (state 3) and |201⟩ (state 14)
     idx_110 = 3  # |1⟩_i |1⟩_j |0⟩_E
     idx_201 = 14  # |2⟩_i |0⟩_j |1⟩_E
-
+    
     c = np.cos(theta)
     s = np.sin(theta)
-
+    
     U[idx_110, idx_110] = c
     U[idx_110, idx_201] = -1j * s
     U[idx_201, idx_110] = -1j * s
     U[idx_201, idx_201] = c
-
+    
     # Similar for |111⟩ ↔ |200⟩
     idx_111 = 4
     idx_200 = 12
@@ -1384,7 +1375,7 @@ def construct_TTA_unitary_1(theta):
     U[idx_111, idx_200] = -1j * s
     U[idx_200, idx_111] = -1j * s
     U[idx_200, idx_200] = c
-
+    
     return U
 ```
 
@@ -1487,7 +1478,6 @@ TTA Lindblad演算子は極めて疎であるため、ユニタリ行列 $\hat{U
 Stinespring実装における数値的安定性：
 
 1. **ユニタリ性の検証**：
-
    $$
    \|\hat{U}_{\text{TTA}}^{(ij)\dagger}(\tau) \hat{U}_{\text{TTA}}^{(ij)}(\tau) - \hat{I}\|_F < 10^{-12}
    $$
@@ -1577,7 +1567,7 @@ $$
 def apply_fluorescence_channel(circuit, i, F_i, Gamma_fl, tau):
     """
     Apply Stinespring dilation for fluorescence: |2⟩ → |0⟩ + photon.
-
+    
     Args:
         circuit: QuantumCircuit object
         i: System qudit index
@@ -1586,13 +1576,12 @@ def apply_fluorescence_channel(circuit, i, F_i, Gamma_fl, tau):
         tau: Time step (fs)
     """
     theta = np.sqrt(Gamma_fl * tau) / 2.0
-
+    
     # Controlled rotation: |2⟩_i |0⟩_F ↔ |0⟩_i |1⟩_F
     U_fl = construct_fluorescence_unitary(theta)
     circuit.custom_two(i, F_i, U_fl)
-
+    
     return circuit
-
 
 def construct_fluorescence_unitary(theta):
     """
@@ -1602,15 +1591,15 @@ def construct_fluorescence_unitary(theta):
     # |20⟩ is index 4, |01⟩ is index 1
     idx_20 = 4
     idx_01 = 1
-
+    
     c = np.cos(theta)
     s = np.sin(theta)
-
+    
     U[idx_20, idx_20] = c
     U[idx_20, idx_01] = -1j * s
     U[idx_01, idx_20] = -1j * s
     U[idx_01, idx_01] = c
-
+    
     return U
 ```
 
@@ -1666,13 +1655,12 @@ def apply_phosphorescence_channel(circuit, i, P_i, Gamma_ph, tau):
     Apply Stinespring dilation for phosphorescence: |1⟩ → |0⟩ + photon.
     """
     theta = np.sqrt(Gamma_ph * tau) / 2.0
-
+    
     # Controlled rotation: |1⟩_i |0⟩_P ↔ |0⟩_i |1⟩_P
     U_ph = construct_phosphorescence_unitary(theta)
     circuit.custom_two(i, P_i, U_ph)
-
+    
     return circuit
-
 
 def construct_phosphorescence_unitary(theta):
     """
@@ -1682,15 +1670,15 @@ def construct_phosphorescence_unitary(theta):
     # |10⟩ is index 2, |01⟩ is index 1
     idx_10 = 2
     idx_01 = 1
-
+    
     c = np.cos(theta)
     s = np.sin(theta)
-
+    
     U[idx_10, idx_10] = c
     U[idx_10, idx_01] = -1j * s
     U[idx_01, idx_10] = -1j * s
     U[idx_01, idx_01] = c
-
+    
     return U
 ```
 
@@ -1766,13 +1754,12 @@ def apply_internal_conversion_channel(circuit, i, I_i, k_IC, tau):
     Apply Stinespring dilation for internal conversion: |2⟩ → |0⟩ + phonons.
     """
     theta = np.sqrt(k_IC * tau) / 2.0
-
+    
     # Same structure as fluorescence, different rate constant
     U_IC = construct_IC_unitary(theta)
     circuit.custom_two(i, I_i, U_IC)
-
+    
     return circuit
-
 
 def construct_IC_unitary(theta):
     """
@@ -1839,13 +1826,12 @@ def apply_ISC_S_to_T_channel(circuit, i, J_ST_i, k_ISC_ST, tau):
     Apply Stinespring dilation for S→T ISC: |2⟩ → |1⟩.
     """
     theta = np.sqrt(k_ISC_ST * tau) / 2.0
-
+    
     # Controlled rotation: |2⟩_i |0⟩_J ↔ |1⟩_i |1⟩_J
     U_ISC_ST = construct_ISC_ST_unitary(theta)
     circuit.custom_two(i, J_ST_i, U_ISC_ST)
-
+    
     return circuit
-
 
 def construct_ISC_ST_unitary(theta):
     """
@@ -1855,15 +1841,15 @@ def construct_ISC_ST_unitary(theta):
     # |20⟩ is index 4, |11⟩ is index 3
     idx_20 = 4
     idx_11 = 3
-
+    
     c = np.cos(theta)
     s = np.sin(theta)
-
+    
     U[idx_20, idx_20] = c
     U[idx_20, idx_11] = -1j * s
     U[idx_11, idx_20] = -1j * s
     U[idx_11, idx_11] = c
-
+    
     return U
 ```
 
@@ -1885,13 +1871,12 @@ def apply_ISC_T_to_S_channel(circuit, i, J_TS_i, k_ISC_TS, tau):
     Apply Stinespring dilation for T→S ISC: |1⟩ → |0⟩.
     """
     theta = np.sqrt(k_ISC_TS * tau) / 2.0
-
+    
     # Same structure as phosphorescence
     U_ISC_TS = construct_ISC_TS_unitary(theta)
     circuit.custom_two(i, J_TS_i, U_ISC_TS)
-
+    
     return circuit
-
 
 def construct_ISC_TS_unitary(theta):
     """
@@ -1937,18 +1922,17 @@ $$
 
 N分子系で全散逸過程を実装するために必要な環境qubit数：
 
-| 過程     | 各分子あたり                 | N分子系                |
-| -------- | ---------------------------- | ---------------------- |
-| TTA      | $2(N-1)$ 個（ペアあたり2個） | $2(N-1)$               |
-| 蛍光     | 1個                          | $N$                    |
-| 燐光     | 1個                          | $N$                    |
-| 内部転換 | 1個                          | $N$                    |
-| ISC S→T  | 1個                          | $N$                    |
-| ISC T→S  | 1個                          | $N$                    |
-| **合計** | -                            | $2(N-1) + 5N = 7N - 2$ |
+| 過程 | 各分子あたり | N分子系 |
+|------|------------|---------|
+| TTA | $2(N-1)$ 個（ペアあたり2個） | $2(N-1)$ |
+| 蛍光 | 1個 | $N$ |
+| 燐光 | 1個 | $N$ |
+| 内部転換 | 1個 | $N$ |
+| ISC S→T | 1個 | $N$ |
+| ISC T→S | 1個 | $N$ |
+| **合計** | - | $2(N-1) + 5N = 7N - 2$ |
 
 例：
-
 - $N=2$: 環境qubit数 = $12$
 - $N=4$: 環境qubit数 = $26$
 - $N=6$: 環境qubit数 = $40$
@@ -1994,7 +1978,7 @@ $$
 \hat{\rho}(t+\tau) = e^{\mathcal{L}_{\text{GKSL}} \tau} [\hat{\rho}(t)]
 $$
 
-2次Trotter分解（Strange splitting）：
+2次Trotter分解（Strang splitting）：
 
 $$
 e^{\mathcal{L}_{\text{GKSL}} \tau} \approx e^{\mathcal{L}_{\text{H}} \tau/2} e^{\mathcal{L}_{\text{diss}} \tau} e^{\mathcal{L}_{\text{H}} \tau/2}
@@ -2011,12 +1995,10 @@ $$
 **Single time step $\tau$ の量子回路**：
 
 1. **Half unitary evolution**: $\hat{U}_{\text{H}}(\tau/2)$
-
    - a. $\hat{U}_0(\tau/2)$: オンサイトエネルギー（各quditに位相ゲート）
    - b. $\hat{U}_{\text{transfer}}(\tau/2)$: エネルギー移動（隣接ペアに2-quditゲート）
 
 2. **Dissipative channels**: $\hat{U}_{\text{diss}}(\tau)$
-
    - a. TTA channels: $\prod_{\langle i,j \rangle} \hat{U}_{\text{TTA}}^{(ij)}(\tau)$
    - b. Fluorescence: $\prod_{i} \hat{U}_{\text{fl}}^{(i)}(\tau)$
    - c. Phosphorescence: $\prod_{i} \hat{U}_{\text{ph}}^{(i)}(\tau)$
@@ -2059,24 +2041,21 @@ $$
 ```python
 from mqt.qudits import QuantumCircuit
 
-
 def prepare_all_triplet_state(N_molecules, N_env_qubits):
     """
     Prepare initial state: all molecules in triplet |1⟩, all environment in |0⟩.
     """
     n_qutrits = N_molecules
     n_qubits = N_env_qubits
-
-    circuit = QuantumCircuit(
-        n_qutrits + n_qubits, dimensions=[3] * n_qutrits + [2] * n_qubits
-    )
-
+    
+    circuit = QuantumCircuit(n_qutrits + n_qubits, dimensions=[3]*n_qutrits + [2]*n_qubits)
+    
     # Apply X gate to flip |0⟩ → |1⟩ for all molecule qutrits
     for i in range(N_molecules):
         circuit.x(i)  # X_3 gate: |0⟩ → |1⟩ in qutrit
-
+    
     # Environment qubits remain in |0⟩ (default)
-
+    
     return circuit
 ```
 
@@ -2086,85 +2065,85 @@ def prepare_all_triplet_state(N_molecules, N_env_qubits):
 def apply_single_time_step(circuit, params, tau):
     """
     Apply a single time step of GKSL evolution using 2nd-order Trotter.
-
+    
     Args:
         circuit: QuantumCircuit object
         params: Dictionary of physical parameters
         tau: Time step size (fs)
     """
-    N = params["N_molecules"]
-    E_T = params["E_T"]
-    E_S = params["E_S"]
-    V = params["V"]
-    gamma_TTA = params["gamma_TTA"]
-    Gamma_fl = params["Gamma_fl"]
-    Gamma_ph = params["Gamma_ph"]
-    k_IC = params["k_IC"]
-    k_ISC_ST = params["k_ISC_ST"]
-    k_ISC_TS = params["k_ISC_TS"]
-
+    N = params['N_molecules']
+    E_T = params['E_T']
+    E_S = params['E_S']
+    V = params['V']
+    gamma_TTA = params['gamma_TTA']
+    Gamma_fl = params['Gamma_fl']
+    Gamma_ph = params['Gamma_ph']
+    k_IC = params['k_IC']
+    k_ISC_ST = params['k_ISC_ST']
+    k_ISC_TS = params['k_ISC_TS']
+    
     # Environment qubit indices (assume molecule qutrits are 0, ..., N-1)
     env_start = N
-
+    
     # --- Half unitary evolution ---
     # H_0 evolution (tau/2)
     for i in range(N):
-        apply_H0_evolution(circuit, i, E_T, E_S, tau / 2)
-
+        apply_H0_evolution(circuit, i, E_T, E_S, tau/2)
+    
     # H_transfer evolution (tau/2)
-    for i in range(N - 1):
-        apply_H_transfer_evolution(circuit, i, i + 1, V, tau / 2)
-
+    for i in range(N-1):
+        apply_H_transfer_evolution(circuit, i, i+1, V, tau/2)
+    
     # --- Dissipative channels ---
     env_idx = env_start
-
+    
     # TTA channels
-    for i in range(N - 1):
+    for i in range(N-1):
         E1 = env_idx
         E2 = env_idx + 1
-        apply_TTA_channel_1(circuit, i, i + 1, E1, gamma_TTA, tau)
-        apply_TTA_channel_2(circuit, i, i + 1, E2, gamma_TTA, tau)
+        apply_TTA_channel_1(circuit, i, i+1, E1, gamma_TTA, tau)
+        apply_TTA_channel_2(circuit, i, i+1, E2, gamma_TTA, tau)
         env_idx += 2
-
+    
     # Fluorescence
     for i in range(N):
         F_i = env_idx
         apply_fluorescence_channel(circuit, i, F_i, Gamma_fl, tau)
         env_idx += 1
-
+    
     # Phosphorescence
     for i in range(N):
         P_i = env_idx
         apply_phosphorescence_channel(circuit, i, P_i, Gamma_ph, tau)
         env_idx += 1
-
+    
     # Internal conversion
     for i in range(N):
         I_i = env_idx
         apply_internal_conversion_channel(circuit, i, I_i, k_IC, tau)
         env_idx += 1
-
+    
     # ISC S→T
     for i in range(N):
         J_ST_i = env_idx
         apply_ISC_S_to_T_channel(circuit, i, J_ST_i, k_ISC_ST, tau)
         env_idx += 1
-
+    
     # ISC T→S
     for i in range(N):
         J_TS_i = env_idx
         apply_ISC_T_to_S_channel(circuit, i, J_TS_i, k_ISC_TS, tau)
         env_idx += 1
-
+    
     # --- Half unitary evolution (reverse order) ---
     # H_transfer evolution (tau/2)
-    for i in range(N - 2, -1, -1):
-        apply_H_transfer_evolution(circuit, i, i + 1, V, tau / 2)
-
+    for i in range(N-2, -1, -1):
+        apply_H_transfer_evolution(circuit, i, i+1, V, tau/2)
+    
     # H_0 evolution (tau/2)
-    for i in range(N - 1, -1, -1):
-        apply_H0_evolution(circuit, i, E_T, E_S, tau / 2)
-
+    for i in range(N-1, -1, -1):
+        apply_H0_evolution(circuit, i, E_T, E_S, tau/2)
+    
     return circuit
 ```
 
@@ -2174,45 +2153,49 @@ def apply_single_time_step(circuit, params, tau):
 def simulate_GKSL_dynamics(params, T_total, N_steps):
     """
     Simulate complete GKSL dynamics for time T_total with N_steps.
-
+    
     Args:
         params: Physical parameters dictionary
         T_total: Total simulation time (fs)
         N_steps: Number of time steps
-
+    
     Returns:
         results: Dictionary containing observables vs time
     """
     tau = T_total / N_steps
-    N_mol = params["N_molecules"]
+    N_mol = params['N_molecules']
     N_env = 7 * N_mol - 2  # Total environment qubits
-
+    
     # Initialize circuit
     circuit = prepare_all_triplet_state(N_mol, N_env)
-
+    
     # Storage for results
     times = [0.0]
-    populations = {"S0": [0.0], "T1": [N_mol], "S1": [0.0]}
-
+    populations = {'S0': [0.0], 'T1': [N_mol], 'S1': [0.0]}
+    
     # Time evolution
     for step in range(N_steps):
         # Apply single time step
         circuit = apply_single_time_step(circuit, params, tau)
-
+        
         # Measure observables (partial trace over environment)
         rho_S = partial_trace_environment(circuit.get_statevector(), N_mol, N_env)
-
+        
         N_S0 = compute_population(rho_S, 0, N_mol)
         N_T1 = compute_population(rho_S, 1, N_mol)
         N_S1 = compute_population(rho_S, 2, N_mol)
-
-        times.append((step + 1) * tau)
-        populations["S0"].append(N_S0)
-        populations["T1"].append(N_T1)
-        populations["S1"].append(N_S1)
-
-    results = {"times": np.array(times), "populations": populations, "circuit": circuit}
-
+        
+        times.append((step+1) * tau)
+        populations['S0'].append(N_S0)
+        populations['T1'].append(N_T1)
+        populations['S1'].append(N_S1)
+    
+    results = {
+        'times': np.array(times),
+        'populations': populations,
+        'circuit': circuit
+    }
+    
     return results
 ```
 
@@ -2232,27 +2215,27 @@ $$
 def partial_trace_environment(psi_total, N_mol, N_env):
     """
     Partial trace over environment qubits to get system density matrix.
-
+    
     Args:
         psi_total: Full statevector (system + environment)
         N_mol: Number of molecule qutrits
         N_env: Number of environment qubits
-
+    
     Returns:
         rho_S: System density matrix (3^N_mol x 3^N_mol)
     """
-    d_S = 3**N_mol
-    d_E = 2**N_env
-
+    d_S = 3 ** N_mol
+    d_E = 2 ** N_env
+    
     # Reshape statevector to matrix form
     psi_matrix = psi_total.reshape(d_S, d_E)
-
+    
     # Compute reduced density matrix: ρ_S = ψ ψ† with trace over E
     rho_S = np.zeros((d_S, d_S), dtype=complex)
     for i in range(d_S):
         for j in range(d_S):
             rho_S[i, j] = np.dot(psi_matrix[i, :], psi_matrix[j, :].conj())
-
+    
     return rho_S
 ```
 
@@ -2262,25 +2245,24 @@ def partial_trace_environment(psi_total, N_mol, N_env):
 def compute_population(rho_S, level, N_mol):
     """
     Compute total population of level (0, 1, or 2) across all molecules.
-
+    
     Args:
         rho_S: System density matrix (3^N_mol x 3^N_mol)
         level: 0 (S0), 1 (T1), or 2 (S1)
         N_mol: Number of molecules
-
+    
     Returns:
         population: Total population of specified level
     """
-    d_S = 3**N_mol
+    d_S = 3 ** N_mol
     population = 0.0
-
+    
     for mol_idx in range(N_mol):
         # Project onto level for molecule mol_idx
         projector = construct_level_projector(mol_idx, level, N_mol)
         population += np.trace(projector @ rho_S).real
-
+    
     return population
-
 
 def construct_level_projector(mol_idx, level, N_mol):
     """
@@ -2289,7 +2271,7 @@ def construct_level_projector(mol_idx, level, N_mol):
     # Single-molecule projector
     P_single = np.zeros((3, 3))
     P_single[level, level] = 1.0
-
+    
     # Extend to N-molecule system
     P_full = 1.0
     for i in range(N_mol):
@@ -2297,7 +2279,7 @@ def construct_level_projector(mol_idx, level, N_mol):
             P_full = np.kron(P_full, P_single)
         else:
             P_full = np.kron(P_full, np.eye(3))
-
+    
     return P_full
 ```
 
@@ -2305,17 +2287,17 @@ def construct_level_projector(mol_idx, level, N_mol):
 
 #### 9.4.1 単一時間ステップのゲート数
 
-| 項                          | ゲート数                       | 備考                                               |
-| --------------------------- | ------------------------------ | -------------------------------------------------- |
-| $\hat{U}_0$                 | $2N \times 2 = 4N$             | 各quditに2個の位相ゲート、2回適用                  |
-| $\hat{U}_{\text{transfer}}$ | $2(N-1) \times 8 = 16(N-1)$    | 各ペアに1個の2-quditゲート（分解して8個）、2回     |
-| TTA                         | $2(N-1) \times C_{\text{TTA}}$ | $C_{\text{TTA}} \approx 10-20$ (3-quditゲート分解) |
-| Fluorescence                | $N \times C_{\text{fl}}$       | $C_{\text{fl}} \approx 8$ (2-quditゲート分解)      |
-| Phosphorescence             | $N \times C_{\text{ph}}$       | $C_{\text{ph}} \approx 8$                          |
-| IC                          | $N \times C_{\text{IC}}$       | $C_{\text{IC}} \approx 8$                          |
-| ISC S→T                     | $N \times C_{\text{ISC}}$      | $C_{\text{ISC}} \approx 8$                         |
-| ISC T→S                     | $N \times C_{\text{ISC}}$      | $C_{\text{ISC}} \approx 8$                         |
-| **合計**                    | $\sim 20N + 50(N-1)$           | $\approx 70N$ ゲート/ステップ                      |
+| 項 | ゲート数 | 備考 |
+|-----|---------|------|
+| $\hat{U}_0$ | $2N \times 2 = 4N$ | 各quditに2個の位相ゲート、2回適用 |
+| $\hat{U}_{\text{transfer}}$ | $2(N-1) \times 8 = 16(N-1)$ | 各ペアに1個の2-quditゲート（分解して8個）、2回 |
+| TTA | $2(N-1) \times C_{\text{TTA}}$ | $C_{\text{TTA}} \approx 10-20$ (3-quditゲート分解) |
+| Fluorescence | $N \times C_{\text{fl}}$ | $C_{\text{fl}} \approx 8$ (2-quditゲート分解) |
+| Phosphorescence | $N \times C_{\text{ph}}$ | $C_{\text{ph}} \approx 8$ |
+| IC | $N \times C_{\text{IC}}$ | $C_{\text{IC}} \approx 8$ |
+| ISC S→T | $N \times C_{\text{ISC}}$ | $C_{\text{ISC}} \approx 8$ |
+| ISC T→S | $N \times C_{\text{ISC}}$ | $C_{\text{ISC}} \approx 8$ |
+| **合計** | $\sim 20N + 50(N-1)$ | $\approx 70N$ ゲート/ステップ |
 
 例：$N=4$の場合、約280ゲート/ステップ。
 
@@ -2330,7 +2312,6 @@ $$
 （複素数128ビット）
 
 例：
-
 - $N=2$: $3^2 \times 2^{12} = 9 \times 4096 \approx 36,864$ 要素 $\approx 1.2$ MB
 - $N=3$: $3^3 \times 2^{19} = 27 \times 524,288 \approx 14$ M要素 $\approx 450$ MB
 - $N=4$: $3^4 \times 2^{26} = 81 \times 67,108,864 \approx 5.4$ G要素 $\approx 173$ GB
@@ -2408,7 +2389,7 @@ $$
 
 #### 10.2.2 2次Trotterの誤差
 
-2次Trotter分解（Strange splitting）：
+2次Trotter分解（Strang splitting）：
 
 $$
 e^{(\hat{A} + \hat{B}) \tau} \approx e^{\hat{A} \tau/2} e^{\hat{B} \tau} e^{\hat{A} \tau/2}
@@ -2510,7 +2491,6 @@ $$
 **許容誤差**：$\epsilon_{\text{trace}} < 10^{-10}$
 
 **原因と対策**：
-
 - 原因：浮動小数点演算の累積誤差
 - 対策：高精度演算（128ビット浮動小数点）、またはトレース正規化
 
@@ -2543,7 +2523,7 @@ def check_positive_semidefinite(rho, tol=1e-10):
     """
     eigvals = np.linalg.eigvalsh(rho)
     min_eigval = np.min(eigvals)
-
+    
     if min_eigval < -tol:
         print(f"Warning: Negative eigenvalue = {min_eigval}")
         return False
@@ -2567,8 +2547,8 @@ def check_hermiticity(rho, tol=1e-10):
     """
     Check if density matrix is Hermitian.
     """
-    diff = np.linalg.norm(rho - rho.conj().T, "fro")
-
+    diff = np.linalg.norm(rho - rho.conj().T, 'fro')
+    
     if diff > tol:
         print(f"Warning: Hermiticity violation = {diff}")
         return False
@@ -2636,20 +2616,20 @@ def validate_and_fix_density_matrix(rho, tau):
     Returns: (rho_fixed, is_valid)
     """
     is_valid = True
-
+    
     # Check trace
     trace = np.trace(rho)
     if np.abs(trace - 1.0) > 1e-8:
         print(f"Trace error: {trace - 1.0}, normalizing...")
         rho = rho / trace
         is_valid = False
-
+    
     # Check Hermiticity
     if not check_hermiticity(rho, tol=1e-8):
         print("Hermiticity error, symmetrizing...")
         rho = (rho + rho.conj().T) / 2
         is_valid = False
-
+    
     # Check positive semidefiniteness
     eigvals, eigvecs = np.linalg.eigh(rho)
     if np.min(eigvals) < -1e-8:
@@ -2658,10 +2638,10 @@ def validate_and_fix_density_matrix(rho, tau):
         rho = eigvecs @ np.diag(eigvals) @ eigvecs.conj().T
         rho = rho / np.trace(rho)  # Re-normalize
         is_valid = False
-
+    
     if not is_valid:
         print(f"Density matrix fixed. Consider reducing time step (current: {tau}).")
-
+    
     return rho, is_valid
 ```
 
@@ -2706,19 +2686,16 @@ $$
 #### 12.1.1 理論的成果
 
 1. **Stinespring dilationの完全定式化**
-
    - 任意のLindblad演算子を補助quditとユニタリ演算に厳密に変換
    - 完全正値性・トレース保存性の自動保証
    - 量子回路への直接変換可能性
 
 2. **TTA過程の量子回路実装**
-
    - 従来のユニタリハミルトニアンを非ユニタリLindblad演算子に置き換え
    - Stinespring表現により量子ゲートで厳密実装
    - 疎行列構造を活用した効率的分解
 
 3. **放射減衰・無放射遷移の完全実装**
-
    - 蛍光、燐光、内部転換、項間交差のすべてを量子回路で表現
    - 各過程に対する独立な環境quditの導入
    - 光子場およびフォノンバスとの相互作用の量子力学的記述
@@ -2731,19 +2708,16 @@ $$
 #### 12.1.2 実装的成果
 
 1. **Qudit表現の最適性**
-
    - 3準位分子系を単一qutritで自然に表現
    - Qubit実装に比べてqudit数が半分（$N$ vs $2N$）
    - MQT-Quditsの豊富なゲートセットを活用
 
 2. **厳密性の保証**
-
    - すべての演算が数学的に厳密なユニタリ演算
    - ヒューリスティックな近似やfallbackの完全排除
    - 物理的整合性（CPTP性、トレース保存、正定値性）の自動保証
 
 3. **数値的安定性**
-
    - Trotter誤差の定量的評価（$O(\tau^3)$）
    - 数値誤差の検出と自動修正機構
    - 収束性の検証手法
@@ -2755,28 +2729,26 @@ $$
 
 ### 12.2 従来手法との決定的な違い
 
-| 特性               | 従来のユニタリ記述              | 密度行列法           | 本文書のStinespring法   |
-| ------------------ | ------------------------------- | -------------------- | ----------------------- |
-| TTA過程            | ユニタリ $\hat{H}_{\text{TTA}}$ | Lindblad項（非回路） | Lindblad → ユニタリ回路 |
-| 散逸の表現         | なし                            | 密度行列演算         | 補助qudit + ユニタリ    |
-| 量子回路実装       | 可能                            | **不可能**           | **可能（厳密）**        |
-| 完全正値性         | N/A                             | 手動で保証           | **自動保証**            |
-| ヒューリスティック | なし                            | 行列指数関数近似     | **なし（厳密）**        |
-| 不可逆性           | なし（可逆）                    | あり                 | **あり**                |
-| 実験との対応       | 間接的                          | 直接的               | **直接的**              |
+| 特性 | 従来のユニタリ記述 | 密度行列法 | 本文書のStinespring法 |
+|------|-------------------|-----------|---------------------|
+| TTA過程 | ユニタリ $\hat{H}_{\text{TTA}}$ | Lindblad項（非回路） | Lindblad → ユニタリ回路 |
+| 散逸の表現 | なし | 密度行列演算 | 補助qudit + ユニタリ |
+| 量子回路実装 | 可能 | **不可能** | **可能（厳密）** |
+| 完全正値性 | N/A | 手動で保証 | **自動保証** |
+| ヒューリスティック | なし | 行列指数関数近似 | **なし（厳密）** |
+| 不可逆性 | なし（可逆） | あり | **あり** |
+| 実験との対応 | 間接的 | 直接的 | **直接的** |
 
 ### 12.3 本文書の限界と今後の課題
 
 #### 12.3.1 現在の限界
 
 1. **スケーラビリティ**
-
    - 完全実装は $N \leq 3$ で実用的
    - 環境qubit数が $O(N)$ で増加
    - メモリ要求が指数的に増大
 
 2. **ゲート数の多さ**
-
    - 単一時間ステップで $O(70N)$ ゲート
    - 現在の量子コンピュータでは深い回路の実行が困難
    - 誤差累積の懸念
@@ -2790,12 +2762,10 @@ $$
 **理論的拡張**：
 
 1. **非マルコフ効果の組み込み**
-
    - メモリカーネルを持つ一般化Lindblad方程式
    - 環境の履歴効果の量子回路表現
 
 2. **温度依存性**
-
    - 有限温度熱浴との結合
    - Boltzmann分布に従う初期環境状態
 
@@ -2806,13 +2776,11 @@ $$
 **実装的発展**：
 
 1. **大規模系への拡張**
-
    - テンソルネットワーク法との結合
    - 環境qubitの動的削減手法
    - 適応的Trotter分解
 
 2. **量子ハードウェアでの実行**
-
    - IBMQ、IonQなどの実機実装
    - ノイズモデルの組み込み
    - 誤り訂正の適用
@@ -2825,13 +2793,11 @@ $$
 **応用展開**：
 
 1. **他の分子系への適用**
-
    - 有機太陽電池、有機EL
    - 光合成系の励起エネルギー移動
    - 単一分子磁石のスピンダイナミクス
 
 2. **実験との定量的比較**
-
    - 時間分解分光実験データとのフィッティング
    - パラメータ推定と逆問題
    - 予測と検証のサイクル
@@ -2865,76 +2831,76 @@ $$
 
 ### 開放量子系理論
 
-1. **Breuer, H.-P., & Petruccione, F.** (2002). _The Theory of Open Quantum Systems_. Oxford University Press.
+1. **Breuer, H.-P., & Petruccione, F.** (2002). *The Theory of Open Quantum Systems*. Oxford University Press.  
    （開放量子系理論の標準的教科書）
 
-2. **Lindblad, G.** (1976). "On the generators of quantum dynamical semigroups." _Communications in Mathematical Physics_, 48(2), 119-130.
+2. **Lindblad, G.** (1976). "On the generators of quantum dynamical semigroups." *Communications in Mathematical Physics*, 48(2), 119-130.  
    （GKSL方程式の原論文）
 
-3. **Gorini, V., Kossakowski, A., & Sudarshan, E. C. G.** (1976). "Completely positive dynamical semigroups of N-level systems." _Journal of Mathematical Physics_, 17(5), 821-825.
+3. **Gorini, V., Kossakowski, A., & Sudarshan, E. C. G.** (1976). "Completely positive dynamical semigroups of N-level systems." *Journal of Mathematical Physics*, 17(5), 821-825.  
    （GKSL方程式の独立発見）
 
 ### Stinespring Dilation理論
 
-4. **Stinespring, W. F.** (1955). "Positive functions on C*-algebras." *Proceedings of the American Mathematical Society\*, 6(2), 211-216.
+4. **Stinespring, W. F.** (1955). "Positive functions on C*-algebras." *Proceedings of the American Mathematical Society*, 6(2), 211-216.  
    （Stinespring表現定理の原論文）
 
-5. **Kraus, K.** (1983). _States, Effects, and Operations: Fundamental Notions of Quantum Theory_. Springer.
+5. **Kraus, K.** (1983). *States, Effects, and Operations: Fundamental Notions of Quantum Theory*. Springer.  
    （Kraus表現とStinespring表現の関係）
 
-6. **Nielsen, M. A., & Chuang, I. L.** (2010). _Quantum Computation and Quantum Information_ (10th Anniversary ed.). Cambridge University Press.
+6. **Nielsen, M. A., & Chuang, I. L.** (2010). *Quantum Computation and Quantum Information* (10th Anniversary ed.). Cambridge University Press.  
    （量子情報理論における完全正値写像の扱い、第8章）
 
 ### 量子回路理論
 
-7. **Barenco, A., et al.** (1995). "Elementary gates for quantum computation." _Physical Review A_, 52(5), 3457.
+7. **Barenco, A., et al.** (1995). "Elementary gates for quantum computation." *Physical Review A*, 52(5), 3457.  
    （任意ユニタリ演算の基本ゲート分解）
 
-8. **Shende, V. V., Bullock, S. S., & Markov, I. L.** (2006). "Synthesis of quantum-logic circuits." _IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems_, 25(6), 1000-1010.
+8. **Shende, V. V., Bullock, S. S., & Markov, I. L.** (2006). "Synthesis of quantum-logic circuits." *IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems*, 25(6), 1000-1010.  
    （量子回路合成の最適化）
 
 ### MQT-Quditsフレームワーク
 
-9. **MQT-Qudits Documentation**: https://github.com/cda-tum/mqt-qudits
+9. **MQT-Qudits Documentation**: https://github.com/cda-tum/mqt-qudits  
    （MQT-Quditsの公式ドキュメント）
 
-10. **Ringbauer, M., et al.** (2022). "A universal qudit quantum processor with trapped ions." _Nature Physics_, 18, 1053-1057.
+10. **Ringbauer, M., et al.** (2022). "A universal qudit quantum processor with trapped ions." *Nature Physics*, 18, 1053-1057.  
     （Qudit量子計算の実験的実装）
 
 ### 分子励起状態とTTA
 
-11. **Smith, M. B., & Michl, J.** (2010). "Singlet fission." _Chemical Reviews_, 110(11), 6891-6936.
+11. **Smith, M. B., & Michl, J.** (2010). "Singlet fission." *Chemical Reviews*, 110(11), 6891-6936.  
     （一重項分裂とTTA過程の包括的レビュー）
 
-12. **Singh-Rachford, T. N., & Castellano, F. N.** (2010). "Photon upconversion based on sensitized triplet–triplet annihilation." _Coordination Chemistry Reviews_, 254(21-22), 2560-2573.
+12. **Singh-Rachford, T. N., & Castellano, F. N.** (2010). "Photon upconversion based on sensitized triplet–triplet annihilation." *Coordination Chemistry Reviews*, 254(21-22), 2560-2573.  
     （TTAによる光アップコンバージョン）
 
-13. **Turro, N. J., Ramamurthy, V., & Scaiano, J. C.** (2010). _Modern Molecular Photochemistry of Organic Molecules_. University Science Books.
+13. **Turro, N. J., Ramamurthy, V., & Scaiano, J. C.** (2010). *Modern Molecular Photochemistry of Organic Molecules*. University Science Books.  
     （分子光化学の標準的教科書）
 
 ### 数値計算手法
 
-14. **Suzuki, M.** (1976). "Generalized Trotter's formula and systematic approximants of exponential operators and inner derivations with applications to many-body problems." _Communications in Mathematical Physics_, 51(2), 183-190.
+14. **Suzuki, M.** (1976). "Generalized Trotter's formula and systematic approximants of exponential operators and inner derivations with applications to many-body problems." *Communications in Mathematical Physics*, 51(2), 183-190.  
     （高次Trotter分解の理論）
 
-15. **Hairer, E., Lubich, C., & Wanner, G.** (2006). _Geometric Numerical Integration: Structure-Preserving Algorithms for Ordinary Differential Equations_ (2nd ed.). Springer.
+15. **Hairer, E., Lubich, C., & Wanner, G.** (2006). *Geometric Numerical Integration: Structure-Preserving Algorithms for Ordinary Differential Equations* (2nd ed.). Springer.  
     （構造保存型数値積分法）
 
 ### 本プロジェクトの関連文書
 
-16. **tutorials/doc/GKSL/量子ダイナミクスGKSL-Lindblad理論完全定式化.md**
+16. **tutorials/doc/GKSL/量子ダイナミクスGKSL-Lindblad理論完全定式化.md**  
     （本文書の理論的基礎となるGKSL-Lindblad方程式の完全定式化）
 
-17. **tutorials/doc/quantum_dynamics_molecular_triplet_states.md**
+17. **tutorials/doc/quantum_dynamics_molecular_triplet_states.md**  
     （分子三重項状態の量子ダイナミクス基礎理論）
 
-18. **tutorials/doc/mqt_qudits_gates_and_bases_reference.md**
+18. **tutorials/doc/mqt_qudits_gates_and_bases_reference.md**  
     （MQT-Quditsの基本ゲートセット完全リファレンス）
 
-19. **tutorials/doc/qubit/qubit_quantum_dynamics_molecular_triplet_states_theory.md**
+19. **tutorials/doc/qubit/qubit_quantum_dynamics_molecular_triplet_states_theory.md**  
     （Qubit実装との対比のための理論）
 
-20. **tutorials/doc/theory_quantum_dynamics_complete_comparison.md**
+20. **tutorials/doc/theory_quantum_dynamics_complete_comparison.md**  
     （QuditとQubitの完全比較理論）
 
 ---
@@ -3001,24 +2967,24 @@ $$
 
 **数式記号一覧**
 
-| 記号                                       | 意味                                               |
-| ------------------------------------------ | -------------------------------------------------- |
+| 記号 | 意味 |
+|------|------|
 | $\|S_0\rangle, \|T_1\rangle, \|S_1\rangle$ | 分子電子状態（基底一重項、励起三重項、励起一重項） |
-| $\|0\rangle, \|1\rangle, \|2\rangle$       | Qutrit計算基底                                     |
-| $\hat{\rho}$                               | 密度演算子                                         |
-| $\hat{H}_{\text{system}}$                  | 系のハミルトニアン                                 |
-| $\hat{L}_\alpha$                           | Lindblad演算子                                     |
-| $\gamma_\alpha$                            | 散逸速度定数                                       |
-| $\mathcal{D}[\hat{L}]$                     | Lindblad超演算子                                   |
-| $\mathcal{L}_{\text{GKSL}}$                | GKSL超演算子                                       |
-| $\hat{U}_{SE}$                             | 系と環境の合成系におけるユニタリ演算子             |
-| $\text{Tr}_E$                              | 環境の部分トレース                                 |
-| $\Gamma_{\text{fl}}, \Gamma_{\text{ph}}$   | 蛍光・燐光速度                                     |
-| $k_{\text{IC}}, k_{\text{ISC}}$            | 内部転換・項間交差速度定数                         |
-| $\gamma_{\text{TTA}}$                      | TTA速度定数                                        |
-| $\tau$                                     | 時間刻み                                           |
-| $N$                                        | 分子数                                             |
-| $d_S, d_E$                                 | 系・環境のヒルベルト空間次元                       |
+| $\|0\rangle, \|1\rangle, \|2\rangle$ | Qutrit計算基底 |
+| $\hat{\rho}$ | 密度演算子 |
+| $\hat{H}_{\text{system}}$ | 系のハミルトニアン |
+| $\hat{L}_\alpha$ | Lindblad演算子 |
+| $\gamma_\alpha$ | 散逸速度定数 |
+| $\mathcal{D}[\hat{L}]$ | Lindblad超演算子 |
+| $\mathcal{L}_{\text{GKSL}}$ | GKSL超演算子 |
+| $\hat{U}_{SE}$ | 系と環境の合成系におけるユニタリ演算子 |
+| $\text{Tr}_E$ | 環境の部分トレース |
+| $\Gamma_{\text{fl}}, \Gamma_{\text{ph}}$ | 蛍光・燐光速度 |
+| $k_{\text{IC}}, k_{\text{ISC}}$ | 内部転換・項間交差速度定数 |
+| $\gamma_{\text{TTA}}$ | TTA速度定数 |
+| $\tau$ | 時間刻み |
+| $N$ | 分子数 |
+| $d_S, d_E$ | 系・環境のヒルベルト空間次元 |
 
 ---
 

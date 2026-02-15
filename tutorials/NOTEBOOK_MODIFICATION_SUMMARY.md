@@ -3,7 +3,6 @@
 ## Issue Description
 
 The qubit tutorial (`tutorials/qubit/four_molecule_linear_chain_quantum_dynamics_qubit.ipynb`) outputs circuit analysis in a structured format with:
-
 - 【システム構成】(System Configuration)
 - 【単一トロッターステップの回路サイズ】(Single Trotter Step Circuit Size)
 - 【ゲートタイプ別内訳】(Gate Type Breakdown)
@@ -11,7 +10,6 @@ The qubit tutorial (`tutorials/qubit/four_molecule_linear_chain_quantum_dynamics
 - Circuit visualization diagrams
 
 The qudit tutorial (`tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb`) previously only showed:
-
 - 【全シミュレーション統計】(Full Simulation Statistics) - gate counts after decomposition
 
 ## Changes Made
@@ -23,7 +21,6 @@ The qudit tutorial (`tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb
 **Purpose**: Provides structured circuit analysis output matching the format of the qubit tutorial
 
 **Output Format**:
-
 ```
 === 量子回路の解析 ===
 
@@ -56,7 +53,6 @@ This section already existed and provides circuit visualization using the `visua
 ### 3. Existing Sections Unchanged
 
 The following sections remain unchanged:
-
 - Section 5: 量子回路の構築とゲート実装 (Circuit construction and gate implementation)
 - Section 6: 回路情報とQudit数の可視化 (Circuit info and Qudit count visualization)
 - Sections 7-10: Simulation, results, and comparisons
@@ -64,7 +60,6 @@ The following sections remain unchanged:
 ## Comparison: Qubit vs Qudit Output
 
 ### Qubit Tutorial Output (Reference)
-
 ```
 === 量子回路の解析 ===
 
@@ -92,7 +87,6 @@ rxx: 6個
 ```
 
 ### Qudit Tutorial Output (NEW)
-
 ```
 === 量子回路の解析 ===
 
@@ -125,8 +119,7 @@ VirtRz: 368個
 
 2. **Gate Count**: Qudit version has more gates per step (3344 vs 112) because CustomTwo gates are decomposed into basic gates. However, this is the actual implementation - no heuristics are used.
 
-3. **Gate Types**:
-
+3. **Gate Types**: 
    - Qubit: x, rz, cx, cry, rxx (Qiskit gates)
    - Qudit: VirtRz, R, Rh, Rz, CEx (MQT-Qudits basic gates)
 
@@ -139,7 +132,6 @@ VirtRz: 368個
 The implementation strictly adheres to the requirement: "ヒューリスティックな処理やごまかしのためのfallbackは絶対にしないでください" (Absolutely no heuristic processing or fallback workarounds).
 
 All gates are:
-
 - Exactly implemented using MQT-Qudits basic gates
 - Decomposed using the sparse-aware compiler (LogEntQRCEXPass)
 - Mathematically rigorous with no approximations
@@ -147,7 +139,6 @@ All gates are:
 ### Circuit Visualization
 
 Section 5.6 already provides comprehensive circuit visualization:
-
 - Shows circuit before decomposition (with CustomTwo gates)
 - Shows circuit after decomposition (with basic gates only)
 - Uses the `visualize_circuit_with_decomposition` tool
@@ -166,7 +157,6 @@ To verify the changes work correctly:
 6. Verify Section 5.6 displays circuit diagrams
 
 Expected behavior:
-
 - Section 5.5 prints structured text output with the four main sections
 - Section 5.6 displays matplotlib figures showing circuits before and after decomposition
 - No errors or warnings about missing methods or undefined variables
@@ -178,7 +168,6 @@ Expected behavior:
 ## Files NOT Modified
 
 No changes were made to:
-
 - Implementation files (`mqt_qudits_four_molecule_sparse_implementation.py`)
 - Visualization tools (`tools/visualize_circuit.py`)
 - Other tutorial notebooks

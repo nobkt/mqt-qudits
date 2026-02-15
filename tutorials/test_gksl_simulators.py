@@ -398,6 +398,8 @@ class TestPhysicalLimits:
         result = sim.simulate(t_max=50.0, n_steps=100, initial_state="all_singlet")
 
         for i, t in enumerate(result["times"]):
+            # In natural units (hbar=1), the decay rate is simply Gamma_fl.
+            # The division by hbar is included for generality but is 1.0.
             expected_N_S1 = 4.0 * np.exp(-Gamma_fl * t / params.hbar)
             actual_N_S1 = result["populations"][i]["N_S1"]
             assert abs(expected_N_S1 - actual_N_S1) < 1e-3, (

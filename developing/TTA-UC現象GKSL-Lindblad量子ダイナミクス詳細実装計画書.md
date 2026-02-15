@@ -4682,7 +4682,7 @@ $$
 
 本実装の完了基準（後続PRで達成）:
 - [x] 6シナリオ全てが実装されている
-- [x] 全テストがパスする（48/48テスト通過）
+- [x] 全テストがパスする（52/52テスト通過）
 - [x] Classical GKSLとQudit GKSLで個体数が1e-3の精度で一致（継続実装PRで `test_classical_quantum_population_agreement_at_small_dt` を追加。t_max=1.0, n_steps=20 の小dt条件で検証）
 - [x] Classical GKSLとQubit GKSLで個体数が1e-3の精度で一致（同上）
 - [x] ボソン有りシナリオで$g_{\text{eph}}=0$でボソン無しと一致（$10^{-6}$）（継続実装PRでN=2小規模系の `test_boson_matches_non_boson_when_g_eph_zero` を追加。N=4, dim=6561 の長時間検証は引き続き高計算コスト）
@@ -4705,3 +4705,4 @@ $$
 - v3.0.0 (2026-02-14): 全6シナリオの実装完了。フェーズ1〜4のコード実装とテスト（35/35テスト通過）。進捗を計画書に反映。
 - v3.1.0 (2026-02-15): Stinespring dilationの2箇所のバグ修正（基底順序: kron(env0,rho)に修正、ジェネレータ: G=[[0,L†],[L,0]]に修正してD[L]を正しく実装）。パラメータバリデーションV=0/全γ=0対応。追加テスト6件（ユニタリ極限、蛍光解析解、定常状態、パラメータバリデーション2件、Stinespring忠実度）。統合ノートブック作成。45/45テスト通過。
 - v3.2.0 (2026-02-15): 継続実装として未完了項目を追加対応。`classical_gksl_simulator.py` の edge_triplet 初期状態生成を N_molecules 可変で正しく動作するよう修正。追加テスト3件（Classical-Qubit/Quditの小dt一致性、g_eph=0でボソン有無一致、N=2 edge_triplet初期化）を実装し、48/48テスト通過。
+- v3.3.0 (2026-02-15): 継続実装として edge_triplet の境界条件整合をQubit/Qudit（ボソン有無）実装へ拡張。`N_molecules < 2` で `ValueError` を送出するよう統一し、対応テスト3件を追加。52/52テスト通過。

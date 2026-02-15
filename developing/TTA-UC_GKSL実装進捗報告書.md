@@ -73,7 +73,7 @@
 ### 1.9 テストスイート ✅ 完了
 
 - **ファイル**: `tutorials/test_gksl_simulators.py`
-- **結果**: 48/48テスト通過（継続実装PR時点）
+- **結果**: 52/52テスト通過（継続実装PR時点）
 - **テストカバレッジ**:
   - パラメータクラス: 7テスト
   - 数学的基盤: 8テスト
@@ -231,4 +231,6 @@ tutorials/
    - `test_edge_triplet_for_two_molecules`
    - `test_boson_matches_non_boson_when_g_eph_zero`
    - `test_classical_quantum_population_agreement_at_small_dt`
-3. 継続実装後の結果: **48/48テスト通過**。
+3. `qubit_gksl_simulator.py` / `qudit_gksl_simulator.py` / `qubit_gksl_boson_simulator.py` / `qudit_gksl_boson_simulator.py` の `prepare_initial_state("edge_triplet")` に `N_molecules >= 2` バリデーションを追加し、Classical実装と境界条件を整合。
+4. `tutorials/test_gksl_simulators.py` に `N_molecules=1` の `edge_triplet` 例外検証を3件追加（Qubit/Qudit/ボソンQubit・Qudit）。
+5. 継続実装後の結果: **52/52テスト通過**。

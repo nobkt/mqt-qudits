@@ -235,6 +235,12 @@ class TestQubitGKSLSimulator:
             total = pop["N_S0"] + pop["N_T1"] + pop["N_S1"]
             assert abs(total - 4.0) < 0.1
 
+    def test_edge_triplet_requires_two_or_more_molecules(self):
+        params = GKSLPhysicalParameters(N_molecules=1)
+        sim = QubitGKSLSimulator(params)
+        with pytest.raises(ValueError, match="N_molecules >= 2"):
+            sim.prepare_initial_state("edge_triplet")
+
 
 # ---------------------------------------------------------------------------
 # 5. TestQuditGKSLSimulator
@@ -268,6 +274,12 @@ class TestQuditGKSLSimulator:
         for p2, pd in zip(r2["populations"], rd["populations"]):
             assert abs(p2["N_T1"] - pd["N_T1"]) < 0.2
             assert abs(p2["N_S0"] - pd["N_S0"]) < 0.2
+
+    def test_edge_triplet_requires_two_or_more_molecules(self):
+        params = GKSLPhysicalParameters(N_molecules=1)
+        sim = QuditGKSLSimulator(params)
+        with pytest.raises(ValueError, match="N_molecules >= 2"):
+            sim.prepare_initial_state("edge_triplet")
 
 
 # ---------------------------------------------------------------------------
@@ -331,6 +343,19 @@ class TestBosonSimulators:
         ):
             for key in ("N_S0", "N_T1", "N_S1"):
                 assert abs(pop_non_boson[key] - pop_boson[key]) < 1e-6
+
+    def test_qubit_qudit_boson_edge_triplet_requires_two_or_more_molecules(self):
+        from qubit_gksl_boson_simulator import QubitGKSLBosonSimulator
+        from qudit_gksl_boson_simulator import QuditGKSLBosonSimulator
+
+        params = GKSLPhysicalParameters(N_molecules=1, with_boson=True, n_max=1)
+        sim_qubit = QubitGKSLBosonSimulator(params)
+        sim_qudit = QuditGKSLBosonSimulator(params)
+
+        with pytest.raises(ValueError, match="N_molecules >= 2"):
+            sim_qubit.prepare_initial_state("edge_triplet")
+        with pytest.raises(ValueError, match="N_molecules >= 2"):
+            sim_qudit.prepare_initial_state("edge_triplet")
 
 
 # ---------------------------------------------------------------------------

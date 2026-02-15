@@ -882,3 +882,209 @@ class TestNoiseChannelProperties:
         rho_th = _apply_thermal_relaxation_single(rho, 0, d, N, 0.5)
         eigs = np.linalg.eigvalsh(rho_th)
         assert eigs.min() >= -1e-12
+
+
+# ================================================================
+# Circuit simulator tests
+# ================================================================
+
+
+class TestQuditGKSLCircuitSimulator:
+    """Tests for the MQT-Qudits circuit-based GKSL simulator."""
+
+    def test_initialization(self):
+        """Circuit simulator initializes with correct local operators."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        assert sim.N == 4
+        assert sim.d == 3
+        assert sim.dim == 81
+        assert len(sim.lindblad_local_info) == 26
+
+    def test_boson_rejected(self):
+        """Circuit simulator rejects boson parameters."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters(with_boson=True)
+        with pytest.raises(ValueError, match="non-boson"):
+            QuditGKSLCircuitSimulator(params)
+
+    def test_hamiltonian_circuit_unitarity(self):
+        """Circuit-decomposed Hamiltonian is unitary."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        v = sim.verify_hamiltonian_circuit(0.5)
+        assert v["circuit_is_unitary"]
+
+    def test_hamiltonian_circuit_trotter_convergence(self):
+        """Circuit Hamiltonian converges to exact as dt -> 0."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        d1 = sim.verify_hamiltonian_circuit(1.0)["frobenius_distance"]
+        d2 = sim.verify_hamiltonian_circuit(0.1)["frobenius_distance"]
+        # Distance should decrease with dt (Trotter error ~ dt^2)
+        assert d2 < d1
+
+    def test_stinespring_local_matches_full(self):
+        """Local Stinespring unitaries match full-system computation exactly."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        v = sim.verify_stinespring_circuit(1.0)
+        assert v["all_match"]
+        assert v["max_frobenius_distance"] < 1e-10
+
+    def test_mqt_circuit_execution(self):
+        """MQT-Qudits circuit execution matches matrix computation."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        v = sim.verify_circuit_via_mqt(0.5)
+        assert v["match"]
+        assert v["statevector_distance"] < 1e-10
+        assert v["gate_count"] == 7  # 4 cu_one + 3 cu_two
+
+    def test_trace_preservation(self):
+        """Circuit-based simulation preserves trace."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        result = sim.simulate(t_max=5.0, n_steps=5)
+        for tr in result["trace"]:
+            assert abs(tr - 1.0) < 1e-10
+
+    def test_circuit_matches_matrix_simulator(self):
+        """Circuit-based simulator matches matrix-level simulator closely."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+        from qudit_gksl_simulator import QuditGKSLSimulator
+
+        params = GKSLPhysicalParameters()
+        sim_matrix = QuditGKSLSimulator(params)
+        sim_circuit = QuditGKSLCircuitSimulator(params)
+
+        r_m = sim_matrix.simulate(t_max=5.0, n_steps=5)
+        r_c = sim_circuit.simulate(t_max=5.0, n_steps=5)
+
+        # Stinespring channels match exactly; Hamiltonian has Trotter error
+        for key in ["N_S0", "N_T1", "N_S1"]:
+            diff = abs(r_m["populations"][-1][key] - r_c["populations"][-1][key])
+            assert diff < 1e-3, f"{key} mismatch: {diff}"
+
+    def test_gate_breakdown(self):
+        """Gate breakdown is reported correctly."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        result = sim.simulate(t_max=5.0, n_steps=5)
+        gb = result["gate_breakdown"]
+        assert gb["cu_one_onsite"] == 8  # 4 per half-step × 2
+        assert gb["cu_two_transfer"] == 6  # 3 per half-step × 2
+        assert gb["cu_two_stinespring_single"] == 20  # 5 types × 4 molecules
+        assert gb["cu_multi_stinespring_pair"] == 6  # 2 channels × 3 pairs
+        assert result["gates_per_step"] == 40
+
+    def test_method_label(self):
+        """Result contains correct method label."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        result = sim.simulate(t_max=5.0, n_steps=5)
+        assert result["method"] == "qudit_gksl_circuit"
+
+    def test_build_full_trotter_step_circuit(self):
+        """Full Trotter step circuit construction reports correct counts."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QuditGKSLCircuitSimulator(params)
+        info = sim.build_full_trotter_step_circuit(dt=1.0)
+        assert info["total_gates"] == 40
+        assert info["n_stinespring_gates"] == 26
+
+
+# ================================================================
+# Convergence tests (Classical vs Qudit/Qubit with fine dt)
+# ================================================================
+
+
+class TestClassicalQuantumConvergence:
+    """Tests verifying Classical-Qudit and Classical-Qubit convergence.
+
+    The Stinespring+Trotter quantum simulators converge to the Classical ODE
+    result as dt -> 0. With n_steps=20 (dt=0.25 for t_max=5), all three
+    methods agree to within 1e-3 on population dynamics.
+    """
+
+    def test_classical_qudit_convergence(self):
+        """Classical and Qudit agree within 1e-3 for fine dt."""
+        from classical_gksl_simulator import ClassicalGKSLSimulator
+        from qudit_gksl_simulator import QuditGKSLSimulator
+
+        params = GKSLPhysicalParameters()
+        sim_cl = ClassicalGKSLSimulator(params)
+        sim_qd = QuditGKSLSimulator(params)
+
+        t_max = 5.0
+        n_steps = 20  # dt = 0.25
+        r_cl = sim_cl.simulate(t_max=t_max, n_steps=n_steps)
+        r_qd = sim_qd.simulate(t_max=t_max, n_steps=n_steps)
+
+        for key in ["N_S0", "N_T1", "N_S1"]:
+            diff = abs(
+                r_cl["populations"][-1][key] - r_qd["populations"][-1][key]
+            )
+            assert diff < 1e-3, f"{key} diff {diff} exceeds 1e-3"
+
+    def test_classical_qubit_convergence(self):
+        """Classical and Qubit agree within 1e-3 for fine dt."""
+        from classical_gksl_simulator import ClassicalGKSLSimulator
+        from qubit_gksl_simulator import QubitGKSLSimulator
+
+        params = GKSLPhysicalParameters()
+        sim_cl = ClassicalGKSLSimulator(params)
+        sim_qb = QubitGKSLSimulator(params)
+
+        t_max = 5.0
+        n_steps = 20  # dt = 0.25
+        r_cl = sim_cl.simulate(t_max=t_max, n_steps=n_steps)
+        r_qb = sim_qb.simulate(t_max=t_max, n_steps=n_steps)
+
+        for key in ["N_S0", "N_T1", "N_S1"]:
+            diff = abs(
+                r_cl["populations"][-1][key] - r_qb["populations"][-1][key]
+            )
+            assert diff < 1e-3, f"{key} diff {diff} exceeds 1e-3"
+
+    def test_convergence_improves_with_dt(self):
+        """Convergence improves as dt decreases (Trotter error scaling)."""
+        from classical_gksl_simulator import ClassicalGKSLSimulator
+        from qudit_gksl_simulator import QuditGKSLSimulator
+
+        params = GKSLPhysicalParameters()
+        sim_cl = ClassicalGKSLSimulator(params)
+        sim_qd = QuditGKSLSimulator(params)
+
+        t_max = 5.0
+        diffs = []
+        for n_steps in [5, 20]:
+            r_cl = sim_cl.simulate(t_max=t_max, n_steps=n_steps)
+            r_qd = sim_qd.simulate(t_max=t_max, n_steps=n_steps)
+            max_diff = max(
+                abs(r_cl["populations"][-1][k] - r_qd["populations"][-1][k])
+                for k in ["N_S0", "N_T1", "N_S1"]
+            )
+            diffs.append(max_diff)
+
+        # With more steps (smaller dt), difference should decrease
+        assert diffs[1] < diffs[0]

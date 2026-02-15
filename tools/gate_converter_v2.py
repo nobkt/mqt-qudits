@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Gate Converter v2 - ThreeLevelGateConverter with v2 Decomposer
+"""Gate Converter v2 - ThreeLevelGateConverter with v2 Decomposer.
 
 PR#43 (継続: PR#42 Phase 3):
 - givens_to_zyz_decomposer_v2.pyを統合
@@ -23,266 +22,243 @@ PR#43 (継続: PR#42 Phase 3):
 - 忠実度 1.0 を保証
 """
 
+from __future__ import annotations
+
 import sys
-from pathlib import Path
-import numpy as np
-from typing import List, Dict
 from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from givens_to_zyz_decomposer_v2 import GivensToZYZDecomposerV2, MQTGate
 from gate_sequence_optimizer import GateSequenceOptimizer
+from givens_to_zyz_decomposer_v2 import GivensToZYZDecomposerV2, MQTGate
 
 
 @dataclass
 class MQTGateSequence:
-    """MQT-Quditsゲートシーケンス"""
-    gates: List[MQTGate]
+    """MQT-Quditsゲートシーケンス."""
+
+    gates: list[MQTGate]
     fidelity: float
     method: str
-    
+
     def get_gate_count(self) -> int:
-        """総ゲート数を取得"""
+        """総ゲート数を取得."""
         return len(self.gates)
-    
+
     def get_physical_gate_count(self) -> int:
-        """物理ゲート数を取得（VirtRz以外）"""
+        """物理ゲート数を取得（VirtRz以外）."""
         return sum(1 for g in self.gates if g.cost > 0)
-    
+
     def __repr__(self) -> str:
-        gates_str = '\n  '.join(str(g) for g in self.gates[:5])
+        gates_str = "\n  ".join(str(g) for g in self.gates[:5])
         if len(self.gates) > 5:
             gates_str += f"\n  ... ({len(self.gates) - 5} more gates)"
-        return (f"MQTGateSequence(\n  {gates_str}\n"
-                f"  Total: {self.get_gate_count()} gates, "
-                f"Physical: {self.get_physical_gate_count()} gates\n"
-                f"  Fidelity: {self.fidelity:.10f}\n"
-                f"  Method: {self.method}\n)")
+        return (
+            f"MQTGateSequence(\n  {gates_str}\n"
+            f"  Total: {self.get_gate_count()} gates, "
+            f"Physical: {self.get_physical_gate_count()} gates\n"
+            f"  Fidelity: {self.fidelity:.10f}\n"
+            f"  Method: {self.method}\n)"
+        )
 
 
 class TwoLevelGateConverterV2:
-    """
-    2準位ユニタリのゲート変換器 v2
-    
+    """2準位ユニタリのゲート変換器 v2.
+
     変更点: gate_sequence_optimizerを統合
     """
-    
-    def __init__(self, tolerance: float = 1e-10, optimize: bool = True):
-        """
-        Args:
-            tolerance: 数値誤差の許容範囲
-            optimize: ゲートシーケンスを最適化するか
+
+    def __init__(self, tolerance: float = 1e-10, optimize: bool = True) -> None:
+        """Args:
+        tolerance: 数値誤差の許容範囲
+        optimize: ゲートシーケンスを最適化するか.
         """
         self.tolerance = tolerance
         self.optimize_flag = optimize
-        
+
         # オプティマイザー
         if optimize:
             self.optimizer = GateSequenceOptimizer(tolerance)
         else:
             self.optimizer = None
-    
-    def convert(self, params: Dict, active_indices: List[int]) -> MQTGateSequence:
-        """
-        2×2 ZYZ分解結果をMQT-Quditsゲートに変換
-        
+
+    def convert(self, params: dict, active_indices: list[int]) -> MQTGateSequence:
+        """2×2 ZYZ分解結果をMQT-Quditsゲートに変換.
+
         Args:
             params: {'theta', 'phi', 'lambda', 'global_phase'}
             active_indices: [i, j] のグローバルインデックス
-            
+
         Returns:
             MQTGateSequence
         """
         if len(active_indices) != 2:
-            raise ValueError(f"2準位変換には2つのインデックスが必要です: {active_indices}")
-        
+            msg = f"2準位変換には2つのインデックスが必要です: {active_indices}"
+            raise ValueError(msg)
+
         i, j = active_indices[0], active_indices[1]
-        
+
         # ZYZパラメータ取得
-        alpha = params.get('global_phase', 0.0)
-        phi_zyz = params['phi']
-        theta_zyz = params['theta']
-        lambda_zyz = params['lambda']
-        
+        alpha = params.get("global_phase", 0.0)
+        phi_zyz = params["phi"]
+        theta_zyz = params["theta"]
+        lambda_zyz = params["lambda"]
+
         gates = []
-        
+
         # U = e^(iα) Rz(φ) Ry(θ) Rz(λ)
         # Rz(φ) = [[e^(iφ/2), 0], [0, e^(-iφ/2)]]  (半角!)
         # MQT-Qudits R(θ, φ) ≠ standard Ry(θ)
         # Ry(θ) = R(-θ, 0) の関係
-        
+
         # Step 1: e^(iα) Rz(φ) の位相
         phase_i_1 = alpha + phi_zyz / 2
         phase_j_1 = alpha - phi_zyz / 2
-        
+
         if abs(phase_i_1) > self.tolerance:
-            gates.append(MQTGate('VirtRz', {'level': i, 'phase': phase_i_1}, 0))
+            gates.append(MQTGate("VirtRz", {"level": i, "phase": phase_i_1}, 0))
         if abs(phase_j_1) > self.tolerance:
-            gates.append(MQTGate('VirtRz', {'level': j, 'phase': phase_j_1}, 0))
-        
+            gates.append(MQTGate("VirtRz", {"level": j, "phase": phase_j_1}, 0))
+
         # Step 2: Ry(θ) → R(-θ, 0)
         if abs(theta_zyz) > self.tolerance:
-            gates.append(MQTGate('R', {
-                'level1': i, 'level2': j, 
-                'theta': -theta_zyz, 'phi': 0.0
-            }, 1))
-        
+            gates.append(MQTGate("R", {"level1": i, "level2": j, "theta": -theta_zyz, "phi": 0.0}, 1))
+
         # Step 3: Rz(λ) の位相
         phase_i_2 = lambda_zyz / 2
         phase_j_2 = -lambda_zyz / 2
-        
+
         if abs(phase_i_2) > self.tolerance:
-            gates.append(MQTGate('VirtRz', {'level': i, 'phase': phase_i_2}, 0))
+            gates.append(MQTGate("VirtRz", {"level": i, "phase": phase_i_2}, 0))
         if abs(phase_j_2) > self.tolerance:
-            gates.append(MQTGate('VirtRz', {'level': j, 'phase': phase_j_2}, 0))
-        
+            gates.append(MQTGate("VirtRz", {"level": j, "phase": phase_j_2}, 0))
+
         # 最適化
         if self.optimize_flag and self.optimizer:
             gates = self.optimizer.optimize(gates)
-        
-        method = '2x2_ZYZ_v2_optimized' if self.optimize_flag else '2x2_ZYZ_v2'
-        
-        return MQTGateSequence(
-            gates=gates,
-            fidelity=1.0,
-            method=method
-        )
+
+        method = "2x2_ZYZ_v2_optimized" if self.optimize_flag else "2x2_ZYZ_v2"
+
+        return MQTGateSequence(gates=gates, fidelity=1.0, method=method)
 
 
 class ThreeLevelGateConverterV2:
-    """
-    3準位ユニタリのゲート変換器 v2
-    
+    """3準位ユニタリのゲート変換器 v2.
+
     変更点:
     - givens_to_zyz_decomposer_v2.pyを使用（グローバル位相補正付き）
     - gate_sequence_optimizerを統合
     - 忠実度 1.0 を保証
     """
-    
-    def __init__(self, tolerance: float = 1e-10, optimize: bool = True):
-        """
-        Args:
-            tolerance: 数値誤差の許容範囲
-            optimize: ゲートシーケンスを最適化するか
+
+    def __init__(self, tolerance: float = 1e-10, optimize: bool = True) -> None:
+        """Args:
+        tolerance: 数値誤差の許容範囲
+        optimize: ゲートシーケンスを最適化するか.
         """
         self.tolerance = tolerance
         self.optimize_flag = optimize
-        
+
         # v2分解器
         self.givens_decomposer = GivensToZYZDecomposerV2(tolerance)
-        
+
         # オプティマイザー
         if optimize:
             self.optimizer = GateSequenceOptimizer(tolerance)
         else:
             self.optimizer = None
-    
-    def convert(self, params: Dict, active_indices: List[int]) -> MQTGateSequence:
-        """
-        3×3 Givens分解結果をMQT-Quditsゲートに変換
-        
+
+    def convert(self, params: dict, active_indices: list[int]) -> MQTGateSequence:
+        """3×3 Givens分解結果をMQT-Quditsゲートに変換.
+
         Args:
             params: {
                 'rotations': [(local_i, local_j, theta, phi), ...],
                 'diagonal_phases': [phase0, phase1, phase2]
             }
             active_indices: [i, j, k] のグローバルインデックス
-            
+
         Returns:
             MQTGateSequence（忠実度 1.0）
         """
         if len(active_indices) != 3:
-            raise ValueError(f"3準位変換には3つのインデックスが必要です: {active_indices}")
-        
+            msg = f"3準位変換には3つのインデックスが必要です: {active_indices}"
+            raise ValueError(msg)
+
         gates = []
-        
+
         # 各Givens回転をv2分解器で変換
-        rotations = params.get('rotations', [])
+        rotations = params.get("rotations", [])
         for local_level1, local_level2, theta, phi in rotations:
             if local_level1 >= len(active_indices) or local_level2 >= len(active_indices):
-                raise ValueError(
+                msg = (
                     f"ローカルインデックス ({local_level1}, {local_level2}) が"
                     f"active_indicesの範囲外です: {active_indices}"
                 )
-            
+                raise ValueError(msg)
+
             global_level1 = active_indices[local_level1]
             global_level2 = active_indices[local_level2]
-            
+
             # Givens → ZYZ → MQT-Qudits（グローバル位相補正付き）
-            givens_gates = self.givens_decomposer.convert_to_mqt_gates(
-                global_level1, global_level2, theta, phi
-            )
+            givens_gates = self.givens_decomposer.convert_to_mqt_gates(global_level1, global_level2, theta, phi)
             gates.extend(givens_gates)
-        
+
         # 対角位相をVirtRzに変換
-        diagonal_phases = params.get('diagonal_phases', [])
+        diagonal_phases = params.get("diagonal_phases", [])
         if len(diagonal_phases) > len(active_indices):
-            raise ValueError(
-                f"対角位相の数 ({len(diagonal_phases)}) が"
-                f"active_indicesの数 ({len(active_indices)}) を超えています"
-            )
-        
+            msg = f"対角位相の数 ({len(diagonal_phases)}) がactive_indicesの数 ({len(active_indices)}) を超えています"
+            raise ValueError(msg)
+
         for local_level, phase in enumerate(diagonal_phases):
             if abs(phase) > self.tolerance:
                 global_level = active_indices[local_level]
-                gates.append(MQTGate(
-                    'VirtRz',
-                    {'level': global_level, 'phase': phase},
-                    0
-                ))
-        
+                gates.append(MQTGate("VirtRz", {"level": global_level, "phase": phase}, 0))
+
         # ゲートシーケンスを最適化
         if self.optimize_flag and self.optimizer:
             gates = self.optimizer.optimize(gates)
-        
-        method = '3x3_Givens_v2_optimized' if self.optimize_flag else '3x3_Givens_v2'
-        
-        return MQTGateSequence(
-            gates=gates,
-            fidelity=1.0,
-            method=method
-        )
-    
-    def verify_conversion(
-        self, 
-        params: Dict, 
-        active_indices: List[int],
-        target_unitary: np.ndarray
-    ) -> float:
-        """
-        変換の忠実度を検証
-        
+
+        method = "3x3_Givens_v2_optimized" if self.optimize_flag else "3x3_Givens_v2"
+
+        return MQTGateSequence(gates=gates, fidelity=1.0, method=method)
+
+    def verify_conversion(self, params: dict, active_indices: list[int], target_unitary: np.ndarray) -> float:
+        """変換の忠実度を検証.
+
         Args:
             params: Givens分解パラメータ
             active_indices: グローバルインデックス
             target_unitary: 目標ユニタリ行列（サイズ size×size）
-            
+
         Returns:
             忠実度
         """
         # ゲート変換
         result = self.convert(params, active_indices)
-        
+
         # 行列再構築
         size = target_unitary.shape[0]
         U_reconstructed = np.eye(size, dtype=complex)
-        
+
         # ゲートを逆順に適用
         for gate in reversed(result.gates):
-            if gate.gate_type == 'VirtRz':
-                level = gate.parameters['level']
-                phase = gate.parameters['phase']
+            if gate.gate_type == "VirtRz":
+                level = gate.parameters["level"]
+                phase = gate.parameters["phase"]
                 Rz = np.eye(size, dtype=complex)
                 Rz[level, level] = np.exp(1j * phase)
                 U_reconstructed = Rz @ U_reconstructed
-                
-            elif gate.gate_type == 'R':
-                level1 = gate.parameters['level1']
-                level2 = gate.parameters['level2']
-                theta = gate.parameters['theta']
-                phi = gate.parameters['phi']
-                
+
+            elif gate.gate_type == "R":
+                level1 = gate.parameters["level1"]
+                level2 = gate.parameters["level2"]
+                theta = gate.parameters["theta"]
+                phi = gate.parameters["phi"]
+
                 # MQT-Qudits R ゲート
                 c = np.cos(theta / 2)
                 s = np.sin(theta / 2)
@@ -292,134 +268,99 @@ class ThreeLevelGateConverterV2:
                 R[level2, level1] = -s * np.exp(1j * phi)
                 R[level2, level2] = c
                 U_reconstructed = R @ U_reconstructed
-        
+
         # 忠実度計算
         trace = np.trace(target_unitary.conj().T @ U_reconstructed)
-        fidelity = abs(trace) / size
-        
-        return fidelity
+        return abs(trace) / size
 
 
-def test_h_transfer_v2():
-    """H_transfer (2×2) のテスト"""
-    print("=" * 70)
-    print("H_transfer (2×2) v2テスト")
-    print("=" * 70)
-    
+def test_h_transfer_v2() -> bool:
+    """H_transfer (2×2) のテスト."""
     # 簡単な2×2ユニタリでテスト（H_transferの代わり）
     # ZYZ分解済みパラメータを使用
-    params_2x2 = {
-        'theta': 0.2,
-        'phi': 1.57,
-        'lambda': -1.57,
-        'global_phase': 0.0
-    }
+    params_2x2 = {"theta": 0.2, "phi": 1.57, "lambda": -1.57, "global_phase": 0.0}
     active_indices = [1, 3]
-    
+
     # v2コンバーターで変換
     converter = TwoLevelGateConverterV2(optimize=True)
     result = converter.convert(params_2x2, active_indices)
-    
-    print(f"変換結果:")
-    print(f"  ゲート数: {result.get_gate_count()} (物理: {result.get_physical_gate_count()})")
-    print(f"  忠実度: {result.fidelity:.10f}")
-    print(f"  方法: {result.method}")
-    print(f"  ゲート:")
-    for gate in result.gates:
-        print(f"    {gate}")
-    
+
+    for _gate in result.gates:
+        pass
+
     # 期待: 最適化後は少数のゲート、忠実度 1.0
     assert result.fidelity == 1.0, f"忠実度が1.0ではありません: {result.fidelity}"
     assert result.get_gate_count() <= 5, f"ゲート数が多すぎます: {result.get_gate_count()}"
-    
-    print("✓ 合格")
+
     return True
 
 
-def test_random_3x3_v2():
-    """ランダム3×3ユニタリのテスト"""
-    print("\n" + "=" * 70)
-    print("ランダム3×3ユニタリ v2テスト (N=10)")
-    print("=" * 70)
-    
+def test_random_3x3_v2() -> bool:
+    """ランダム3×3ユニタリのテスト."""
     np.random.seed(42)
     converter = ThreeLevelGateConverterV2(optimize=True)
-    
+
     pass_count = 0
     gate_counts = []
     fidelities = []
-    
-    for i in range(10):
+
+    for _i in range(10):
         # ランダム3×3ユニタリを生成
         A = np.random.randn(3, 3) + 1j * np.random.randn(3, 3)
-        Q, R = np.linalg.qr(A)
-        U_3x3 = Q
-        
+        _Q, _R = np.linalg.qr(A)
+
         # 簡単なGivens分解パラメータを生成（実際はintegrated_sparse_compilerから取得）
         # ここでは簡易的に対角位相のみテスト
         params_3x3 = {
-            'rotations': [
-                (0, 1, 0.1, 0.5),
-                (0, 2, 0.2, 0.3),
-                (1, 2, 0.15, 0.4)
-            ],
-            'diagonal_phases': [0.0, 0.0, 0.0]
+            "rotations": [(0, 1, 0.1, 0.5), (0, 2, 0.2, 0.3), (1, 2, 0.15, 0.4)],
+            "diagonal_phases": [0.0, 0.0, 0.0],
         }
         active_indices = [0, 1, 2]
-        
+
         # 変換
         result = converter.convert(params_3x3, active_indices)
-        
+
         # 簡易検証（Givens分解の正確性は別途テスト）
         if result.fidelity == 1.0:
             pass_count += 1
             gate_counts.append(result.get_gate_count())
             fidelities.append(result.fidelity)
-    
-    print(f"合格率: {pass_count}/10 ({100*pass_count/10:.1f}%)")
+
     if gate_counts:
-        print(f"平均ゲート数: {np.mean(gate_counts):.1f}")
-        print(f"平均忠実度: {np.mean(fidelities):.10f}")
-    
+        pass
+
     assert pass_count == 10, f"一部のテストが失敗しました: {pass_count}/10"
-    print("✓ 合格")
     return True
 
 
 def main():
-    """メインテスト関数"""
-    print("\n" + "=" * 70)
-    print("gate_converter_v2.py テストスイート")
-    print("=" * 70 + "\n")
-    
+    """メインテスト関数."""
     all_passed = True
-    
+
     try:
         all_passed &= test_h_transfer_v2()
-    except Exception as e:
-        print(f"✗ H_transfer v2テスト失敗: {e}")
+    except Exception:
         import traceback
+
         traceback.print_exc()
         all_passed = False
-    
+
     try:
         all_passed &= test_random_3x3_v2()
-    except Exception as e:
-        print(f"✗ ランダム3×3 v2テスト失敗: {e}")
+    except Exception:
         import traceback
+
         traceback.print_exc()
         all_passed = False
-    
-    print("\n" + "=" * 70)
+
     if all_passed:
-        print("✓✓✓ すべてのテストに合格")
+        pass
     else:
-        print("✗✗✗ 一部のテストが失敗しました")
-    print("=" * 70)
-    
+        pass
+
     return all_passed
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     success = main()
     sys.exit(0 if success else 1)

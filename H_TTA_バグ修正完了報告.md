@@ -15,7 +15,8 @@
 $$\hat{H}_{\text{TTA}} = \sum_{\langle i,j \rangle} J_{ij} \left( |S_0\rangle_i |S_1\rangle_j \langle T_1|_i \langle T_1|_j + \text{h.c.} \right)$$
 
 qudit基底（|S0⟩=|0⟩, |T1⟩=|1⟩, |S1⟩=|2⟩）では：
-- |S0⟩_i|S1⟩_j⟨T1|_i⟨T1|_j = |02⟩⟨11|
+
+- |S0⟩\_i|S1⟩\_j⟨T1|\_i⟨T1|\_j = |02⟩⟨11|
 - h.c. (エルミート共役) = |11⟩⟨02|
 
 したがって：**H_TTA = J(|02⟩⟨11| + |11⟩⟨02|)** のみ
@@ -38,20 +39,23 @@ H[idx_11, idx_20] = J  # ✗ 間違い！余分な項
 
 ### なぜ余分な項が間違いか
 
-状態 |20⟩ = |S1⟩_i|S0⟩_j は：
+状態 |20⟩ = |S1⟩\_i|S0⟩\_j は：
+
 - 分子iが励起一重項S1
 - 分子jが基底状態S0
 
 これは順序付きペア(i,j)に対する有効なTTA過程ではありません。TTAは：
-- |T1⟩_i|T1⟩_j → |S0⟩_i|S1⟩_j （分子iが基底へ、分子jが励起一重項へ）
 
-逆の結合 |T1⟩_i|T1⟩_j → |S1⟩_i|S0⟩_j はペア(j,i)に対するもので、(i,j)ではありません。
+- |T1⟩\_i|T1⟩\_j → |S0⟩\_i|S1⟩\_j （分子iが基底へ、分子jが励起一重項へ）
+
+逆の結合 |T1⟩\_i|T1⟩\_j → |S1⟩\_i|S0⟩\_j はペア(j,i)に対するもので、(i,j)ではありません。
 
 ## 修正内容
 
 ### 修正したファイル
 
 1. **tutorials/exact_hamiltonian_builders.py**
+
    - `build_H_TTA_matrix()`から|20⟩結合を削除（2行削除）
    - docstringを更新して正しい2×2部分空間を反映
 
@@ -65,25 +69,25 @@ H[idx_11, idx_20] = J  # ✗ 間違い！余分な項
 def build_H_TTA_matrix(J: float, dim: int = 3) -> np.ndarray:
     """
     2つのquditペアに対する厳密なH_TTAハミルトニアン行列を構築
-    
+
     qutritsの場合（dim=3）:
     H_TTA = J (|02⟩⟨11| + |11⟩⟨02|)
-    
+
     これは |S0⟩_i|S1⟩_j ↔ |T1⟩_i|T1⟩_j を結合します。
     TTA過程: |T1⟩_i|T1⟩_j → |S0⟩_i|S1⟩_j （と逆）
-    
+
     2×2部分空間 {|02⟩, |11⟩} でのみ作用します。
     """
     total_dim = dim * dim
     H = np.zeros((total_dim, total_dim), dtype=complex)
-    
+
     idx_02 = 0 * dim + 2  # dim=3の場合 = 2
     idx_11 = 1 * dim + 1  # dim=3の場合 = 4
-    
+
     # H_TTA = J(|02⟩⟨11| + |11⟩⟨02|)
     H[idx_02, idx_11] = J
     H[idx_11, idx_02] = J
-    
+
     return H
 ```
 
@@ -176,6 +180,6 @@ CodeQL解析: **0件のアラート** - セキュリティ問題なし。
 
 ---
 
-**修正完了日**: 2025-11-11  
-**対象ノートブック**: `tutorials/quantum_dynamics_complete_comparison.ipynb`  
+**修正完了日**: 2025-11-11
+**対象ノートブック**: `tutorials/quantum_dynamics_complete_comparison.ipynb`
 **修正者**: GitHub Copilot Coding Agent

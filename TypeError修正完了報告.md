@@ -15,8 +15,8 @@ TypeError: 'float' object is not subscriptable
 
 ```python
 # ノートブック (cell 3)
-self.V = 0.1        # スカラー！
-self.J = 0.05       # スカラー！
+self.V = 0.1  # スカラー！
+self.J = 0.05  # スカラー！
 
 # 実装ファイル (PhysicalParameters class)
 self.V = np.array([0.10, 0.10, 0.10])  # 配列
@@ -35,7 +35,11 @@ self.J = np.array([0.05, 0.05, 0.05])  # 配列
 V = self.params.V[pair_idx]
 
 # 修正後:
-V = self.params.V[pair_idx] if isinstance(self.params.V, (list, np.ndarray)) else self.params.V
+V = (
+    self.params.V[pair_idx]
+    if isinstance(self.params.V, (list, np.ndarray))
+    else self.params.V
+)
 ```
 
 ### 修正箇所（8箇所）
@@ -48,6 +52,7 @@ V = self.params.V[pair_idx] if isinstance(self.params.V, (list, np.ndarray)) els
 ## テスト結果
 
 ### 1. 既存テストの継続性 ✓
+
 ```
 test_sparse_aware_implementation.py::test_gate_count_reduction PASSED
 test_sparse_aware_implementation.py::test_fidelity_preservation PASSED
@@ -61,6 +66,7 @@ test_sparse_aware_implementation.py::test_hamiltonian_construction PASSED
 ```
 
 ### 2. 新規テスト ✓
+
 ```
 test_scalar_array_params.py::test_scalar_parameters PASSED
 test_scalar_array_params.py::test_array_parameters PASSED
@@ -70,6 +76,7 @@ test_scalar_array_params.py::test_scalar_and_array_give_same_results PASSED
 ```
 
 ### 3. 最終統合テスト ✓
+
 ```
 1. Testing with SCALAR V and J (notebook style)...
   ✓ Built unitary: (81, 81)
@@ -91,6 +98,7 @@ test_scalar_array_params.py::test_scalar_and_array_give_same_results PASSED
 ```
 
 ### 4. セキュリティスキャン ✓
+
 ```
 Analysis Result for 'python'. Found 0 alerts:
 - **python**: No alerts found.
@@ -119,8 +127,8 @@ Analysis Result for 'python'. Found 0 alerts:
 # ノートブック内のパラメータ定義（変更不要）
 class PhysicalParameters:
     def __init__(self):
-        self.V = 0.1        # スカラーのまま動作
-        self.J = 0.05       # スカラーのまま動作
+        self.V = 0.1  # スカラーのまま動作
+        self.J = 0.05  # スカラーのまま動作
         # ... 他のパラメータ
 ```
 
@@ -129,6 +137,7 @@ class PhysicalParameters:
 ```python
 # 配列形式（既存コードとの互換性）
 from mqt_qudits_four_molecule_sparse_implementation import PhysicalParameters
+
 params = PhysicalParameters()  # V と J は配列
 ```
 

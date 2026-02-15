@@ -15,6 +15,7 @@ Successfully updated `tutorials/mqt_qudits_four_molecule_sparse_implementation.p
 The notebook simulation has two distinct code paths:
 
 1. **Actual Simulation** (was already correct):
+
    - Uses `build_trotter_step_unitary_direct()`
    - Builds unitaries directly from Hamiltonians using `scipy.linalg.expm()`
    - Calls `build_H_TTA_unitary()` which was already mathematically exact
@@ -40,6 +41,7 @@ PR#89 fixed `apply_H_TTA_basic_gates()` to use exact CustomTwo gates instead of 
 ### 1. File Header Update
 
 **Before:**
+
 ```python
 """
 - H_TTA: Givens回転分解による基本ゲート実装（CustomTwo不使用）
@@ -48,6 +50,7 @@ PR#89 fixed `apply_H_TTA_basic_gates()` to use exact CustomTwo gates instead of 
 ```
 
 **After:**
+
 ```python
 """
 - H_TTA: PR#89で修正された厳密なCustomTwoゲート実装を使用
@@ -68,7 +71,7 @@ def add_H_TTA_evolution_gates(self, circuit, dt: float):
     """
     PR#89の修正により、exact_qudit_basic_gates.apply_H_TTA_basic_gates()は
     厳密なCustomTwoゲートを使用するようになりました。
-    
+
     実装:
     1. scipy.linalg.expmで厳密な3×3ユニタリを計算
     2. 9×9空間に埋め込み
@@ -80,6 +83,7 @@ def add_H_TTA_evolution_gates(self, circuit, dt: float):
 ### 3. Implemented `decompose_custom_two_gates()`
 
 **Before** (throws error):
+
 ```python
 if has_custom_two:
     raise ValueError(
@@ -89,14 +93,18 @@ if has_custom_two:
 ```
 
 **After** (performs exact decomposition):
+
 ```python
 # CustomTwoゲートを検出
-custom_two_gates = [(idx, gate) for idx, gate in enumerate(circuit.instructions) 
-                    if gate.__class__.__name__ == 'CustomTwo']
+custom_two_gates = [
+    (idx, gate)
+    for idx, gate in enumerate(circuit.instructions)
+    if gate.__class__.__name__ == "CustomTwo"
+]
 
 # LogEntQRCEXPassで基本ゲートに分解
 for idx, gate in enumerate(circuit.instructions):
-    if gate.__class__.__name__ == 'CustomTwo':
+    if gate.__class__.__name__ == "CustomTwo":
         decomposed_gates = self._decompose_custom_two_exact(gate)
         # Add decomposed gates to circuit
 ```
@@ -109,7 +117,7 @@ New method that uses LogEntQRCEXPass for exact decomposition:
 def _decompose_custom_two_exact(self, gate):
     """
     単一のCustomTwoゲートを厳密に基本ゲートに分解
-    
+
     LogEntQRCEXPassを使用して、CustomTwoゲートの9×9ユニタリを
     基本ゲート（VirtRz, R, CEx, Rz）に分解します。
     """
@@ -140,12 +148,14 @@ if custom_two_count > 0:
 Created `test_pr89_notebook_fix.py` which verifies:
 
 1. **Exact Unitary Implementations**
+
    - H_TTA unitarity error: 3.74e-16 ✓
    - H_TTA analytical formula error: 3.55e-16 ✓
    - H_transfer unitarity error: 4.97e-16 ✓
    - **All mathematically exact**
 
 2. **PR#89 Fix Integration**
+
    - `apply_H_TTA_basic_gates()` uses CustomTwo gate ✓
    - CustomTwo gate unitary error: 0.00e+00 ✓
    - CustomTwo gate contains correct exact unitary ✓
@@ -175,6 +185,7 @@ From the problem statement:
 ### 1. `tutorials/mqt_qudits_four_molecule_sparse_implementation.py`
 
 **Changes:**
+
 - File header: Documents PR#89 and CustomTwo gate usage
 - `add_H_TTA_evolution_gates()`: Updated documentation
 - `decompose_custom_two_gates()`: Implemented exact decomposition
@@ -187,6 +198,7 @@ From the problem statement:
 ### 2. `test_pr89_notebook_fix.py` (new)
 
 **Content:**
+
 - Test 1: Verify exact unitary implementations
 - Test 2: Verify PR#89 fix is applied
 - Test 3: Verify simulation implementation
@@ -197,6 +209,7 @@ From the problem statement:
 ### 3. `PR89_NOTEBOOK_FIX_COMPLETION_REPORT_JA.md` (new)
 
 **Content:**
+
 - Detailed Japanese completion report
 - Problem analysis
 - Implementation details
@@ -209,6 +222,7 @@ From the problem statement:
 ### The Two Implementation Paths
 
 **Path 1: Actual Simulation** (unchanged, was already correct)
+
 ```
 simulate_shot_based()
   ↓
@@ -220,6 +234,7 @@ scipy.linalg.expm(-1j * H * dt / ℏ)
 ```
 
 **Path 2: Gate Counting Circuit** (updated to handle PR#89)
+
 ```
 simulate_shot_based()
   ↓
@@ -242,13 +257,13 @@ Basic gates (VirtRz, R, CEx, Rz)
 
 All unitaries are exact to machine precision:
 
-| Component | Error | Status |
-|-----------|-------|--------|
-| H_TTA unitary (3×3) | 3.74e-16 | ✓ Exact |
+| Component                | Error    | Status  |
+| ------------------------ | -------- | ------- |
+| H_TTA unitary (3×3)      | 3.74e-16 | ✓ Exact |
 | H_TTA analytical formula | 3.55e-16 | ✓ Exact |
 | H_transfer unitary (2×2) | 4.97e-16 | ✓ Exact |
-| CustomTwo gate unitary | 0.00e+00 | ✓ Exact |
-| Trotter step unitary | 4.68e-15 | ✓ Exact |
+| CustomTwo gate unitary   | 0.00e+00 | ✓ Exact |
+| Trotter step unitary     | 4.68e-15 | ✓ Exact |
 
 ## Conclusion
 
@@ -274,11 +289,12 @@ All unitaries are exact to machine precision:
 ## Next Steps
 
 The notebook `tutorials/quantum_dynamics_complete_comparison.ipynb` can now be run and will:
+
 - Display accurate Qudit simulation results (as it did before - simulation was always correct)
 - Show correct gate counts (CustomTwo gates decomposed to basic gates)
 - Have documentation that matches the implementation
 
 ---
 
-**Date**: 2025-11-13  
+**Date**: 2025-11-13
 **Status**: Complete, tested, verified, security checked ✅

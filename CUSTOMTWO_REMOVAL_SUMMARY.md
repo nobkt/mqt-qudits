@@ -31,8 +31,9 @@ The original implementation used CustomTwo gates for 2-body qudit interactions (
 Created a new module implementing exact decompositions for H_transfer and H_TTA:
 
 #### H_transfer Decomposition
+
 - **Theory**: Section 7.7.3 of theory_quantum_dynamics_complete_comparison.md
-- **Implementation**: 
+- **Implementation**:
   - Uses CEx (Controlled Exchange) gates
   - Uses VirtRz (Virtual Z Rotation) gates for phase adjustment
   - Gate count: 2 CEx + 4 VirtRz = 6 gates/pair
@@ -41,19 +42,20 @@ Created a new module implementing exact decompositions for H_transfer and H_TTA:
 ```python
 def apply_H_transfer_basic_gates(circuit, qudit_i, qudit_j, V, dt, hbar):
     # Phase adjustment (virtual gates to realize -i factor)
-    circuit.virtrz(qudit_i, 1, -np.pi/2)
-    circuit.virtrz(qudit_j, 0, -np.pi/2)
-    
+    circuit.virtrz(qudit_i, 1, -np.pi / 2)
+    circuit.virtrz(qudit_j, 0, -np.pi / 2)
+
     # Main rotation (CEx gates)
     circuit.cex(qudit_i, qudit_j, 0, 0, theta)
     circuit.cex(qudit_j, qudit_i, 0, 0, theta)  # Reverse for symmetry
-    
+
     # Phase correction
-    circuit.virtrz(qudit_i, 1, np.pi/2)
-    circuit.virtrz(qudit_j, 0, np.pi/2)
+    circuit.virtrz(qudit_i, 1, np.pi / 2)
+    circuit.virtrz(qudit_j, 0, np.pi / 2)
 ```
 
 #### H_TTA Decomposition
+
 - **Theory**: Section 7.8.3 of theory_quantum_dynamics_complete_comparison.md
 - **Implementation**:
   - Uses Givens rotation decomposition
@@ -65,10 +67,10 @@ def apply_H_transfer_basic_gates(circuit, qudit_i, qudit_j, V, dt, hbar):
 def apply_H_TTA_basic_gates(circuit, qudit_i, qudit_j, J, dt, hbar):
     # Calculate Givens rotation angles from exact eigenvalue decomposition
     omega = np.sqrt(2) * J * dt / hbar
-    
+
     # Diagonal phases
     circuit.virtrz(...)
-    
+
     # Givens rotations
     circuit.r(qudit_i, theta_1, 0)
     circuit.r(qudit_j, theta_1, 0)
@@ -93,10 +95,12 @@ def apply_H_TTA_basic_gates(circuit, qudit_i, qudit_j, J, dt, hbar):
 #### Before vs After:
 
 **Before**:
+
 - H_transfer: Used CustomTwo gate (9×9 unitary) → LogEntQRCEXPass → ~1000 gates
 - H_TTA: Used CustomTwo gate (9×9 unitary) → LogEntQRCEXPass → ~1000 gates
 
 **After**:
+
 - H_transfer: Direct CEx + VirtRz gates → 2 CEx + 4 VirtRz = 6 gates/pair
 - H_TTA: Givens rotation → VirtRz + R + CEx → ~10 gates/pair
 
@@ -115,17 +119,18 @@ All decompositions are **mathematically exact** with NO heuristics or approximat
 
 For a 4-molecule system with 3 pairs of neighbors:
 
-| Component | Before (CustomTwo) | After (Basic Gates) | Improvement |
-|-----------|-------------------|---------------------|-------------|
-| H_transfer | ~3000 gates | 18 gates (6/pair × 3) | 99.4% reduction |
-| H_TTA | ~3000 gates | ~30 gates (10/pair × 3) | 99% reduction |
-| **Total** | **~6000 gates** | **~48 gates** | **99.2% reduction** |
+| Component  | Before (CustomTwo) | After (Basic Gates)     | Improvement         |
+| ---------- | ------------------ | ----------------------- | ------------------- |
+| H_transfer | ~3000 gates        | 18 gates (6/pair × 3)   | 99.4% reduction     |
+| H_TTA      | ~3000 gates        | ~30 gates (10/pair × 3) | 99% reduction       |
+| **Total**  | **~6000 gates**    | **~48 gates**           | **99.2% reduction** |
 
 Note: VirtRz gates are virtual (no physical operation), so effective count is even lower.
 
 ## Testing
 
 All modified files pass Python syntax validation:
+
 ```bash
 python3 -m py_compile exact_qudit_basic_gates.py
 python3 -m py_compile mqt_qudits_four_molecule_sparse_implementation.py
@@ -134,6 +139,7 @@ python3 -m py_compile mqt_qudits_four_molecule_sparse_implementation.py
 ## References
 
 1. Theory document: `tutorials/doc/theory_quantum_dynamics_complete_comparison.md`
+
    - Section 7.7.3: H_transfer CEx gate implementation
    - Section 7.8.3: H_TTA Givens rotation decomposition
 

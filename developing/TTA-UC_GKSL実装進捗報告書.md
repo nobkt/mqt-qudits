@@ -8,12 +8,12 @@
 
 ### 1.1 共通モジュール（フェーズ1）✅ 完了
 
-| ファイル | 状態 | 内容 |
-|---------|------|------|
-| `tutorials/gksl_physical_parameters.py` | ✅ 完了 | GKSLPhysicalParametersクラス。全パラメータ、検証、シリアライズ |
-| `tutorials/gksl_math_utils.py` | ✅ 完了 | 15関数：ハミルトニアン構築、Lindblad演算子構築（26個）、密度行列操作、ボソン拡張、部分トレース |
-| `tutorials/stinespring_utils.py` | ✅ 完了 | Stinespring dilation、超演算子構築、Trotter分解 |
-| `tutorials/gksl_validation.py` | ✅ 完了 | 密度行列検証、粒子数保存検証、エントロピー検証、PhysicsViolationError |
+| ファイル                                | 状態    | 内容                                                                                           |
+| --------------------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
+| `tutorials/gksl_physical_parameters.py` | ✅ 完了 | GKSLPhysicalParametersクラス。全パラメータ、検証、シリアライズ                                 |
+| `tutorials/gksl_math_utils.py`          | ✅ 完了 | 15関数：ハミルトニアン構築、Lindblad演算子構築（26個）、密度行列操作、ボソン拡張、部分トレース |
+| `tutorials/stinespring_utils.py`        | ✅ 完了 | Stinespring dilation、超演算子構築、Trotter分解                                                |
+| `tutorials/gksl_validation.py`          | ✅ 完了 | 密度行列検証、粒子数保存検証、エントロピー検証、PhysicsViolationError                          |
 
 ### 1.2 シナリオ1: Classical GKSL（ボソン無し）✅ 完了
 
@@ -95,6 +95,7 @@
 ### 2.2 実回路構築（未実装）
 
 現在の実装はマトリクスレベルのシミュレーション（量子回路が行う計算を行列演算で再現）。以下は未実装:
+
 - MQT-Quditsの実際のQuantumCircuit APIを使った回路構築
 - Qiskitの実際の量子回路構築
 - 実機（または実回路シミュレータ）での実行
@@ -106,12 +107,14 @@
 Stinespring+Trotter方式の量子シミュレータ（Qubit/Qudit）は、古典ODE積分（Classical）に対して近似解である。dt→0の極限で一致するが、dt=1.0（n_steps=5, t_max=5）では明確な近似誤差がある。これは**想定される動作**であり、バグではない。
 
 一致性の改善には:
+
 - n_stepsを増やす（dt を小さくする）
 - Trotter分解の次数を上げる
 
 ### 2.4 追加テストケース（未実装）
 
 以下のテストは実装計画書に記載されているが、本PRでは未実装:
+
 - ユニタリ極限テスト（全γ=0）: パラメータバリデーションの調整が必要（V=0やγ=0での弱結合条件）
 - 蛍光のみの解析解テスト: 'all_singlet'初期状態とV=0パラメータの組み合わせ
 - 長時間定常状態テスト: t_max=1000で全分子がS0に緩和
@@ -135,17 +138,18 @@ $$\gamma_{\max} \cdot \Delta t / \hbar \ll 1$$
 
 ### 3.2 計算性能
 
-| シナリオ | 次元 | t_max=10, n_steps=10 | メモリ |
-|---------|------|---------------------|--------|
-| Classical NB | 81 | ～3秒 | ～50MB |
-| Qubit NB | 81 | ～10秒 | ～100MB |
-| Qudit NB | 81 | ～10秒 | ～100MB |
-| Classical B (N=2, n_max=1) | 36 | ～2秒 | ～30MB |
-| Classical B (N=4, n_max=2) | 6561 | 非常に重い | ～690MB |
+| シナリオ                   | 次元 | t_max=10, n_steps=10 | メモリ  |
+| -------------------------- | ---- | -------------------- | ------- |
+| Classical NB               | 81   | ～3秒                | ～50MB  |
+| Qubit NB                   | 81   | ～10秒               | ～100MB |
+| Qudit NB                   | 81   | ～10秒               | ～100MB |
+| Classical B (N=2, n_max=1) | 36   | ～2秒                | ～30MB  |
+| Classical B (N=4, n_max=2) | 6561 | 非常に重い           | ～690MB |
 
 ### 3.3 ヒューリスティック・フォールバックの不使用
 
 本実装では以下を**一切使用していない**:
+
 - 密度行列の強制的なトレース正規化
 - 固有値のクリッピング
 - エラーの黙殺
@@ -199,19 +203,20 @@ tutorials/
 ### 6.2 パラメータバリデーション修正 ✅
 
 `gksl_physical_parameters.py`のvalidate()メソッドの弱結合条件チェックを修正：
+
 - 全散逸率=0（ユニタリ極限）: チェックをスキップ
 - V=0（分子間結合なし）: エネルギースケールとしてE_Tのみを使用（V=0による偽の違反を防止）
 
 ### 6.3 追加テスト（6件） ✅
 
-| テスト名 | 内容 | 許容誤差 |
-|---------|------|---------|
-| test_unitary_limit | 全γ=0でエントロピー≈0（純粋ユニタリ発展） | < 1e-6 |
-| test_fluorescence_analytical | V=0, Γ_fl=0.01でN_S1(t)=4exp(-Γ_fl*t) | < 1e-3 |
-| test_steady_state | t_max=1000で全分子がS0に緩和 | N_S0>3.5 |
-| test_validate_unitary_params | 全γ=0でバリデーション通過 | - |
-| test_validate_zero_V_params | V=0でバリデーション通過 | - |
-| test_stinespring_fidelity_qudit | Classical vs Qudit忠実度F>0.99 | F>0.99 |
+| テスト名                        | 内容                                      | 許容誤差 |
+| ------------------------------- | ----------------------------------------- | -------- |
+| test_unitary_limit              | 全γ=0でエントロピー≈0（純粋ユニタリ発展） | < 1e-6   |
+| test_fluorescence_analytical    | V=0, Γ_fl=0.01でN_S1(t)=4exp(-Γ_fl\*t)    | < 1e-3   |
+| test_steady_state               | t_max=1000で全分子がS0に緩和              | N_S0>3.5 |
+| test_validate_unitary_params    | 全γ=0でバリデーション通過                 | -        |
+| test_validate_zero_V_params     | V=0でバリデーション通過                   | -        |
+| test_stinespring_fidelity_qudit | Classical vs Qudit忠実度F>0.99            | F>0.99   |
 
 ### 6.4 統合ノートブック ✅
 

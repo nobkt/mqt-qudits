@@ -32,6 +32,7 @@ Assuming the classical simulation is correct, both quantum simulations contained
 **Location**: Notebook lines 530-589
 
 **Bug #1 - H_transfer (lines 561-576)**:
+
 ```python
 def apply_transfer_evolution(self, circuit, mol_i, mol_j, dt):
     """エネルギー移動項の時間発展（簡略化実装）"""  # ← "Simplified"
@@ -40,11 +41,13 @@ def apply_transfer_evolution(self, circuit, mol_i, mol_j, dt):
 ```
 
 **Why Wrong**:
+
 - Uses RXX gate as approximation
 - True H_transfer operates on 2×2 subspace {|0001⟩, |0100⟩}
 - RXX does not preserve correct physics
 
 **Bug #2 - H_TTA (lines 577-589)**:
+
 ```python
 def apply_TTA_evolution(self, circuit, mol_i, mol_j, dt):
     """TTA項の時間発展（簡略化実装）"""  # ← "Simplified"
@@ -53,6 +56,7 @@ def apply_TTA_evolution(self, circuit, mol_i, mol_j, dt):
 ```
 
 **Why Wrong**:
+
 - Uses RXX + RYY approximation
 - True H_TTA operates on 3×3 subspace {|0010⟩, |0101⟩, |1000⟩}
 - H_TTA has structure `[[0,J,0], [J,0,J], [0,J,0]]` which is NOT equivalent to X⊗X + Y⊗Y
@@ -60,12 +64,14 @@ def apply_TTA_evolution(self, circuit, mol_i, mol_j, dt):
 ### Qudit Implementation (✗ PARTIALLY INCORRECT)
 
 **H_transfer** (✓ CORRECT):
+
 - Uses exact gate sequence for 2×2 subspace rotation
 - No approximations
 
 **H_TTA** (✗ INCORRECT - Now Fixed):
 
 **Original Code** (lines 462-510):
+
 ```python
 def add_H_TTA_evolution_gates(self, circuit, dt):
     """H_TTAの時間発展ゲートを回路に追加（近似直接実装版）"""
@@ -76,6 +82,7 @@ def add_H_TTA_evolution_gates(self, circuit, dt):
 ```
 
 **Why Wrong**:
+
 - Explicitly uses approximations ("近似")
 - Heuristic rotation gates instead of exact implementation
 - Violates requirement: "ヒューリスティックな処理やごまかしのためのfallbackは絶対にしないでください"
@@ -87,8 +94,9 @@ def add_H_TTA_evolution_gates(self, circuit, dt):
 **File**: `tutorials/exact_hamiltonian_builders.py`
 
 **Functions**:
+
 - `build_H_transfer_matrix(V, dim=3)` - Exact 9×9 Hamiltonian
-- `build_H_TTA_matrix(J, dim=3)` - Exact 9×9 Hamiltonian  
+- `build_H_TTA_matrix(J, dim=3)` - Exact 9×9 Hamiltonian
 - `build_time_evolution_unitary(H, dt, hbar)` - U = exp(-i*H*dt/ℏ)
 - `build_H_transfer_unitary(V, dt, hbar, dim=3)` - Complete unitary
 - `build_H_TTA_unitary(J, dt, hbar, dim=3)` - Complete unitary
@@ -96,6 +104,7 @@ def add_H_TTA_evolution_gates(self, circuit, dt):
 - `extract_active_subspace_unitary(U, indices)` - Extract subspace
 
 **Verification**:
+
 ```
 H_transfer: 2×2 subspace {|01⟩, |10⟩}, Identity: 77.78% ✓
 H_TTA:      3×3 subspace {|02⟩, |11⟩, |20⟩}, Identity: 66.67% ✓
@@ -107,6 +116,7 @@ All Hermitian and unitary ✓
 **File**: `tutorials/exact_qubit_hamiltonians.py`
 
 **Qubit Encoding**:
+
 ```
 |S0⟩ → |00⟩
 |T1⟩ → |01⟩
@@ -115,12 +125,14 @@ All Hermitian and unitary ✓
 ```
 
 **Functions**:
+
 - `build_H_transfer_qubit_unitary(V, dt, hbar)` - Exact 16×16 unitary
 - `build_H_TTA_qubit_unitary(J, dt, hbar)` - Exact 16×16 unitary
 - `apply_exact_H_transfer_qubit(circuit, ...)` - Apply to circuit
 - `apply_exact_H_TTA_qubit(circuit, ...)` - Apply to circuit
 
 **Verification**:
+
 ```
 Classical 3-level vs Qubit 4-qubit:
   H_transfer: Perfect match (< 1e-10 error) ✓
@@ -136,25 +148,27 @@ Active subspaces:
 **File**: `tutorials/mqt_qudits_four_molecule_sparse_implementation.py`
 
 **New Implementation** (lines 462-510):
+
 ```python
 def add_H_TTA_evolution_gates(self, circuit, dt):
     """H_TTAの時間発展ゲートを回路に追加（厳密実装版）"""
     from exact_hamiltonian_builders import build_H_TTA_unitary
-    
+
     # Build exact 9×9 unitary: U = exp(-i*H_TTA*dt/ℏ)
     # Mathematically exact - no approximations
     U_TTA = build_H_TTA_unitary(J, dt, self.params.hbar, dim=3)
-    
+
     # Compile using sparse structure-aware compiler
     # Detects 3×3 subspace {|02⟩, |11⟩, |20⟩}
     # Exact decomposition into basic gates
     result = self.gate_generator.compile_unitary_to_gates(U_TTA, [i, j])
-    
+
     # Add compiled gates to circuit
-    self._add_gates_to_circuit(circuit, result['gates'])
+    self._add_gates_to_circuit(circuit, result["gates"])
 ```
 
 **Changes**:
+
 - Removed all heuristic approximations
 - Uses exact matrix exponential exp(-i*H_TTA*dt/ℏ)
 - IntegratedSparseCompilerV2 detects sparse structure
@@ -166,6 +180,7 @@ def add_H_TTA_evolution_gates(self, circuit, dt):
 ### 1. QUANTUM_SIMULATION_BUG_ANALYSIS_JA.md (Japanese)
 
 Complete analysis including:
+
 - Root cause identification
 - Bug details with code examples
 - Physics analysis
@@ -175,6 +190,7 @@ Complete analysis including:
 ### 2. IMPLEMENTATION_PLAN.md (English)
 
 Step-by-step plan including:
+
 - Code examples for notebook updates
 - Test suite specification
 - Documentation updates
@@ -183,6 +199,7 @@ Step-by-step plan including:
 ## Security Check
 
 **CodeQL Scan Results**: ✓ No alerts found
+
 - Python analysis: 0 security issues
 - All code is secure
 
@@ -199,6 +216,7 @@ Step-by-step plan including:
 ### Validation
 
 2. **Run Complete 3-Way Comparison**
+
    - Classical vs Qubit vs Qudit
    - Verify all match within 1e-10 precision
    - Test multiple initial conditions and parameters
@@ -253,6 +271,7 @@ Qudit (exact)       | 0.7339       | < 1e-10
 ### Next Steps
 
 Follow the detailed implementation plan in `IMPLEMENTATION_PLAN.md`:
+
 1. Update notebook Qubit code (use UnitaryGate approach)
 2. Run full validation
 3. Create tests

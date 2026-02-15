@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""
-Complete update script for quantum_dynamics_complete_comparison.ipynb
+"""Complete update script for quantum_dynamics_complete_comparison.ipynb.
 
 This script modifies the notebook to:
 1. Convert Qubit simulation to shot-based (using Qiskit Sampler)
-2. Convert Qudit simulation to shot-based (using statevector sampling)  
+2. Convert Qudit simulation to shot-based (using statevector sampling)
 3. Add/ensure circuit visualization for both (1 Suzuki-Trotter step each)
 4. No heuristics or fallback workarounds as per requirements
 
@@ -14,6 +13,8 @@ Requirements from problem statement (Japanese):
 - 可視化する量子回路は鈴木トロッター分解1ステップ分
 - ヒューリスティックな処理やごまかしのためのfallbackは絶対にしない
 """
+
+from __future__ import annotations
 
 import json
 import sys
@@ -30,26 +31,26 @@ def get_qubit_shot_based_cell():
         "from qiskit.quantum_info import Statevector\n",
         "\n",
         "class QubitMolecularDynamicsSimulator:\n",
-        "    \"\"\"Qubitベースの分子量子ダイナミクスシミュレータ（ショットベース）\"\"\"\n",
+        '    """Qubitベースの分子量子ダイナミクスシミュレータ（ショットベース）"""\n',
         "    \n",
         "    def __init__(self, params: PhysicalParameters):\n",
         "        self.params = params\n",
         "        self.N = params.N_molecules\n",
         "        self.n_qubits = 2 * self.N  # 各分子に2 qubit\n",
         "        \n",
-        "        print(f\"Qubitシミュレータを初期化しました\")\n",
-        "        print(f\"  分子数: {self.N}\")\n",
-        "        print(f\"  必要Qubit数: {self.n_qubits}\")\n",
-        "        print(f\"  物理的状態空間: 3^{self.N} = {3**self.N}次元\")\n",
-        "        print(f\"  全状態空間: 2^{self.n_qubits} = {2**self.n_qubits}次元\")\n",
+        '        print(f"Qubitシミュレータを初期化しました")\n',
+        '        print(f"  分子数: {self.N}")\n',
+        '        print(f"  必要Qubit数: {self.n_qubits}")\n',
+        '        print(f"  物理的状態空間: 3^{self.N} = {3**self.N}次元")\n',
+        '        print(f"  全状態空間: 2^{self.n_qubits} = {2**self.n_qubits}次元")\n',
         "    \n",
         "    def prepare_initial_state(self, circuit: QuantumCircuit, state_type: str = 'edge_triplet'):\n",
-        "        \"\"\"\n",
+        '        """\n',
         "        初期状態を準備\n",
         "        \n",
         "        Qiskit little-endian convention:\n",
         "        - |T1⟩ → |01⟩ (big-endian) = qubit_right = 1, qubit_left = 0\n",
-        "        \"\"\"\n",
+        '        """\n',
         "        if state_type == 'edge_triplet':\n",
         "            # 両端の分子（0とN-1）をT1状態に\n",
         "            # T1 → |01⟩ → X on right qubit\n",
@@ -61,11 +62,11 @@ def get_qubit_shot_based_cell():
         "                circuit.x(2 * i)\n",
         "    \n",
         "    def apply_H0_evolution(self, circuit: QuantumCircuit, mol_idx: int, dt: float):\n",
-        "        \"\"\"\n",
+        '        """\n',
         "        対角ハミルトニアン H0 の時間発展\n",
         "        \n",
         "        H0 = E_T |01⟩⟨01| + E_S |10⟩⟨10|\n",
-        "        \"\"\"\n",
+        '        """\n',
         "        q0 = 2 * mol_idx\n",
         "        q1 = 2 * mol_idx + 1\n",
         "        \n",
@@ -92,7 +93,7 @@ def get_qubit_shot_based_cell():
         "        circuit.cx(q0, q1)\n",
         "    \n",
         "    def apply_transfer_evolution(self, circuit: QuantumCircuit, mol_i: int, mol_j: int, dt: float):\n",
-        "        \"\"\"エネルギー移動項の時間発展（簡略化実装）\"\"\"\n",
+        '        """エネルギー移動項の時間発展（簡略化実装）"""\n',
         "        qi0, qi1 = 2 * mol_i, 2 * mol_i + 1\n",
         "        qj0, qj1 = 2 * mol_j, 2 * mol_j + 1\n",
         "        \n",
@@ -108,7 +109,7 @@ def get_qubit_shot_based_cell():
         "        circuit.x(qj0)\n",
         "    \n",
         "    def apply_TTA_evolution(self, circuit: QuantumCircuit, mol_i: int, mol_j: int, dt: float):\n",
-        "        \"\"\"TTA項の時間発展（簡略化実装）\"\"\"\n",
+        '        """TTA項の時間発展（簡略化実装）"""\n',
         "        qi0, qi1 = 2 * mol_i, 2 * mol_i + 1\n",
         "        qj0, qj1 = 2 * mol_j, 2 * mol_j + 1\n",
         "        \n",
@@ -121,7 +122,7 @@ def get_qubit_shot_based_cell():
         "        circuit.ryy(2 * theta, qi0, qj0)\n",
         "    \n",
         "    def build_single_trotter_step(self, dt: float) -> QuantumCircuit:\n",
-        "        \"\"\"1トロッターステップの回路を構築\"\"\"\n",
+        '        """1トロッターステップの回路を構築"""\n',
         "        circuit = QuantumCircuit(self.n_qubits)\n",
         "        \n",
         "        # 前半: H0, H_transfer, H_TTA\n",
@@ -147,7 +148,7 @@ def get_qubit_shot_based_cell():
         "        return circuit\n",
         "    \n",
         "    def calculate_populations_from_counts(self, counts: dict, shots: int) -> Dict[str, float]:\n",
-        "        \"\"\"測定カウントから個体数を計算\"\"\"\n",
+        '        """測定カウントから個体数を計算"""\n',
         "        N_S0 = N_T1 = N_S1 = 0.0\n",
         "        unphysical = 0.0\n",
         "        \n",
@@ -204,11 +205,11 @@ def get_qubit_shot_based_cell():
         "    def simulate(self, T_total: float, N_steps: int, \n",
         "                 initial_state_type: str = 'edge_triplet',\n",
         "                 shots: int = 10000) -> Dict:\n",
-        "        \"\"\"完全なシミュレーションを実行（ショットベース）\"\"\"\n",
-        "        print(\"\\n\" + \"=\"*70)\n",
-        "        print(\"Qubitベースシミュレーション開始（ショットベース）\")\n",
-        "        print(\"=\"*70)\n",
-        "        print(f\"ショット数: {shots}\")\n",
+        '        """完全なシミュレーションを実行（ショットベース）"""\n',
+        '        print("\\n" + "="*70)\n',
+        '        print("Qubitベースシミュレーション開始（ショットベース）")\n',
+        '        print("="*70)\n',
+        '        print(f"ショット数: {shots}")\n',
         "        \n",
         "        start_time = time.time()\n",
         "        dt = T_total / N_steps\n",
@@ -219,8 +220,8 @@ def get_qubit_shot_based_cell():
         "        # 1トロッターステップの回路を構築\n",
         "        step_circuit = self.build_single_trotter_step(dt)\n",
         "        \n",
-        "        print(f\"\\n1トロッターステップあたりのゲート数: {len(step_circuit.data)}\")\n",
-        "        print(f\"回路深さ: {step_circuit.depth()}\\n\")\n",
+        '        print(f"\\n1トロッターステップあたりのゲート数: {len(step_circuit.data)}")\n',
+        '        print(f"回路深さ: {step_circuit.depth()}\\n")\n',
         "        \n",
         "        # 初期状態の確認（Statevectorで）\n",
         "        init_circuit = QuantumCircuit(self.n_qubits)\n",
@@ -246,7 +247,7 @@ def get_qubit_shot_based_cell():
         "        \n",
         "        pop_0 = {'N_S0': N_S0, 'N_T1': N_T1, 'N_S1': N_S1, 'unphysical': 0.0}\n",
         "        \n",
-        "        print(f\"初期状態: {initial_state_type}\")\n",
+        '        print(f"初期状態: {initial_state_type}")\n',
         "        print(f\"  N_S0 = {pop_0['N_S0']:.4f}\")\n",
         "        print(f\"  N_T1 = {pop_0['N_T1']:.4f}\")\n",
         "        print(f\"  N_S1 = {pop_0['N_S1']:.4f}\")\n",
@@ -255,7 +256,7 @@ def get_qubit_shot_based_cell():
         "        populations = [pop_0]\n",
         "        \n",
         "        # 時間発展（ショットベース）\n",
-        "        print(f\"\\n時間発展を実行中（{N_steps}ステップ、各ステップ{shots}ショット）...\")\n",
+        '        print(f"\\n時間発展を実行中（{N_steps}ステップ、各ステップ{shots}ショット）...")\n',
         "        for step in range(1, N_steps + 1):\n",
         "            # 回路の構築\n",
         "            circuit = QuantumCircuit(self.n_qubits, self.n_qubits)\n",
@@ -284,7 +285,7 @@ def get_qubit_shot_based_cell():
         "            populations.append(pop)\n",
         "            \n",
         "            if step % max(1, N_steps // 10) == 0:\n",
-        "                print(f\"  ステップ {step}/{N_steps}: t = {t:.2f} fs, \"\n",
+        '                print(f"  ステップ {step}/{N_steps}: t = {t:.2f} fs, "\n',
         "                      f\"N_T1 = {pop['N_T1']:.4f}, N_S1 = {pop['N_S1']:.4f}\")\n",
         "        \n",
         "        elapsed = time.time() - start_time\n",
@@ -298,18 +299,18 @@ def get_qubit_shot_based_cell():
         "        total_gates = len(circuit_no_measure.data)\n",
         "        total_depth = circuit_no_measure.depth()\n",
         "        \n",
-        "        print(\"\\n\" + \"=\"*70)\n",
-        "        print(\"シミュレーション完了\")\n",
-        "        print(\"=\"*70)\n",
-        "        print(f\"最終個体数:\")\n",
+        '        print("\\n" + "="*70)\n',
+        '        print("シミュレーション完了")\n',
+        '        print("="*70)\n',
+        '        print(f"最終個体数:")\n',
         "        print(f\"  N_S0 = {populations[-1]['N_S0']:.4f}\")\n",
         "        print(f\"  N_T1 = {populations[-1]['N_T1']:.4f}\")\n",
         "        print(f\"  N_S1 = {populations[-1]['N_S1']:.4f}\")\n",
         "        print(f\"  非物理的状態: {populations[-1]['unphysical']:.6f}\")\n",
-        "        print(f\"\\n回路統計:\")\n",
-        "        print(f\"  総ゲート数: {total_gates}\")\n",
-        "        print(f\"  総回路深さ: {total_depth}\")\n",
-        "        print(f\"  実行時間: {elapsed:.2f}秒\")\n",
+        '        print(f"\\n回路統計:")\n',
+        '        print(f"  総ゲート数: {total_gates}")\n',
+        '        print(f"  総回路深さ: {total_depth}")\n',
+        '        print(f"  実行時間: {elapsed:.2f}秒")\n',
         "        \n",
         "        return {\n",
         "            'times': times,\n",
@@ -332,7 +333,7 @@ def get_qubit_shot_based_cell():
         "    N_steps=params.N_steps,\n",
         "    initial_state_type=params.initial_state_type,\n",
         "    shots=10000  # ショット数を指定\n",
-        ")\n"
+        ")\n",
     ]
 
 
@@ -355,23 +356,23 @@ def get_qudit_shot_based_cell():
         "        config_to_state_name\n",
         "    )\n",
         "    mqt_available = True\n",
-        "    print(\"✓ MQT-Qudits完全実装モジュールを読み込みました\")\n",
+        '    print("✓ MQT-Qudits完全実装モジュールを読み込みました")\n',
         "except ImportError as e:\n",
         "    mqt_available = False\n",
-        "    print(f\"警告: MQT-Quditsモジュールのインポートに失敗しました: {e}\")\n",
+        '    print(f"警告: MQT-Quditsモジュールのインポートに失敗しました: {e}")\n',
         "\n",
         "if mqt_available:\n",
         "    # MQT用のパラメータを準備（既存のparamsと一致させる）\n",
         "    mqt_params = MQTPhysicalParameters()\n",
         "    \n",
-        "    print(\"\\n\" + \"=\"*70)\n",
-        "    print(\"Quditベースシミュレーション準備（ショットベース）\")\n",
-        "    print(\"=\"*70)\n",
-        "    print(f\"分子数: {mqt_params.N_molecules}\")\n",
-        "    print(f\"必要Qutrit数: {mqt_params.N_molecules}\")\n",
-        "    print(f\"状態空間: 3^{mqt_params.N_molecules} = {3**mqt_params.N_molecules}次元\")\n",
-        "    print(f\"ショット数: 10000\")\n",
-        "    print(\"=\"*70)\n",
+        '    print("\\n" + "="*70)\n',
+        '    print("Quditベースシミュレーション準備（ショットベース）")\n',
+        '    print("="*70)\n',
+        '    print(f"分子数: {mqt_params.N_molecules}")\n',
+        '    print(f"必要Qutrit数: {mqt_params.N_molecules}")\n',
+        '    print(f"状態空間: 3^{mqt_params.N_molecules} = {3**mqt_params.N_molecules}次元")\n',
+        '    print(f"ショット数: 10000")\n',
+        '    print("="*70)\n',
         "    \n",
         "    # シミュレータの初期化\n",
         "    qudit_simulator = SuzukiTrotterMQTQuditSimulator(mqt_params)\n",
@@ -385,10 +386,10 @@ def get_qudit_shot_based_cell():
         "        shots=10000\n",
         "    )\n",
         "    \n",
-        "    print(\"\\n✓ Quditシミュレーション完了\")\n",
+        '    print("\\n✓ Quditシミュレーション完了")\n',
         "else:\n",
-        "    print(\"\\nMQT-Quditsが利用できないため、Quditシミュレーションをスキップします\")\n",
-        "    qudit_results = None\n"
+        '    print("\\nMQT-Quditsが利用できないため、Quditシミュレーションをスキップします")\n',
+        "    qudit_results = None\n",
     ]
 
 
@@ -398,13 +399,13 @@ def get_qudit_visualization_cell():
         "# Qudit量子回路の可視化（1鈴木トロッターステップ）\n",
         "\n",
         "if qudit_results is not None and 'step_circuit' in qudit_results:\n",
-        "    print(\"\\n\" + \"=\"*70)\n",
-        "    print(\"Qudit量子回路の可視化（1鈴木トロッターステップ）\")\n",
-        "    print(\"=\"*70)\n",
+        '    print("\\n" + "="*70)\n',
+        '    print("Qudit量子回路の可視化（1鈴木トロッターステップ）")\n',
+        '    print("="*70)\n',
         "    \n",
         "    step_circuit_qudit = qudit_results['step_circuit']\n",
         "    \n",
-        "    print(f\"\\n1トロッターステップの回路:\")\n",
+        '    print(f"\\n1トロッターステップの回路:")\n',
         "    if 'gates_per_step' in qudit_results:\n",
         "        print(f\"  ゲート数: {qudit_results['gates_per_step']}\")\n",
         "    print()\n",
@@ -415,64 +416,59 @@ def get_qudit_visualization_cell():
         "        import matplotlib.pyplot as plt\n",
         "        from mqt.qudits.visualisation import plot_circuit\n",
         "        \n",
-        "        print(\"MQT-Qudits回路を可視化中...\")\n",
+        '        print("MQT-Qudits回路を可視化中...")\n',
         "        fig = plot_circuit(step_circuit_qudit)\n",
         "        plt.tight_layout()\n",
         "        plt.show()\n",
-        "        print(\"\\n✓ Qudit量子回路の可視化が完了しました\")\n",
+        '        print("\\n✓ Qudit量子回路の可視化が完了しました")\n',
         "    except ImportError as e:\n",
-        "        print(f\"\\n可視化ツールのインポートエラー: {e}\")\n",
-        "        print(\"\\nテキスト形式で回路情報を表示:\")\n",
+        '        print(f"\\n可視化ツールのインポートエラー: {e}")\n',
+        '        print("\\nテキスト形式で回路情報を表示:")\n',
         "        if hasattr(step_circuit_qudit, '__str__'):\n",
         "            print(step_circuit_qudit)\n",
         "        else:\n",
-        "            print(\"回路情報: \", type(step_circuit_qudit))\n",
+        '            print("回路情報: ", type(step_circuit_qudit))\n',
         "    except Exception as e:\n",
-        "        print(f\"\\n回路可視化エラー: {e}\")\n",
+        '        print(f"\\n回路可視化エラー: {e}")\n',
         "        import traceback\n",
         "        traceback.print_exc()\n",
         "else:\n",
-        "    print(\"\\nQudit回路情報が利用できません（step_circuitキーが見つかりません）\")\n"
+        '    print("\\nQudit回路情報が利用できません（step_circuitキーが見つかりません）")\n',
     ]
 
 
-def main():
+def main() -> int:
     """Main function to update the notebook with all modifications."""
-    
-    notebook_path = Path('tutorials/quantum_dynamics_complete_comparison.ipynb')
-    
+    notebook_path = Path("tutorials/quantum_dynamics_complete_comparison.ipynb")
+
     if not notebook_path.exists():
-        print(f"Error: Notebook not found at {notebook_path}")
         return 1
-    
+
     # Load notebook
-    with open(notebook_path, 'r', encoding='utf-8') as f:
+    with open(notebook_path, encoding="utf-8") as f:
         nb = json.load(f)
-    
+
     # 1. Update Qubit simulator cell (id: 5bf25d98)
-    for cell in nb['cells']:
-        if cell.get('id') == '5bf25d98' and cell.get('cell_type') == 'code':
-            cell['source'] = get_qubit_shot_based_cell()
-            print("✓ Updated Qubit simulator to use shot-based simulation")
+    for cell in nb["cells"]:
+        if cell.get("id") == "5bf25d98" and cell.get("cell_type") == "code":
+            cell["source"] = get_qubit_shot_based_cell()
             break
-    
+
     # 2. Update Qudit simulator cell (id: 397deb45)
-    for cell in nb['cells']:
-        if cell.get('id') == '397deb45' and cell.get('cell_type') == 'code':
-            cell['source'] = get_qudit_shot_based_cell()
-            print("✓ Updated Qudit simulator to use shot-based simulation")
+    for cell in nb["cells"]:
+        if cell.get("id") == "397deb45" and cell.get("cell_type") == "code":
+            cell["source"] = get_qudit_shot_based_cell()
             break
-    
+
     # 3. Update/Insert Qudit visualization cell after id 'd25f7dff'
-    for i, cell in enumerate(nb['cells']):
-        if cell.get('id') == 'd25f7dff':
+    for i, cell in enumerate(nb["cells"]):
+        if cell.get("id") == "d25f7dff":
             # Check if next cell is already our visualization
-            if i + 1 < len(nb['cells']):
-                next_cell = nb['cells'][i + 1]
+            if i + 1 < len(nb["cells"]):
+                next_cell = nb["cells"][i + 1]
                 # Update if it exists, otherwise insert
-                if 'Qudit量子回路の可視化（1鈴木トロッターステップ）' in ''.join(next_cell.get('source', [])):
-                    nb['cells'][i + 1]['source'] = get_qudit_visualization_cell()
-                    print("✓ Updated existing Qudit circuit visualization cell")
+                if "Qudit量子回路の可視化（1鈴木トロッターステップ）" in "".join(next_cell.get("source", [])):
+                    nb["cells"][i + 1]["source"] = get_qudit_visualization_cell()
                 else:
                     # Insert new cell
                     new_cell = {
@@ -481,10 +477,9 @@ def main():
                         "id": "qudit_viz_1step",
                         "metadata": {},
                         "outputs": [],
-                        "source": get_qudit_visualization_cell()
+                        "source": get_qudit_visualization_cell(),
                     }
-                    nb['cells'].insert(i + 1, new_cell)
-                    print("✓ Inserted new Qudit circuit visualization cell")
+                    nb["cells"].insert(i + 1, new_cell)
             else:
                 # Append at end
                 new_cell = {
@@ -493,26 +488,17 @@ def main():
                     "id": "qudit_viz_1step",
                     "metadata": {},
                     "outputs": [],
-                    "source": get_qudit_visualization_cell()
+                    "source": get_qudit_visualization_cell(),
                 }
-                nb['cells'].append(new_cell)
-                print("✓ Appended new Qudit circuit visualization cell at end")
+                nb["cells"].append(new_cell)
             break
-    
+
     # Save updated notebook
-    with open(notebook_path, 'w', encoding='utf-8') as f:
+    with open(notebook_path, "w", encoding="utf-8") as f:
         json.dump(nb, f, ensure_ascii=False, indent=1)
-    
-    print(f"\n✓ Notebook updated successfully: {notebook_path}")
-    print("\nSummary of changes:")
-    print("  1. Qubit simulation: Converted to shot-based using Qiskit Sampler")
-    print("  2. Qubit visualization: Already present (1 Trotter step)")
-    print("  3. Qudit simulation: Converted to shot-based using statevector sampling")
-    print("  4. Qudit visualization: Added/updated (1 Trotter step)")
-    print("  5. No heuristics or fallback workarounds used")
-    
+
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

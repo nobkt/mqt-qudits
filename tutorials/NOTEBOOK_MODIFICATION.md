@@ -31,11 +31,12 @@ The modification adds a `decompose_custom_two_gates` method to the `MQTQuditTime
 def decompose_custom_two_gates(self, circuit: QuantumCircuit) -> QuantumCircuit:
     """
     Decompose CustomTwo gates into basic gates
-    
+
     Uses LogEntQRCEXPass compiler to decompose arbitrary 2-qudit unitary matrices
     into sequences of basic gates: CEx, R, Rh, Rz, VirtRz
     """
     from mqt.qudits.compiler.twodit.entanglement_qr import LogEntQRCEXPass
+
     backend = self.provider.get_backend("faketraps3six")
     compiler = LogEntQRCEXPass(backend)
     return compiler.transpile(circuit)
@@ -61,6 +62,7 @@ circuit = self.time_evol.decompose_custom_two_gates(circuit)
 ### No Heuristics or Fallbacks
 
 The decomposition is **mathematically exact** using QR decomposition:
+
 - Based on the `EntangledQRCEX` algorithm
 - Uses Givens rotations to systematically zero out matrix elements
 - Produces unitary gate sequences with fidelity = 1.0
@@ -76,9 +78,10 @@ The modification has been thoroughly tested. You can verify the notebook works c
 3. **Checking the circuit after decomposition** to verify only basic gates are used
 
 Expected behavior:
+
 ```
 ✓ Original circuit correctly uses CustomTwo gates
-✓ Decomposed circuit has no CustomTwo gates  
+✓ Decomposed circuit has no CustomTwo gates
 ✓ Decomposed circuit uses only basic gates
 ✓ Population conserved
 

@@ -2,8 +2,8 @@
 
 ## Exact Diagonalization Theory for Quantum Dynamics Analysis
 
-**作成日 / Date**: 2025-10-17  
-**バージョン / Version**: 1.0.0  
+**作成日 / Date**: 2025-10-17
+**バージョン / Version**: 1.0.0
 **目的 / Purpose**: Qudit量子アルゴリズムの検証のための厳密解計算理論
 
 ---
@@ -15,6 +15,7 @@
 厳密対角化法（Exact Diagonalization, ED）は、量子多体系のハミルトニアンを完全に対角化することで、系の厳密な固有状態と固有エネルギーを求める手法である。
 
 本文書では、4分子直線配置系の量子ダイナミクスにおいて：
+
 - **Qudit量子アルゴリズム** による時間発展（鈴木トロッター分解）
 - **厳密対角化法** による時間発展（解析解）
 
@@ -33,14 +34,14 @@ Qudit量子アルゴリズムの実装検証において、厳密対角化は以
 
 厳密対角化は状態空間の次元 $d$ に対して $O(d^3)$ の計算量を要するため、小規模系に限定される：
 
-| 系のサイズ | 状態空間次元 | 厳密対角化の実行可能性 |
-|----------|------------|---------------------|
-| N=2 分子 | $3^2 = 9$ | ✅ 容易 |
-| N=3 分子 | $3^3 = 27$ | ✅ 容易 |
-| N=4 分子 | $3^4 = 81$ | ✅ 可能（本実装） |
-| N=5 分子 | $3^5 = 243$ | ⚠️ やや困難 |
-| N=6 分子 | $3^6 = 729$ | ❌ 困難 |
-| N≥7 分子 | $3^N \geq 2187$ | ❌ 実用的でない |
+| 系のサイズ | 状態空間次元    | 厳密対角化の実行可能性 |
+| ---------- | --------------- | ---------------------- |
+| N=2 分子   | $3^2 = 9$       | ✅ 容易                |
+| N=3 分子   | $3^3 = 27$      | ✅ 容易                |
+| N=4 分子   | $3^4 = 81$      | ✅ 可能（本実装）      |
+| N=5 分子   | $3^5 = 243$     | ⚠️ やや困難            |
+| N=6 分子   | $3^6 = 729$     | ❌ 困難                |
+| N≥7 分子   | $3^N \geq 2187$ | ❌ 実用的でない        |
 
 本実装では **N=4分子系**（81次元）を対象とする。
 
@@ -73,6 +74,7 @@ $$
 $$
 
 ここで：
+
 $$
 E(n) = \begin{cases}
 0 & (n = 0, \ \text{基底状態}) \\
@@ -127,10 +129,12 @@ $$
 $$
 
 ここで：
+
 - $\mathbf{\Lambda} = \text{diag}(\lambda_0, \lambda_1, \ldots, \lambda_{80})$：固有値（エネルギー準位）
 - $\mathbf{V} = [|\phi_0\rangle, |\phi_1\rangle, \ldots, |\phi_{80}\rangle]$：固有ベクトル（エネルギー固有状態）
 
 NumPyでの実装：
+
 ```python
 eigenvalues, eigenvectors = np.linalg.eigh(H_total)
 ```
@@ -168,11 +172,13 @@ $$
 $$
 
 係数：
+
 $$
 c_k = \langle \phi_k | \Psi_0 \rangle
 $$
 
 行列形式：
+
 $$
 \mathbf{c} = \mathbf{V}^\dagger \cdot |\Psi_0\rangle
 $$
@@ -215,39 +221,38 @@ $$
 class ExactDiagonalizationSolver:
     """
     厳密対角化による量子ダイナミクスの解析解計算
-    
+
     ヒューリスティックな手法を使用せず、数学的に厳密な計算のみを実行：
     - np.linalg.eigh: エルミート行列の固有値分解（厳密）
     - 行列-ベクトル積: 厳密な線形代数演算
     - 指数関数: 数学的に定義された演算
     """
-    
+
     def __init__(self, params: PhysicalParameters):
         self.params = params
         self.N = params.N_molecules
-        self.dim = 3 ** self.N
+        self.dim = 3**self.N
         self.H_total = None
         self.eigenvalues = None
         self.eigenvectors = None
-    
+
     def build_total_hamiltonian(self) -> np.ndarray:
         """全ハミルトニアン行列を構築（厳密）"""
         pass
-    
+
     def diagonalize(self):
         """ハミルトニアンを対角化（厳密）"""
         pass
-    
+
     def time_evolution(self, t: float, initial_state: np.ndarray) -> np.ndarray:
         """時間発展を計算（厳密解）"""
         pass
-    
+
     def calculate_populations(self, state: np.ndarray) -> Dict[str, float]:
         """個体数を計算"""
         pass
-    
-    def simulate(self, T_total: float, N_points: int, 
-                 initial_state_type: str) -> Dict:
+
+    def simulate(self, T_total: float, N_points: int, initial_state_type: str) -> Dict:
         """完全なシミュレーション（厳密解）"""
         pass
 ```
@@ -258,12 +263,12 @@ class ExactDiagonalizationSolver:
 def build_total_hamiltonian(self) -> np.ndarray:
     """
     全ハミルトニアン行列の構築
-    
+
     81×81 エルミート行列を構築
     """
     dim = self.dim
     H = np.zeros((dim, dim), dtype=complex)
-    
+
     # 1. H₀項（対角）
     for idx in range(dim):
         config = index_to_config(idx, self.N, 3)
@@ -274,14 +279,14 @@ def build_total_hamiltonian(self) -> np.ndarray:
             elif level == 2:
                 energy += self.params.E_S
         H[idx, idx] += energy
-    
+
     # 2. H_transfer項（非対角）
     for pair_idx, (i, j) in enumerate(self.params.neighbors):
         V = self.params.V[pair_idx]
-        
+
         for idx1 in range(dim):
             config1 = index_to_config(idx1, self.N, 3)
-            
+
             # |...0...1...⟩ ↔ |...1...0...⟩
             if config1[i] == 0 and config1[j] == 1:
                 config2 = config1.copy()
@@ -290,14 +295,14 @@ def build_total_hamiltonian(self) -> np.ndarray:
                 idx2 = config_to_index(config2, 3)
                 H[idx1, idx2] += V
                 H[idx2, idx1] += V
-    
+
     # 3. H_TTA項（非対角）
     for pair_idx, (i, j) in enumerate(self.params.neighbors):
         J = self.params.J[pair_idx]
-        
+
         for idx1 in range(dim):
             config1 = index_to_config(idx1, self.N, 3)
-            
+
             # |...1...1...⟩ → |...2...0...⟩
             if config1[i] == 1 and config1[j] == 1:
                 config2 = config1.copy()
@@ -306,7 +311,7 @@ def build_total_hamiltonian(self) -> np.ndarray:
                 idx2 = config_to_index(config2, 3)
                 H[idx1, idx2] += J
                 H[idx2, idx1] += J
-                
+
                 # |...1...1...⟩ → |...0...2...⟩
                 config3 = config1.copy()
                 config3[i] = 0
@@ -314,7 +319,7 @@ def build_total_hamiltonian(self) -> np.ndarray:
                 idx3 = config_to_index(config3, 3)
                 H[idx1, idx3] += J
                 H[idx3, idx1] += J
-    
+
     return H
 ```
 
@@ -324,26 +329,26 @@ def build_total_hamiltonian(self) -> np.ndarray:
 def time_evolution(self, t: float, initial_state: np.ndarray) -> np.ndarray:
     """
     厳密な時間発展
-    
+
     Args:
         t: 時間
         initial_state: 初期状態ベクトル（81次元）
-    
+
     Returns:
         時間発展後の状態ベクトル（厳密解）
     """
     if self.eigenvalues is None or self.eigenvectors is None:
         raise RuntimeError("先にdiagonalize()を実行してください")
-    
+
     # 初期状態を固有基底に展開
     coeffs = self.eigenvectors.conj().T @ initial_state.flatten()
-    
+
     # 時間発展
     time_evolved_coeffs = coeffs * np.exp(-1j * self.eigenvalues * t / self.params.hbar)
-    
+
     # 元の基底に戻す
     state_final = self.eigenvectors @ time_evolved_coeffs
-    
+
     return state_final
 ```
 
@@ -391,13 +396,16 @@ $$
 以下は数学的に定義された厳密な演算：
 
 1. **`np.linalg.eigh`**: エルミート行列の固有値分解
+
    - ハウスホルダー変換とQRアルゴリズムによる厳密解
    - 数値誤差は機械精度のみ（$\sim 10^{-16}$）
 
 2. **行列積**: $\mathbf{A} \cdot \mathbf{B}$
+
    - 線形代数の基本演算
 
 3. **複素指数関数**: $e^{-i \lambda t / \hbar}$
+
    - 数学的に定義された関数
 
 4. **内積**: $\langle \psi | \phi \rangle$
@@ -408,6 +416,7 @@ $$
 以下は近似計算であり、本実装では使用しない：
 
 1. **`scipy.linalg.expm`**: 行列指数関数
+
    - パデ近似やスケーリング＆二乗法による近似
    - 本実装では固有値分解による厳密計算を使用
 
@@ -419,7 +428,7 @@ $$
 #### 計算量
 
 - ハミルトニアン構築: $O(d^2)$ （$d = 81$）
-- 固有値分解: $O(d^3)$ 
+- 固有値分解: $O(d^3)$
 - 時間発展1ステップ: $O(d^2)$
 
 #### メモリ使用量
@@ -435,6 +444,7 @@ $$
 固有値分解の数値安定性を保つため：
 
 1. **エルミート性の保証**:
+
    ```python
    H = (H + H.conj().T) / 2  # 数値誤差によるエルミート性の破れを修正
    ```
@@ -460,6 +470,7 @@ $$
 $$
 
 実装での確認：
+
 ```python
 E_initial = np.vdot(state_initial, H_total @ state_initial).real
 E_final = np.vdot(state_final, H_total @ state_final).real
@@ -509,10 +520,12 @@ $$
 本理論により、以下が可能となる：
 
 1. **Qudit量子アルゴリズムの精度検証**
+
    - トロッター分解の誤差評価
    - フィデリティによる定量的評価
 
 2. **収束性の確認**
+
    - 時間刻み $\Delta t$ 依存性
    - トロッター次数の効果
 
@@ -525,16 +538,19 @@ $$
 本実装は以下を保証する：
 
 ✅ **厳密な数学的手法のみ使用**
+
 - 固有値分解による厳密解
 - ヒューリスティック不使用
 - 近似を含まない時間発展
 
 ✅ **数値的安定性**
+
 - エルミート行列の対称性保持
 - 規格化の厳密な保存
 - 保存則の検証
 
 ✅ **実装可能性**
+
 - N=4分子系で実用的な計算量
 - メモリ使用量: ~210 KB
 - 計算時間: 秒オーダー

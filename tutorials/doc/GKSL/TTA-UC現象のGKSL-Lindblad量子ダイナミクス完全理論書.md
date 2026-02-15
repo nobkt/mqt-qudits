@@ -2,11 +2,11 @@
 
 ## 文書情報
 
-**作成日**: 2026年1月25日  
-**バージョン**: 1.0.0  
-**対象フレームワーク**: MQT-Qudits / Qiskit  
-**理論的基礎**: Gorini-Kossakowski-Sudarshan-Lindblad (GKSL) 方程式  
-**適用系**: 三重項-三重項消滅アップコンバージョン (TTA-UC) 現象  
+**作成日**: 2026年1月25日
+**バージョン**: 1.0.0
+**対象フレームワーク**: MQT-Qudits / Qiskit
+**理論的基礎**: Gorini-Kossakowski-Sudarshan-Lindblad (GKSL) 方程式
+**適用系**: 三重項-三重項消滅アップコンバージョン (TTA-UC) 現象
 
 ---
 
@@ -46,12 +46,14 @@
 本文書は以下の原則に厳格に従う：
 
 **✅ 許容される手法**：
+
 - GKSL定理に基づく数学的に厳密な導出
 - Stinespring dilationによる非ユニタリ演算の量子回路表現
 - 実験的に測定可能なパラメータのみの使用
 - 制御可能な近似誤差（Trotter分解など）の明示的評価
 
 **❌ 禁止される手法**：
+
 - ヒューリスティックな近似や経験的フィッティング
 - Fallback処理（計算失敗時の「適当な値」への置き換え）
 - 物理的根拠のない簡略化
@@ -63,11 +65,13 @@
 TTA-UC現象は本質的に**開放量子系**（Open Quantum System）のダイナミクスである。分子系（系）は周囲の環境（フォノンバス、光子場など）と相互作用しており、この相互作用により系のダイナミクスは非ユニタリとなる。
 
 **閉じた系（Closed System）の限界**：
+
 - Schrödinger方程式 $i\hbar \frac{d|\psi\rangle}{dt} = \hat{H}|\psi\rangle$ はユニタリ時間発展のみを記述
 - エネルギー散逸、デコヒーレンス、不可逆過程を表現できない
 - TTA過程の不可逆性を正しく捉えられない
 
 **開放量子系（Open Quantum System）の必要性**：
+
 - 密度演算子 $\hat{\rho}$ による混合状態の記述
 - GKSL-Lindblad方程式による非ユニタリ時間発展
 - エントロピー増大（熱力学第二法則）との整合性
@@ -84,16 +88,19 @@ TTA-UC現象は本質的に**開放量子系**（Open Quantum System）のダイ
 TTA-UC（三重項-三重項消滅アップコンバージョン）は、低エネルギーの光子を吸収して高エネルギーの光子を放出する光物理過程である。この過程は以下のステップで進行する：
 
 1. **増感剤による光吸収と項間交差**:
+
    $$
    S_0^{\text{sensitizer}} + h\nu_{\text{low}} \xrightarrow{\text{absorption}} S_1^{\text{sensitizer}} \xrightarrow{\text{ISC}} T_1^{\text{sensitizer}}
    $$
 
 2. **三重項エネルギー移動（TTET）**:
+
    $$
    T_1^{\text{sensitizer}} + S_0^{\text{annihilator}} \xrightarrow{\text{TTET}} S_0^{\text{sensitizer}} + T_1^{\text{annihilator}}
    $$
 
 3. **三重項-三重項消滅（TTA）**:
+
    $$
    T_1^{\text{ann}} + T_1^{\text{ann}} \xrightarrow{\text{TTA}} S_1^{\text{ann}} + S_0^{\text{ann}}
    $$
@@ -112,11 +119,13 @@ $$
 $$
 
 本モデルでの具体的数値：
+
 - 三重項エネルギー：$E_{T_1} = 1.5$ eV
 - 一重項エネルギー：$E_{S_1} = 3.0$ eV
 - 基底状態エネルギー：$E_{S_0} = 0$ eV（基準）
 
 したがって：
+
 $$
 2 \times 1.5 \text{ eV} = 3.0 \text{ eV} = E_{S_1}
 $$
@@ -215,15 +224,19 @@ $$
 #### 2.3.5 項間交差（Intersystem Crossing, ISC）
 
 **S₁ → T₁**:
+
 $$
 |S_1\rangle_i \to |T_1\rangle_i
 $$
+
 - **速度定数**: $k_{\text{ISC}}^{S \to T}$
 
 **T₁ → S₀**:
+
 $$
 |T_1\rangle_i \to |S_0\rangle_i + \text{phonons}
 $$
+
 - **速度定数**: $k_{\text{ISC}}^{T \to S}$
 
 #### 2.3.6 三重項エネルギー移動（Triplet Energy Transfer）
@@ -245,16 +258,19 @@ $$
 #### 3.1.1 純粋状態と混合状態
 
 **純粋状態**：
+
 $$
 \hat{\rho} = |\psi\rangle\langle\psi|
 $$
 
 性質：
+
 - $\hat{\rho}^2 = \hat{\rho}$（べき等）
 - $\text{Tr}[\hat{\rho}^2] = 1$
 - $S(\hat{\rho}) = -\text{Tr}[\hat{\rho} \ln \hat{\rho}] = 0$（エントロピー）
 
 **混合状態**：
+
 $$
 \hat{\rho} = \sum_k p_k |\psi_k\rangle\langle\psi_k|
 $$
@@ -262,6 +278,7 @@ $$
 ここで、$p_k \geq 0$ かつ $\sum_k p_k = 1$。
 
 性質：
+
 - $\hat{\rho}^2 \neq \hat{\rho}$
 - $\text{Tr}[\hat{\rho}^2] < 1$
 - $S(\hat{\rho}) > 0$
@@ -291,6 +308,7 @@ $$
 $$
 
 ここで：
+
 - $\hat{H}_{\mathcal{S}}$：系のハミルトニアン
 - $\hat{H}_{\mathcal{E}}$：環境のハミルトニアン
 - $\hat{H}_{\text{int}}$：系-環境相互作用ハミルトニアン
@@ -320,11 +338,13 @@ $$
 **CPTP条件**：
 
 1. **線形性**：
+
    $$
    \mathcal{E}_t[a\hat{\rho}_1 + b\hat{\rho}_2] = a\mathcal{E}_t[\hat{\rho}_1] + b\mathcal{E}_t[\hat{\rho}_2]
    $$
 
 2. **トレース保存**：
+
    $$
    \text{Tr}[\mathcal{E}_t[\hat{\rho}]] = \text{Tr}[\hat{\rho}] = 1
    $$
@@ -389,6 +409,7 @@ $$
 $$
 
 ここで：
+
 - $\hat{H}$：系のハミルトニアン（エルミート）
 - $\hat{L}_\alpha$：Lindblad演算子（ジャンプ演算子）
 - $\gamma_\alpha > 0$：散逸速度定数
@@ -487,6 +508,7 @@ $$
 $$
 
 物理的意味：
+
 $$
 |T_1\rangle_i |S_0\rangle_j \leftrightarrow |S_0\rangle_i |T_1\rangle_j
 $$
@@ -533,7 +555,6 @@ $$
 \hat{L}_{\text{ISC}}^{T\to S,(i)} = \sqrt{k_{\text{ISC}}^{T\to S}} |0\rangle_i\langle 1|_i
 $$
 
-
 ---
 
 ## 5. ボソン相互作用を含まないモデル
@@ -549,6 +570,7 @@ $$
 1. **Born-Markov近似**：環境（フォノン、光子）との結合が弱く、環境の相関時間が系の動力学時間より十分短い
 
 2. **時間スケール分離**：
+
    - フォノン緩和時間：$\tau_{\text{phonon}} \sim 10^{-13}$ s
    - 系の動力学時間：$\tau_{\text{system}} \sim 10^{-9} - 10^{-6}$ s
    - $\tau_{\text{phonon}} \ll \tau_{\text{system}}$ が成立
@@ -566,6 +588,7 @@ $$
 ここで、$\mathcal{H}^{(3)}_i$ は分子 $i$ の3次元ヒルベルト空間。
 
 状態空間の次元：
+
 $$
 \dim(\mathcal{H}_{\text{system}}) = 3^N
 $$
@@ -654,26 +677,28 @@ $$
 
 #### 5.3.1 典型的パラメータ値
 
-| パラメータ | 記号 | 典型値 | 単位 | 物理的起源 |
-|----------|-----|-------|------|-----------|
-| 三重項エネルギー | $E_T$ | 1.5 | eV | 実験値 |
-| 一重項エネルギー | $E_S$ | 3.0 | eV | 実験値 |
-| エネルギー移動積分 | $V$ | 0.01 | eV | Dexter機構 |
-| TTA速度定数 | $\gamma_{\text{TTA}}$ | $10^{-3}-10^{-1}$ | eV/ℏ | 拡散制御 |
-| 蛍光速度 | $\Gamma_{\text{fl}}$ | $10^{-7}$ | eV/ℏ | 許容遷移 |
-| 燐光速度 | $\Gamma_{\text{ph}}$ | $10^{-12}-10^{-9}$ | eV/ℏ | 禁制遷移 |
-| IC速度 | $k_{\text{IC}}$ | $10^{-8}-10^{-7}$ | eV/ℏ | エネルギーギャップ則 |
-| ISC S→T | $k_{\text{ISC}}^{S\to T}$ | $10^{-8}-10^{-7}$ | eV/ℏ | スピン-軌道結合 |
-| ISC T→S | $k_{\text{ISC}}^{T\to S}$ | $10^{-13}-10^{-10}$ | eV/ℏ | 大ギャップ |
+| パラメータ         | 記号                      | 典型値              | 単位 | 物理的起源           |
+| ------------------ | ------------------------- | ------------------- | ---- | -------------------- |
+| 三重項エネルギー   | $E_T$                     | 1.5                 | eV   | 実験値               |
+| 一重項エネルギー   | $E_S$                     | 3.0                 | eV   | 実験値               |
+| エネルギー移動積分 | $V$                       | 0.01                | eV   | Dexter機構           |
+| TTA速度定数        | $\gamma_{\text{TTA}}$     | $10^{-3}-10^{-1}$   | eV/ℏ | 拡散制御             |
+| 蛍光速度           | $\Gamma_{\text{fl}}$      | $10^{-7}$           | eV/ℏ | 許容遷移             |
+| 燐光速度           | $\Gamma_{\text{ph}}$      | $10^{-12}-10^{-9}$  | eV/ℏ | 禁制遷移             |
+| IC速度             | $k_{\text{IC}}$           | $10^{-8}-10^{-7}$   | eV/ℏ | エネルギーギャップ則 |
+| ISC S→T            | $k_{\text{ISC}}^{S\to T}$ | $10^{-8}-10^{-7}$   | eV/ℏ | スピン-軌道結合      |
+| ISC T→S            | $k_{\text{ISC}}^{T\to S}$ | $10^{-13}-10^{-10}$ | eV/ℏ | 大ギャップ           |
 
 #### 5.3.2 単位系
 
 自然単位系（$\hbar = 1$）を使用する場合：
+
 - エネルギー：eV
 - 時間：ℏ/eV ≈ 0.658 fs
 - 速度定数：eV/ℏ ≈ 1.52 fs⁻¹
 
 SI単位系との対応：
+
 - 1 eV/ℏ = 1.52 × 10¹⁵ s⁻¹
 - 1 ns⁻¹ = 6.58 × 10⁻¹⁰ eV/ℏ
 
@@ -705,11 +730,13 @@ $$
 $$
 
 フォノンの生成・消滅演算子：
+
 $$
 [\hat{a}_k, \hat{a}_{k'}^\dagger] = \delta_{kk'}, \quad [\hat{a}_k, \hat{a}_{k'}] = 0
 $$
 
 数状態基底：
+
 $$
 |n_k\rangle, \quad n_k = 0, 1, 2, \ldots
 $$
@@ -733,6 +760,7 @@ $$
 $$
 
 ここで：
+
 - $g_n^{(i)}$：状態 $|n\rangle$ のフォノン結合定数
 - $\hat{a}_n^{(i)}$：分子 $i$ のフォノン消滅演算子
 
@@ -791,16 +819,19 @@ $$
 各項の定義：
 
 **電子系ハミルトニアン**：
+
 $$
 \hat{H}_{\text{el}} = \hat{H}_0 + \hat{H}_{\text{transfer}}
 $$
 
 **フォノンハミルトニアン**：
+
 $$
 \hat{H}_{\text{phonon}} = \sum_k \hbar\omega_k \hat{a}_k^\dagger \hat{a}_k
 $$
 
 **光子ハミルトニアン**：
+
 $$
 \hat{H}_{\text{photon}} = \sum_{\mathbf{k},\lambda} \hbar\omega_k \hat{b}_{\mathbf{k}\lambda}^\dagger \hat{b}_{\mathbf{k}\lambda}
 $$
@@ -820,6 +851,7 @@ $$
 $$
 
 **計算コストの爆発**：
+
 - $N = 4$ 分子
 - $N_{\text{phonon}} = 4$ モード
 - $n_{\max} = 5$
@@ -843,6 +875,7 @@ J(\omega) = \frac{2\lambda\omega_c\omega}{\omega^2 + \omega_c^2}
 $$
 
 ここで：
+
 - $\lambda$：再配置エネルギー
 - $\omega_c$：カットオフ周波数
 
@@ -877,6 +910,7 @@ $$
 $$
 \frac{\partial}{\partial t} \hat{\rho}_{\mathbf{n}}(t) = -\left(\frac{i}{\hbar}\hat{H}_{\text{el}}^{\times} + \sum_k n_k \nu_k\right) \hat{\rho}_{\mathbf{n}}(t)
 $$
+
 $$
 + \sum_k \hat{V}_k^{\times} \hat{\rho}_{\mathbf{n}+\mathbf{e}_k}(t) + \sum_k n_k \hat{\Phi}_k \hat{\rho}_{\mathbf{n}-\mathbf{e}_k}(t)
 $$
@@ -894,15 +928,16 @@ $$
 $L = 10$, $K = 4$ の場合：286個の補助密度行列が必要。
 
 **HEOMの利点**：
+
 - 非マルコフ効果を厳密に取り扱い
 - 任意の温度で適用可能
 - 系統的な収束確認が可能
 
 **HEOMの欠点**：
+
 - 計算コストが高い
 - 低温で収束が遅い
 - 量子計算への直接適用が困難
-
 
 ---
 
@@ -921,6 +956,7 @@ $$
 $d \times d$ 行列を $d^2$ 次元ベクトルに変換する。
 
 **変換規則**：
+
 $$
 (\hat{\rho})_{ij} \mapsto |\hat{\rho}\rangle\rangle_{i + j \cdot d}
 $$
@@ -936,16 +972,19 @@ $$
 超演算子 $\mathcal{L}_{\text{super}}$ は $d^2 \times d^2$ 行列。
 
 **ハミルトニアン項**：
+
 $$
 \mathcal{L}_{\text{H}} = -\frac{i}{\hbar} (\hat{H} \otimes \hat{I} - \hat{I} \otimes \hat{H}^T)
 $$
 
 **Lindblad項**：
+
 $$
 \mathcal{L}_{\text{Lindblad},\alpha} = \gamma_\alpha \left( \hat{L}_\alpha \otimes \bar{\hat{L}}_\alpha - \frac{1}{2} \hat{L}_\alpha^\dagger \hat{L}_\alpha \otimes \hat{I} - \frac{1}{2} \hat{I} \otimes (\hat{L}_\alpha^\dagger \hat{L}_\alpha)^T \right)
 $$
 
 **全超演算子**：
+
 $$
 \mathcal{L}_{\text{super}} = \mathcal{L}_{\text{H}} + \sum_{\alpha} \mathcal{L}_{\text{Lindblad},\alpha}
 $$
@@ -955,13 +994,16 @@ $$
 #### 7.2.1 行列指数関数法
 
 形式解：
+
 $$
 |\hat{\rho}(t)\rangle\rangle = e^{\mathcal{L}_{\text{super}} t} |\hat{\rho}(0)\rangle\rangle
 $$
 
 数値計算：
+
 ```python
 import scipy.linalg as la
+
 rho_t = la.expm(L_super * t) @ rho_0_vec
 ```
 
@@ -978,14 +1020,17 @@ $$
 $$
 
 **Runge-Kutta法（RK45）**：
+
 ```python
 from scipy.integrate import solve_ivp
-sol = solve_ivp(lambda t, y: L_super @ y, [0, t_final], rho_0_vec, method='RK45')
+
+sol = solve_ivp(lambda t, y: L_super @ y, [0, t_final], rho_0_vec, method="RK45")
 ```
 
 **BDF法（スティッフ系向け）**：
+
 ```python
-sol = solve_ivp(lambda t, y: L_super @ y, [0, t_final], rho_0_vec, method='BDF')
+sol = solve_ivp(lambda t, y: L_super @ y, [0, t_final], rho_0_vec, method="BDF")
 ```
 
 #### 7.2.3 疎行列の活用
@@ -995,16 +1040,19 @@ sol = solve_ivp(lambda t, y: L_super @ y, [0, t_final], rho_0_vec, method='BDF')
 $$
 \text{非ゼロ要素数} \sim O(d^2)
 $$
+
 $$
 \text{全要素数} = d^4
 $$
 
 スパース率：
+
 $$
 \text{sparsity} = 1 - \frac{O(d^2)}{d^4} \approx 1 - O(d^{-2})
 $$
 
 **疎行列演算の実装**：
+
 ```python
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import expm_multiply
@@ -1022,11 +1070,13 @@ rho_t = expm_multiply(L_super_sparse * t, rho_0_vec)
 状態空間の指数的成長を抑制するため、テンソルネットワーク表現を使用：
 
 **行列積状態（MPS）**：
+
 $$
 |\psi\rangle = \sum_{s_1, \ldots, s_N} A^{[1]}_{s_1} A^{[2]}_{s_2} \cdots A^{[N]}_{s_N} |s_1 s_2 \cdots s_N\rangle
 $$
 
 **行列積演算子（MPO）**：
+
 $$
 \hat{O} = \sum_{\{s\}, \{s'\}} W^{[1]}_{s_1,s'_1} W^{[2]}_{s_2,s'_2} \cdots W^{[N]}_{s_N,s'_N} |s_1 \cdots s_N\rangle\langle s'_1 \cdots s'_N|
 $$
@@ -1049,6 +1099,7 @@ $$
 4. 物理量の抽出（$\hat{\rho}_{\mathbf{0}}$から）
 
 **実装上の注意**：
+
 - 階層の打ち切り：$|\mathbf{n}| \leq L_{\max}$
 - 収束確認：$L_{\max}$ を増やして結果が変化しないことを確認
 
@@ -1061,6 +1112,7 @@ $$
 3. 多数の軌跡を平均
 
 **量子ジャンプ**：
+
 - 確率 $dp_\alpha = \gamma_\alpha \langle\hat{L}_\alpha^\dagger \hat{L}_\alpha\rangle dt$ でジャンプ
 - ジャンプ時：$|\psi\rangle \to \hat{L}_\alpha |\psi\rangle / \|\hat{L}_\alpha |\psi\rangle\|$
 - ジャンプなし：非ユニタリ時間発展
@@ -1086,6 +1138,7 @@ $$
 $$
 
 **禁止状態**：
+
 $$
 |11\rangle_{2i,2i+1} \quad \text{（物理的意味なし）}
 $$
@@ -1093,6 +1146,7 @@ $$
 N分子系のqubit数：$2N$
 
 状態空間次元：
+
 - 完全Qubit空間：$4^N$
 - 物理的部分空間：$3^N$
 - 非物理状態数：$4^N - 3^N$
@@ -1106,6 +1160,7 @@ $$
 $$
 
 全射影演算子：
+
 $$
 \hat{P}_{\text{phys}} = \bigotimes_{i=0}^{N-1} \hat{P}_{\text{phys}}^{(i)}
 $$
@@ -1131,6 +1186,7 @@ $$
 $$
 
 ここで：
+
 $$
 \hat{G}_{\text{Lindblad}} = \frac{1}{\sqrt{2}} \left( \hat{L} \otimes \hat{\sigma}^-_E + \hat{L}^\dagger \otimes \hat{\sigma}^+_E \right)
 $$
@@ -1150,6 +1206,7 @@ e^{-i\hat{H}_0\tau/\hbar} = \prod_i e^{-i(E_T |01\rangle\langle 01| + E_S |10\ra
 $$
 
 各分子に対して：
+
 $$
 \text{RZ}_{q_{2i}}(-E_S\tau/\hbar) \cdot \text{RZ}_{q_{2i+1}}(-E_T\tau/\hbar) \cdot \text{制御位相ゲート}
 $$
@@ -1173,6 +1230,7 @@ $$
 $$
 
 Qubit表現で：
+
 - 系qubit：$(q_0, q_1)$
 - 補助qubit：$q_E$
 
@@ -1192,6 +1250,7 @@ $$
 完全な時間発展を時間刻み $\tau$ で分割：
 
 **2次Trotter分解**：
+
 $$
 e^{\mathcal{L}_{\text{GKSL}}\tau} \approx e^{\mathcal{L}_H \tau/2} \cdot e^{\mathcal{L}_{\text{diss}}\tau} \cdot e^{\mathcal{L}_H \tau/2}
 $$
@@ -1205,6 +1264,7 @@ $$
 フォノン/光子モードをqubitでエンコード：
 
 **バイナリエンコーディング**：
+
 $$
 |n\rangle_{\text{Fock}} \longleftrightarrow |n_1 n_2 \cdots n_k\rangle_{\text{qubit}}
 $$
@@ -1212,6 +1272,7 @@ $$
 $n_{\max}$ まで表現するのに必要なqubit数：$\lceil \log_2(n_{\max}+1) \rceil$
 
 **ユナリエンコーディング**：
+
 $$
 |n\rangle_{\text{Fock}} \longleftrightarrow |\underbrace{1\cdots1}_{n}\underbrace{0\cdots0}_{n_{\max}-n}\rangle
 $$
@@ -1221,11 +1282,13 @@ $$
 #### 8.4.2 電子-フォノン結合の量子回路
 
 Holstein型結合：
+
 $$
 \hat{H}_{e\text{-ph}} = g(\hat{a} + \hat{a}^\dagger)|1\rangle\langle 1|
 $$
 
 量子回路実装：
+
 1. 電子状態 $|1\rangle$ を制御として使用
 2. フォノンモードに変位演算子を適用
 
@@ -1239,13 +1302,13 @@ $$
 
 N分子系でボソンモードを含む場合：
 
-| リソース | ボソン無し | ボソン有り |
-|---------|-----------|-----------|
-| 系qubit | $2N$ | $2N$ |
-| フォノンqubit | 0 | $N \cdot \lceil\log_2(n_{\max}+1)\rceil$ |
-| 補助qubit（Stinespring） | $\sim 5N$ | $\sim 5N$ |
-| 全qubit数 | $\sim 7N$ | $\sim 7N + N\log_2 n_{\max}$ |
-| ゲート深さ | $O(N^2 \cdot t/\tau)$ | $O(N^2 n_{\max} \cdot t/\tau)$ |
+| リソース                 | ボソン無し            | ボソン有り                               |
+| ------------------------ | --------------------- | ---------------------------------------- |
+| 系qubit                  | $2N$                  | $2N$                                     |
+| フォノンqubit            | 0                     | $N \cdot \lceil\log_2(n_{\max}+1)\rceil$ |
+| 補助qubit（Stinespring） | $\sim 5N$             | $\sim 5N$                                |
+| 全qubit数                | $\sim 7N$             | $\sim 7N + N\log_2 n_{\max}$             |
+| ゲート深さ               | $O(N^2 \cdot t/\tau)$ | $O(N^2 n_{\max} \cdot t/\tau)$           |
 
 ---
 
@@ -1277,16 +1340,19 @@ N分子系のqutrit数：$N$（qubitの半分）
 #### 9.2.1 単一Quditゲート
 
 **一般化Pauli-X演算子**：
+
 $$
 \hat{X}_d = \sum_{j=0}^{d-1} |j+1 \mod d\rangle\langle j|
 $$
 
 **一般化Pauli-Z演算子**：
+
 $$
 \hat{Z}_d = \sum_{j=0}^{d-1} \omega^j |j\rangle\langle j|, \quad \omega = e^{2\pi i/d}
 $$
 
 **部分空間回転**：
+
 $$
 \hat{R}_{mn}(\theta, \phi) = e^{-i\theta(\cos\phi \hat{\sigma}_{mn}^x + \sin\phi \hat{\sigma}_{mn}^y)/2}
 $$
@@ -1296,11 +1362,13 @@ $$
 #### 9.2.2 2-Quditゲート
 
 **制御ゲート**：
+
 $$
 \text{C-}U = |0\rangle\langle 0| \otimes \hat{I} + |1\rangle\langle 1| \otimes \hat{U}_{01} + |2\rangle\langle 2| \otimes \hat{U}_{02}
 $$
 
 **SWAPゲート**：
+
 $$
 \text{SWAP} = \sum_{j,k} |jk\rangle\langle kj|
 $$
@@ -1320,6 +1388,7 @@ $$
 **エネルギー移動項**：
 
 2-qutrit演算子：
+
 $$
 e^{-iV\tau(|01\rangle\langle 10| + |10\rangle\langle 01|)/\hbar}
 $$
@@ -1335,10 +1404,12 @@ $$
 $$
 
 Stinespring構成：
+
 - 系：2 qutrit（分子 $i, j$）
 - 環境：1 qubit（または1 qutrit）
 
 ユニタリ演算子：
+
 $$
 \hat{U} = \exp\left(-i\sqrt{\gamma_{\text{TTA}}\tau/2} \cdot \hat{G}\right)
 $$
@@ -1368,6 +1439,7 @@ MQT-Quditsフレームワークでの分解：
 3. **制御ゲート**による条件付き演算
 
 Givens回転 $G_{mn}(\theta, \phi)$：
+
 $$
 G_{mn}(\theta, \phi) = I + (\cos\theta - 1)(|m\rangle\langle m| + |n\rangle\langle n|) + \sin\theta(e^{i\phi}|m\rangle\langle n| - e^{-i\phi}|n\rangle\langle m|)
 $$
@@ -1389,30 +1461,32 @@ $d_{\text{phonon}} = n_{\max} + 1$ 次元qudit
 #### 9.4.2 電子-フォノン結合の量子回路
 
 Holstein型結合：
+
 $$
 \hat{H}_{e\text{-ph}} = g(\hat{a} + \hat{a}^\dagger) |1\rangle\langle 1|_{\text{el}}
 $$
 
 ここで：
+
 $$
 \hat{a} = \sum_{n=0}^{d-2} \sqrt{n+1} |n\rangle\langle n+1|
 $$
 
 制御付き昇降演算子として実装：
+
 $$
 \text{C-}a = |0\rangle\langle 0|_{\text{el}} \otimes \hat{I}_{\text{ph}} + |1\rangle\langle 1|_{\text{el}} \otimes \hat{a}_{\text{ph}} + |2\rangle\langle 2|_{\text{el}} \otimes \hat{I}_{\text{ph}}
 $$
 
 #### 9.4.3 リソース見積もり
 
-| リソース | ボソン無し | ボソン有り |
-|---------|-----------|-----------|
-| 電子qutrit | $N$ | $N$ |
-| フォノンqudit | 0 | $N$ (次元 $n_{\max}+1$) |
-| 補助qubit | $\sim 3N$ | $\sim 3N$ |
-| 全qudit等価数 | $N + 2N = 3N$ | $2N + 2N = 4N$ |
-| ゲート深さ | $O(N^2 \cdot t/\tau)$ | $O(N^2 n_{\max} \cdot t/\tau)$ |
-
+| リソース      | ボソン無し            | ボソン有り                     |
+| ------------- | --------------------- | ------------------------------ |
+| 電子qutrit    | $N$                   | $N$                            |
+| フォノンqudit | 0                     | $N$ (次元 $n_{\max}+1$)        |
+| 補助qubit     | $\sim 3N$             | $\sim 3N$                      |
+| 全qudit等価数 | $N + 2N = 3N$         | $2N + 2N = 4N$                 |
+| ゲート深さ    | $O(N^2 \cdot t/\tau)$ | $O(N^2 n_{\max} \cdot t/\tau)$ |
 
 ---
 
@@ -1422,20 +1496,21 @@ $$
 
 ### 10.1 シナリオ一覧
 
-| # | 計算方式 | ボソン相互作用 | 略称 |
-|---|---------|--------------|------|
-| 1 | 古典計算 | 無し | Classical-NB |
-| 2 | 古典計算 | 有り | Classical-B |
-| 3 | Qubit量子計算 | 無し | Qubit-NB |
-| 4 | Qubit量子計算 | 有り | Qubit-B |
-| 5 | Qudit量子計算 | 無し | Qudit-NB |
-| 6 | Qudit量子計算 | 有り | Qudit-B |
+| #   | 計算方式      | ボソン相互作用 | 略称         |
+| --- | ------------- | -------------- | ------------ |
+| 1   | 古典計算      | 無し           | Classical-NB |
+| 2   | 古典計算      | 有り           | Classical-B  |
+| 3   | Qubit量子計算 | 無し           | Qubit-NB     |
+| 4   | Qubit量子計算 | 有り           | Qubit-B      |
+| 5   | Qudit量子計算 | 無し           | Qudit-NB     |
+| 6   | Qudit量子計算 | 有り           | Qudit-B      |
 
 ### 10.2 シナリオ1：古典計算、ボソン相互作用無し（Classical-NB）
 
 #### 10.2.1 理論的定式化
 
 **GKSL方程式**：
+
 $$
 \frac{d\hat{\rho}}{dt} = -\frac{i}{\hbar}[\hat{H}_0 + \hat{H}_{\text{transfer}}, \hat{\rho}] + \sum_{\alpha} \gamma_\alpha \mathcal{D}[\hat{L}_\alpha][\hat{\rho}]
 $$
@@ -1443,6 +1518,7 @@ $$
 **状態空間**：$3^N$ 次元
 
 **超演算子形式**：
+
 $$
 \frac{d|\hat{\rho}\rangle\rangle}{dt} = \mathcal{L}_{\text{super}} |\hat{\rho}\rangle\rangle
 $$
@@ -1452,11 +1528,13 @@ $\mathcal{L}_{\text{super}}$ は $(3^N)^2 \times (3^N)^2$ 行列
 #### 10.2.2 数値手法
 
 1. **行列指数関数**（小規模系 $N \leq 3$）：
+
    $$
    |\hat{\rho}(t)\rangle\rangle = e^{\mathcal{L}_{\text{super}} t} |\hat{\rho}(0)\rangle\rangle
    $$
 
 2. **ODEソルバー**（中規模系 $N \leq 5$）：
+
    - RK45法
    - BDF法（スティッフ系）
 
@@ -1468,14 +1546,15 @@ $\mathcal{L}_{\text{super}}$ は $(3^N)^2 \times (3^N)^2$ 行列
 #### 10.2.3 計算コスト
 
 | 分子数 $N$ | 状態次元 $3^N$ | 密度行列サイズ | メモリ（double complex） |
-|-----------|---------------|--------------|------------------------|
-| 2 | 9 | 81 | 1.3 KB |
-| 3 | 27 | 729 | 12 KB |
-| 4 | 81 | 6,561 | 105 KB |
-| 5 | 243 | 59,049 | 0.9 MB |
-| 6 | 729 | 531,441 | 8.5 MB |
+| ---------- | -------------- | -------------- | ------------------------ |
+| 2          | 9              | 81             | 1.3 KB                   |
+| 3          | 27             | 729            | 12 KB                    |
+| 4          | 81             | 6,561          | 105 KB                   |
+| 5          | 243            | 59,049         | 0.9 MB                   |
+| 6          | 729            | 531,441        | 8.5 MB                   |
 
 計算時間（目安）：
+
 - $N = 4$：秒オーダー
 - $N = 5$：分オーダー
 - $N = 6$：時間オーダー
@@ -1485,11 +1564,13 @@ $\mathcal{L}_{\text{super}}$ は $(3^N)^2 \times (3^N)^2$ 行列
 #### 10.3.1 理論的定式化
 
 **拡張ハミルトニアン**：
+
 $$
 \hat{H}_{\text{total}} = \hat{H}_{\text{el}} + \hat{H}_{\text{phonon}} + \hat{H}_{e\text{-ph}}
 $$
 
 **完全な状態空間**：
+
 $$
 \mathcal{H} = \mathcal{H}_{\text{el}} \otimes \mathcal{H}_{\text{phonon}}
 $$
@@ -1499,11 +1580,13 @@ $$
 #### 10.3.2 数値手法
 
 1. **HEOM（階層的運動方程式）**：
+
    - 非マルコフ効果を厳密に取り扱い
    - 階層数 $L$ で精度を制御
    - 計算コスト：$O(\binom{L+K}{K} \cdot d^4)$
 
 2. **テンソルネットワーク法**：
+
    - MPS/MPO表現
    - 結合次元 $\chi$ で精度を制御
    - 計算コスト：$O(N \cdot d \cdot \chi^3)$
@@ -1515,21 +1598,23 @@ $$
 
 #### 10.3.3 計算コスト比較
 
-| 手法 | 精度 | メモリ | 計算時間 |
-|------|------|-------|---------|
-| HEOM | 厳密 | $O(n_{\text{aux}} \cdot d^2)$ | $O(n_{\text{aux}}^2 \cdot d^2)$ |
-| テンソルネットワーク | 近似（$\chi$制御） | $O(N \cdot d \cdot \chi^2)$ | $O(N \cdot d \cdot \chi^3)$ |
-| 量子モンテカルロ | 統計誤差 | $O(d)$ | $O(N_{\text{traj}} \cdot d)$ |
+| 手法                 | 精度               | メモリ                        | 計算時間                        |
+| -------------------- | ------------------ | ----------------------------- | ------------------------------- |
+| HEOM                 | 厳密               | $O(n_{\text{aux}} \cdot d^2)$ | $O(n_{\text{aux}}^2 \cdot d^2)$ |
+| テンソルネットワーク | 近似（$\chi$制御） | $O(N \cdot d \cdot \chi^2)$   | $O(N \cdot d \cdot \chi^3)$     |
+| 量子モンテカルロ     | 統計誤差           | $O(d)$                        | $O(N_{\text{traj}} \cdot d)$    |
 
 ### 10.4 シナリオ3：Qubit量子計算、ボソン相互作用無し（Qubit-NB）
 
 #### 10.4.1 理論的定式化
 
 **Qubitエンコーディング**：
+
 - 分子状態：2 qubit/分子
 - 状態空間：$4^N$（物理部分空間：$3^N$）
 
 **Stinespring実装**：
+
 - 各Lindblad演算子に補助qubitを導入
 - ユニタリ演算後に部分トレース
 
@@ -1538,6 +1623,7 @@ $$
 **時間ステップあたりの回路**：
 
 1. **ユニタリ部分**（$\hat{H}_0 + \hat{H}_{\text{transfer}}$）：
+
    - 対角ゲート：$O(N)$ 深さ
    - エネルギー移動：$O(N)$ 深さ
 
@@ -1546,6 +1632,7 @@ $$
    - 全体：$O(N + N(N-1)/2)$ 深さ（TTAペア数）
 
 **総ゲート深さ**：
+
 $$
 D = O\left(\frac{t}{\tau} \cdot (N + N^2)\right) = O\left(\frac{t \cdot N^2}{\tau}\right)
 $$
@@ -1553,20 +1640,22 @@ $$
 #### 10.4.3 リソース見積もり
 
 | 分子数 $N$ | 系qubit | 補助qubit | 全qubit | ゲート数/ステップ |
-|-----------|--------|----------|--------|----------------|
-| 2 | 4 | ~6 | ~10 | ~50 |
-| 3 | 6 | ~10 | ~16 | ~100 |
-| 4 | 8 | ~15 | ~23 | ~200 |
+| ---------- | ------- | --------- | ------- | ----------------- |
+| 2          | 4       | ~6        | ~10     | ~50               |
+| 3          | 6       | ~10       | ~16     | ~100              |
+| 4          | 8       | ~15       | ~23     | ~200              |
 
 ### 10.5 シナリオ4：Qubit量子計算、ボソン相互作用有り（Qubit-B）
 
 #### 10.5.1 理論的定式化
 
 **拡張エンコーディング**：
+
 - 電子状態：2 qubit/分子
 - フォノンモード：$\lceil\log_2(n_{\max}+1)\rceil$ qubit/モード
 
 **状態空間**：
+
 $$
 2^{2N} \times 2^{N \cdot \lceil\log_2(n_{\max}+1)\rceil}
 $$
@@ -1580,6 +1669,7 @@ e^{-ig\tau(\hat{a}+\hat{a}^\dagger)|T_1\rangle\langle T_1|}
 $$
 
 qubitでの実装：
+
 1. フォノンモードの加算/減算回路
 2. 電子状態による制御
 
@@ -1588,42 +1678,47 @@ qubitでの実装：
 #### 10.5.3 リソース見積もり
 
 | 分子数 $N$ | $n_{\max}$ | 電子qubit | フォノンqubit | 全qubit |
-|-----------|-----------|----------|--------------|--------|
-| 2 | 4 | 4 | 6 | ~16 |
-| 3 | 4 | 6 | 9 | ~25 |
-| 4 | 4 | 8 | 12 | ~35 |
+| ---------- | ---------- | --------- | ------------- | ------- |
+| 2          | 4          | 4         | 6             | ~16     |
+| 3          | 4          | 6         | 9             | ~25     |
+| 4          | 4          | 8         | 12            | ~35     |
 
 ### 10.6 シナリオ5：Qudit量子計算、ボソン相互作用無し（Qudit-NB）
 
 #### 10.6.1 理論的定式化
 
 **Qutritエンコーディング**：
+
 - 分子状態：1 qutrit/分子
 - 状態空間：$3^N$（完全一致）
 
 **Stinespring実装**：
+
 - 補助qubit（または補助qutrit）を導入
 - より自然なLindblad演算子表現
 
 #### 10.6.2 量子回路構成
 
 **単一qutritゲート**：
+
 - Givens回転 $G_{01}(\theta)$, $G_{12}(\theta)$, $G_{02}(\theta)$
 - 対角位相ゲート
 
 **2-qutritゲート**：
+
 - 制御Givens回転
 - SWAP風ゲート
 
 #### 10.6.3 リソース見積もり
 
 | 分子数 $N$ | 系qutrit | 補助qudit | 等価qubit数 |
-|-----------|---------|----------|------------|
-| 2 | 2 | ~3 | ~8 |
-| 3 | 3 | ~5 | ~13 |
-| 4 | 4 | ~7 | ~18 |
+| ---------- | -------- | --------- | ----------- |
+| 2          | 2        | ~3        | ~8          |
+| 3          | 3        | ~5        | ~13         |
+| 4          | 4        | ~7        | ~18         |
 
 **Qubit比較**：
+
 - Qubit-NB（$N=4$）：~23 qubit
 - Qudit-NB（$N=4$）：~18 qubit等価（約22%削減）
 
@@ -1632,6 +1727,7 @@ qubitでの実装：
 #### 10.7.1 理論的定式化
 
 **拡張エンコーディング**：
+
 - 電子状態：1 qutrit/分子（$d=3$）
 - フォノンモード：1 qudit/モード（$d=n_{\max}+1$）
 
@@ -1642,6 +1738,7 @@ qubitでの実装：
 **電子-フォノン結合**：
 
 より自然な実装が可能：
+
 $$
 \hat{a} = \sum_{n=0}^{d-2} \sqrt{n+1}|n\rangle\langle n+1|
 $$
@@ -1651,34 +1748,34 @@ $$
 #### 10.7.3 リソース見積もり
 
 | 分子数 $N$ | $n_{\max}$ | 電子qutrit | フォノンqudit | 等価qubit数 |
-|-----------|-----------|-----------|--------------|------------|
-| 2 | 4 | 2 | 2 (d=5) | ~11 |
-| 3 | 4 | 3 | 3 (d=5) | ~17 |
-| 4 | 4 | 4 | 4 (d=5) | ~23 |
+| ---------- | ---------- | ---------- | ------------- | ----------- |
+| 2          | 4          | 2          | 2 (d=5)       | ~11         |
+| 3          | 4          | 3          | 3 (d=5)       | ~17         |
+| 4          | 4          | 4          | 4 (d=5)       | ~23         |
 
 ### 10.8 6シナリオの総合比較
 
 #### 10.8.1 計算資源比較（N=4分子、t=100 fs）
 
-| シナリオ | 計算資源 | 実行時間目安 | 精度 |
-|---------|---------|------------|------|
-| Classical-NB | RAM 100KB | 秒 | 機械精度 |
-| Classical-B | RAM 10MB (HEOM) | 分〜時 | 収束次第 |
-| Qubit-NB | 23 qubit | 量子時間 | Trotter誤差 |
-| Qubit-B | 35 qubit | 量子時間 | Trotter誤差 |
-| Qudit-NB | 18 qubit等価 | 量子時間 | Trotter誤差 |
-| Qudit-B | 23 qubit等価 | 量子時間 | Trotter誤差 |
+| シナリオ     | 計算資源        | 実行時間目安 | 精度        |
+| ------------ | --------------- | ------------ | ----------- |
+| Classical-NB | RAM 100KB       | 秒           | 機械精度    |
+| Classical-B  | RAM 10MB (HEOM) | 分〜時       | 収束次第    |
+| Qubit-NB     | 23 qubit        | 量子時間     | Trotter誤差 |
+| Qubit-B      | 35 qubit        | 量子時間     | Trotter誤差 |
+| Qudit-NB     | 18 qubit等価    | 量子時間     | Trotter誤差 |
+| Qudit-B      | 23 qubit等価    | 量子時間     | Trotter誤差 |
 
 #### 10.8.2 スケーラビリティ比較
 
-| シナリオ | $N$ 依存性 | 実用限界 |
-|---------|-----------|---------|
-| Classical-NB | $O(9^N)$ | $N \sim 6$ |
-| Classical-B | $O(9^N \cdot d_{\text{ph}}^N)$ | $N \sim 4$ |
-| Qubit-NB | $O(N^2)$ qubit | $N \sim 100+$ (NISQ) |
-| Qubit-B | $O(N^2 \cdot \log n_{\max})$ qubit | $N \sim 50+$ (NISQ) |
-| Qudit-NB | $O(N)$ qutrit | $N \sim 100+$ |
-| Qudit-B | $O(N)$ qudit | $N \sim 50+$ |
+| シナリオ     | $N$ 依存性                         | 実用限界             |
+| ------------ | ---------------------------------- | -------------------- |
+| Classical-NB | $O(9^N)$                           | $N \sim 6$           |
+| Classical-B  | $O(9^N \cdot d_{\text{ph}}^N)$     | $N \sim 4$           |
+| Qubit-NB     | $O(N^2)$ qubit                     | $N \sim 100+$ (NISQ) |
+| Qubit-B      | $O(N^2 \cdot \log n_{\max})$ qubit | $N \sim 50+$ (NISQ)  |
+| Qudit-NB     | $O(N)$ qutrit                      | $N \sim 100+$        |
+| Qudit-B      | $O(N)$ qudit                       | $N \sim 50+$         |
 
 ---
 
@@ -1697,6 +1794,7 @@ $$
 #### 11.1.2 正定値性
 
 密度行列の全固有値：
+
 $$
 \lambda_k \geq -\epsilon_{\text{pos}}, \quad \forall k
 $$
@@ -1716,11 +1814,13 @@ $$
 #### 11.2.1 熱力学第二法則
 
 von Neumannエントロピー：
+
 $$
 S(t) = -\text{Tr}[\hat{\rho}(t)\ln\hat{\rho}(t)]
 $$
 
 検証条件：
+
 $$
 \frac{dS}{dt} \geq -\epsilon_{\text{entropy}}
 $$
@@ -1730,6 +1830,7 @@ $$
 #### 11.2.2 粒子数保存
 
 全分子数：
+
 $$
 N_{\text{total}}(t) = \sum_{i,n} n_i(t) = N
 $$
@@ -1741,11 +1842,13 @@ $$
 #### 11.3.1 理論的誤差限界
 
 **1次Trotter**：
+
 $$
 \|e^{(\hat{A}+\hat{B})t} - (e^{\hat{A}t/N}e^{\hat{B}t/N})^N\| \leq \frac{t^2}{2N}\|[\hat{A},\hat{B}]\|
 $$
 
 **2次Trotter**：
+
 $$
 \|e^{(\hat{A}+\hat{B})t} - (e^{\hat{A}t/2N}e^{\hat{B}t/N}e^{\hat{A}t/2N})^N\| \leq \frac{t^3}{12N^2}\|[[\hat{A},\hat{B}],\hat{A}+\hat{B}]\|
 $$
@@ -1779,6 +1882,7 @@ $$
 #### 11.4.2 Stinespring実装の忠実度
 
 理想的Lindblad時間発展と比較：
+
 $$
 F = \text{Tr}\sqrt{\sqrt{\hat{\rho}_{\text{ideal}}}\hat{\rho}_{\text{Stinespring}}\sqrt{\hat{\rho}_{\text{ideal}}}}^2
 $$
@@ -1796,11 +1900,13 @@ $$
 #### 12.1.1 理論的貢献
 
 1. **GKSL-Lindblad方程式の完全定式化**
+
    - 開放量子系理論に基づく厳密な数学的基礎
    - TTA過程のLindblad演算子表現
    - 放射減衰・無放射遷移の完全な組み込み
 
 2. **ボソン相互作用の系統的取り扱い**
+
    - 電子-フォノン結合（Holstein型、Peierls型）
    - 電子-光子結合（電気双極子相互作用）
    - 有限温度効果と詳細釣り合い
@@ -1812,26 +1918,28 @@ $$
 
 #### 12.1.2 実装シナリオの比較
 
-| シナリオ | 適用領域 | 主な利点 |
-|---------|---------|---------|
-| Classical-NB | 小規模系 | 高精度、低コスト |
-| Classical-B | 非マルコフ効果 | 物理的厳密性 |
-| Qubit-NB | NISQ量子計算 | 既存ハードウェア |
-| Qubit-B | 将来の量子計算 | 完全な物理モデル |
-| Qudit-NB | 次世代量子計算 | 資源効率 |
-| Qudit-B | 将来の量子計算 | 最も自然な表現 |
+| シナリオ     | 適用領域       | 主な利点         |
+| ------------ | -------------- | ---------------- |
+| Classical-NB | 小規模系       | 高精度、低コスト |
+| Classical-B  | 非マルコフ効果 | 物理的厳密性     |
+| Qubit-NB     | NISQ量子計算   | 既存ハードウェア |
+| Qubit-B      | 将来の量子計算 | 完全な物理モデル |
+| Qudit-NB     | 次世代量子計算 | 資源効率         |
+| Qudit-B      | 将来の量子計算 | 最も自然な表現   |
 
 ### 12.2 ヒューリスティック手法の完全排除
 
 本文書は以下の原則を厳格に遵守した：
 
 **❌ 排除された手法**：
+
 - 物理的根拠のない近似パラメータ
 - 計算失敗時のFallback処理
 - 非物理的な状態への遷移
 - ごまかしや隠蔽
 
 **✅ 採用された手法**：
+
 - GKSL定理に基づく厳密な理論
 - Stinespring表現による厳密なユニタリ化
 - 制御可能な近似誤差（Trotter分解）
@@ -1840,11 +1948,13 @@ $$
 ### 12.3 今後の展望
 
 1. **理論的拡張**
+
    - 非マルコフ効果の量子計算実装
    - より大規模な分子系への適用
    - 空間的不均一性の導入
 
 2. **実験的検証**
+
    - 実際の量子ハードウェアでの実装
    - 古典計算結果との比較
    - 新材料設計への応用
@@ -1860,26 +1970,26 @@ $$
 
 ### 開放量子系理論
 
-1. Breuer, H.-P., & Petruccione, F. (2002). *The Theory of Open Quantum Systems*. Oxford University Press.
-2. Gorini, V., Kossakowski, A., & Sudarshan, E. C. G. (1976). "Completely positive dynamical semigroups of N-level systems." *J. Math. Phys.*, 17, 821.
-3. Lindblad, G. (1976). "On the generators of quantum dynamical semigroups." *Commun. Math. Phys.*, 48, 119.
+1. Breuer, H.-P., & Petruccione, F. (2002). _The Theory of Open Quantum Systems_. Oxford University Press.
+2. Gorini, V., Kossakowski, A., & Sudarshan, E. C. G. (1976). "Completely positive dynamical semigroups of N-level systems." _J. Math. Phys._, 17, 821.
+3. Lindblad, G. (1976). "On the generators of quantum dynamical semigroups." _Commun. Math. Phys._, 48, 119.
 
 ### TTA-UCとフォトフィジクス
 
-4. Singh-Rachford, T. N., & Castellano, F. N. (2010). "Photon upconversion based on sensitized triplet–triplet annihilation." *Coord. Chem. Rev.*, 254, 2560.
-5. Monguzzi, A., et al. (2012). "Upconversion-induced fluorescence in multicomponent systems." *Phys. Chem. Chem. Phys.*, 14, 4322.
-6. Turro, N. J., Ramamurthy, V., & Scaiano, J. C. (2010). *Modern Molecular Photochemistry of Organic Molecules*. University Science Books.
+4. Singh-Rachford, T. N., & Castellano, F. N. (2010). "Photon upconversion based on sensitized triplet–triplet annihilation." _Coord. Chem. Rev._, 254, 2560.
+5. Monguzzi, A., et al. (2012). "Upconversion-induced fluorescence in multicomponent systems." _Phys. Chem. Chem. Phys._, 14, 4322.
+6. Turro, N. J., Ramamurthy, V., & Scaiano, J. C. (2010). _Modern Molecular Photochemistry of Organic Molecules_. University Science Books.
 
 ### 量子計算
 
-7. Nielsen, M. A., & Chuang, I. L. (2010). *Quantum Computation and Quantum Information*. Cambridge University Press.
-8. Stinespring, W. F. (1955). "Positive functions on C*-algebras." *Proc. Amer. Math. Soc.*, 6, 211.
-9. Lloyd, S. (1996). "Universal quantum simulators." *Science*, 273, 1073.
+7. Nielsen, M. A., & Chuang, I. L. (2010). _Quantum Computation and Quantum Information_. Cambridge University Press.
+8. Stinespring, W. F. (1955). "Positive functions on C*-algebras." *Proc. Amer. Math. Soc.\*, 6, 211.
+9. Lloyd, S. (1996). "Universal quantum simulators." _Science_, 273, 1073.
 
 ### ボソン相互作用と数値手法
 
-10. Tanimura, Y. (2020). "Numerically 'exact' approach to open quantum dynamics." *J. Chem. Phys.*, 153, 020901.
-11. May, V., & Kühn, O. (2011). *Charge and Energy Transfer Dynamics in Molecular Systems*. Wiley-VCH.
+10. Tanimura, Y. (2020). "Numerically 'exact' approach to open quantum dynamics." _J. Chem. Phys._, 153, 020901.
+11. May, V., & Kühn, O. (2011). _Charge and Energy Transfer Dynamics in Molecular Systems_. Wiley-VCH.
 
 ### MQT-Qudits関連
 
@@ -1893,27 +2003,27 @@ $$
 
 ## 付録A：記号一覧
 
-| 記号 | 意味 | 単位/値 |
-|------|------|--------|
-| $\|S_0\rangle$ | 基底一重項状態 | - |
-| $\|T_1\rangle$ | 励起三重項状態 | - |
-| $\|S_1\rangle$ | 励起一重項状態 | - |
-| $E_T$ | 三重項エネルギー | 1.5 eV |
-| $E_S$ | 一重項エネルギー | 3.0 eV |
-| $\hat{\rho}$ | 密度演算子 | - |
-| $\hat{H}$ | ハミルトニアン | eV |
-| $\hat{L}_\alpha$ | Lindblad演算子 | - |
-| $\gamma_\alpha$ | 散逸速度定数 | eV/ℏ |
-| $\mathcal{D}[\hat{L}]$ | Lindblad超演算子 | - |
-| $\Gamma_{\text{fl}}$ | 蛍光発光速度 | eV/ℏ |
-| $\Gamma_{\text{ph}}$ | 燐光発光速度 | eV/ℏ |
-| $\gamma_{\text{TTA}}$ | TTA速度定数 | eV/ℏ |
-| $V_{ij}$ | エネルギー移動積分 | eV |
-| $\hat{a}, \hat{a}^\dagger$ | ボソン消滅/生成演算子 | - |
-| $\omega$ | 振動周波数 | eV/ℏ |
-| $g$ | 電子-フォノン結合定数 | eV |
-| $S$ | Huang-Rhysパラメータ | 無次元 |
-| $\tau$ | 時間刻み（Trotter） | fs |
+| 記号                       | 意味                  | 単位/値 |
+| -------------------------- | --------------------- | ------- |
+| $\|S_0\rangle$             | 基底一重項状態        | -       |
+| $\|T_1\rangle$             | 励起三重項状態        | -       |
+| $\|S_1\rangle$             | 励起一重項状態        | -       |
+| $E_T$                      | 三重項エネルギー      | 1.5 eV  |
+| $E_S$                      | 一重項エネルギー      | 3.0 eV  |
+| $\hat{\rho}$               | 密度演算子            | -       |
+| $\hat{H}$                  | ハミルトニアン        | eV      |
+| $\hat{L}_\alpha$           | Lindblad演算子        | -       |
+| $\gamma_\alpha$            | 散逸速度定数          | eV/ℏ    |
+| $\mathcal{D}[\hat{L}]$     | Lindblad超演算子      | -       |
+| $\Gamma_{\text{fl}}$       | 蛍光発光速度          | eV/ℏ    |
+| $\Gamma_{\text{ph}}$       | 燐光発光速度          | eV/ℏ    |
+| $\gamma_{\text{TTA}}$      | TTA速度定数           | eV/ℏ    |
+| $V_{ij}$                   | エネルギー移動積分    | eV      |
+| $\hat{a}, \hat{a}^\dagger$ | ボソン消滅/生成演算子 | -       |
+| $\omega$                   | 振動周波数            | eV/ℏ    |
+| $g$                        | 電子-フォノン結合定数 | eV      |
+| $S$                        | Huang-Rhysパラメータ  | 無次元  |
+| $\tau$                     | 時間刻み（Trotter）   | fs      |
 
 ---
 
@@ -1921,25 +2031,25 @@ $$
 
 ### B.1 エネルギー・時間
 
-| 量 | 自然単位 (ℏ=1) | SI単位 |
-|----|---------------|--------|
-| エネルギー | 1 eV | 1.602 × 10⁻¹⁹ J |
-| 時間 | 1 ℏ/eV | 6.58 × 10⁻¹⁶ s ≈ 0.658 fs |
-| 速度定数 | 1 eV/ℏ | 1.52 × 10¹⁵ s⁻¹ |
+| 量         | 自然単位 (ℏ=1) | SI単位                    |
+| ---------- | -------------- | ------------------------- |
+| エネルギー | 1 eV           | 1.602 × 10⁻¹⁹ J           |
+| 時間       | 1 ℏ/eV         | 6.58 × 10⁻¹⁶ s ≈ 0.658 fs |
+| 速度定数   | 1 eV/ℏ         | 1.52 × 10¹⁵ s⁻¹           |
 
 ### B.2 よく使う変換
 
-| 変換 | 関係式 |
-|------|--------|
-| ns⁻¹ → eV/ℏ | × 6.58 × 10⁻¹⁰ |
+| 変換            | 関係式         |
+| --------------- | -------------- |
+| ns⁻¹ → eV/ℏ     | × 6.58 × 10⁻¹⁰ |
 | eV → nm（波長） | λ = 1240/E(eV) |
-| K → eV | × 8.62 × 10⁻⁵ |
+| K → eV          | × 8.62 × 10⁻⁵  |
 
 ---
 
 **文書終了**
 
-作成日: 2026年1月25日  
-バージョン: 1.0.0  
-著者: MQT-Qudits研究グループ  
+作成日: 2026年1月25日
+バージョン: 1.0.0
+著者: MQT-Qudits研究グループ
 ライセンス: MIT License

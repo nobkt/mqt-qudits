@@ -1,6 +1,7 @@
 # Qubit実装ノートブック - 実装メモ
 
 ## 作成日時
+
 2025-10-20
 
 ## 概要
@@ -14,7 +15,7 @@
 ```
 全20セル
 ├── 1セル: タイトルと概要
-├── 1セル: 理論的背景  
+├── 1セル: 理論的背景
 ├── 1セル: ライブラリインポート
 ├── 6セル: クラス定義（各2セル: 説明+コード）
 │   ├── PhysicalParameters
@@ -37,7 +38,7 @@ Qiskitはlittle-endian規約を使用しているため、エンコーディン�
 ```python
 # Big-endian表記（文書の表記）:
 # |S0⟩ → |00⟩
-# |T1⟩ → |01⟩  
+# |T1⟩ → |01⟩
 # |S1⟩ → |10⟩
 
 # Qiskitでの実装（Little-endian）:
@@ -59,7 +60,7 @@ for idx in range(dim):
         if (q1, q0) == (0, 0): mol_count_S0 += 1
         if (q1, q0) == (0, 1): mol_count_T1 += 1
         if (q1, q0) == (1, 0): mol_count_S1 += 1
-    
+
     # 確率重みで加算
     N_S0 += prob * mol_count_S0
     N_T1 += prob * mol_count_T1
@@ -71,6 +72,7 @@ for idx in range(dim):
 教育目的のため、以下の点で簡略化しています：
 
 **エネルギー移動項:**
+
 ```python
 # 完全実装: 制御付きRXXゲート (条件: 両分子がS0とT1)
 # 簡略実装: 制御なしRXXゲート（近似）
@@ -82,6 +84,7 @@ circuit.x(qj0)
 ```
 
 **TTA項:**
+
 ```python
 # 完全実装: 固有基底変換 + 多重制御位相ゲート
 # 簡略実装: 制御Y回転 + 単純位相ゲート（近似）
@@ -95,10 +98,12 @@ circuit.cry(-np.pi/4, qi1, qj1)
 完全な実装には以下が必要（設計書に記載）：
 
 1. **多重制御ゲートの分解**
+
    - Toffoliゲートの15ゲート分解
    - 補助qubitを用いたC-C-RXXの実装
 
 2. **固有基底変換**
+
    - 3準位部分空間での厳密な対角化
    - ユニタリ変換行列の実装
 
@@ -108,29 +113,33 @@ circuit.cry(-np.pi/4, qi1, qj1)
 ## テスト結果
 
 ### 実行環境
+
 - Python 3.12.3
 - Qiskit 2.2.1
 - NumPy 1.26+
 - Matplotlib 3.8+
 
 ### 実行時間
+
 - 4分子系、20ステップ: 約0.78秒
 - メモリ使用量: 約50MB
 
 ### 動作確認
 
-✅ すべてのセルが正常に実行  
-✅ 初期状態: N_T1 = 4.0（全分子が三重項）  
-✅ 時間発展が観測される  
-✅ グラフが正常に表示される  
+✅ すべてのセルが正常に実行
+✅ 初期状態: N_T1 = 4.0（全分子が三重項）
+✅ 時間発展が観測される
+✅ グラフが正常に表示される
 
 ### 既知の制限事項
 
 1. **個体数保存の近似的な実装**
+
    - 簡略化により厳密な保存則は成り立たない
    - 完全実装では解決可能
 
 2. **未使用状態への漏れ**
+
    - 簡略実装では|11⟩への遷移が完全には防げない
    - 実用上は無視できるレベル
 
@@ -141,12 +150,14 @@ circuit.cry(-np.pi/4, qi1, qj1)
 ## Qudit版との比較
 
 ### 同等性
+
 - ✅ 同じ物理パラメータ
 - ✅ 同じ初期状態設定
 - ✅ 同じ時間発展アルゴリズム（鈴木トロッター分解）
 - ✅ 同じ観測量計算
 
 ### 相違点
+
 - ❌ ゲート数: Qubit版は約8倍
 - ❌ 実装の自然性: Qudit版の方が直接的
 - ✅ ハードウェア可用性: Qubit版が優位
@@ -154,16 +165,19 @@ circuit.cry(-np.pi/4, qi1, qj1)
 ## 今後の改善計画
 
 ### Phase 1: 完全実装
+
 1. 多重制御ゲートの完全な分解実装
 2. 固有基底変換の追加
 3. 物理的部分空間保存の厳密化
 
 ### Phase 2: 最適化
+
 1. ゲート数の削減（transpile最適化）
 2. 回路深さの削減
 3. 並列化の導入
 
 ### Phase 3: 拡張
+
 1. N分子系への一般化
 2. 2次元格子系への対応
 3. 実機（IBMQ等）での実行
@@ -171,21 +185,24 @@ circuit.cry(-np.pi/4, qi1, qj1)
 ## 参照文献
 
 ### 内部ドキュメント
+
 - `tutorials/doc/qubit/qubit_quantum_dynamics_molecular_triplet_states_theory.md`
 - `tutorials/doc/qubit/qubit_implementation_specification.md`
 - `tutorials/doc/qubit/qubit_detailed_design.md`
 
 ### Qudit版参照実装
+
 - `tutorials/four_molecule_linear_chain_quantum_dynamics.ipynb`
 
 ### Qiskit Documentation
+
 - https://qiskit.org/documentation/
 
 ## 作成者・連絡先
 
-**プロジェクト**: MQT Qudits  
-**リポジトリ**: https://github.com/nobkt/mqt-qudits  
-**作成日**: 2025-10-20  
+**プロジェクト**: MQT Qudits
+**リポジトリ**: https://github.com/nobkt/mqt-qudits
+**作成日**: 2025-10-20
 **バージョン**: 1.0.0
 
 ---

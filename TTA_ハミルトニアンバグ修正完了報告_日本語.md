@@ -15,15 +15,18 @@ T₁ + T₁ → S₁ + S₀
 ```
 
 この過程には**2つの可能な生成物状態**があります：
+
 1. `|T₁T₁⟩ → |S₀S₁⟩` （第1分子が基底状態、第2分子が一重項励起状態）
 2. `|T₁T₁⟩ → |S₁S₀⟩` （第1分子が一重項励起状態、第2分子が基底状態）
 
 ### バグの内容
 
 実装は**第2の結合項が欠落**しており、以下のみを実装していました：
+
 - `|T₁T₁⟩ ↔ |S₀S₁⟩` ✓ （実装済み）
 
 以下が欠落：
+
 - `|T₁T₁⟩ ↔ |S₁S₀⟩` ✗ （**欠落！**）
 
 これにより、ハミルトニアンは物理的なTTA過程の50%しか表現していませんでした。
@@ -35,6 +38,7 @@ T₁ + T₁ → S₁ + S₀
 **修正箇所：** Cell 5, `ClassicalSuzukiTrotterSimulator.build_H_TTA_pair()`
 
 **修正前：**
+
 ```python
 def build_H_TTA_pair(self, mol_i: int, mol_j: int) -> np.ndarray:
     op_i = self.S0_to_T1  # |S0⟩⟨T1|
@@ -45,14 +49,15 @@ def build_H_TTA_pair(self, mol_i: int, mol_j: int) -> np.ndarray:
 ```
 
 **修正後：**
+
 ```python
 def build_H_TTA_pair(self, mol_i: int, mol_j: int) -> np.ndarray:
     # Term 1: |S0⟩_i⟨T1|_i ⊗ |S1⟩_j⟨T1|_j
     term1 = self.build_two_site_operator(mol_i, mol_j, self.T1_to_S0, self.T1_to_S1)
-    
+
     # Term 2: |S1⟩_i⟨T1|_i ⊗ |S0⟩_j⟨T1|_j （追加！）
     term2 = self.build_two_site_operator(mol_i, mol_j, self.T1_to_S1, self.T1_to_S0)
-    
+
     # 両項とそのエルミート共役を含める
     H_TTA = self.params.J * (term1 + term1.conj().T + term2 + term2.conj().T)
     return H_TTA
@@ -61,6 +66,7 @@ def build_H_TTA_pair(self, mol_i: int, mol_j: int) -> np.ndarray:
 ### 2. `tutorials/exact_qubit_hamiltonians.py`
 
 **修正前：**
+
 ```python
 # 1つの結合項のみ
 H[idx_00_10, idx_01_01] = J
@@ -68,6 +74,7 @@ H[idx_01_01, idx_00_10] = J
 ```
 
 **修正後：**
+
 ```python
 # Term 1: |T1,T1⟩ ↔ |S0,S1⟩
 H[idx_S0_S1, idx_T1_T1] = J
@@ -81,6 +88,7 @@ H[idx_T1_T1, idx_S1_S0] = J
 ### 3. `tutorials/doc/theory_quantum_dynamics_complete_comparison.md`
 
 **修正内容：**
+
 - 9×9 TTAハミルトニアン行列の修正（行753-763）
 - 固有値解析の修正：2次元→3次元部分空間
 - 固有値の修正：λ = ±J → λ = 0, ±√2 J
@@ -109,6 +117,7 @@ H_TTA = J × ⎡0 0 0 0 0 0 0 0 0⎤
 ```
 
 非ゼロ要素：
+
 - `H[2,4] = J`: `|S₀S₁⟩ ↔ |T₁T₁⟩`
 - `H[4,2] = J`: `|T₁T₁⟩ ↔ |S₀S₁⟩`
 - `H[6,4] = J`: `|S₁S₀⟩ ↔ |T₁T₁⟩` ← **これが欠落していました**
@@ -119,6 +128,7 @@ H_TTA = J × ⎡0 0 0 0 0 0 0 0 0⎤
 ### テストスクリプト：`test_tta_fix.py`
 
 包括的なテストを作成し、以下を検証：
+
 1. ✅ 2-qutritシステムの正しい9×9 TTAハミルトニアン
 2. ✅ 4-qubitシステムの正しい16×16 TTAハミルトニアン
 3. ✅ すべてのハミルトニアンのエルミート性
@@ -143,12 +153,14 @@ H_TTA = J × ⎡0 0 0 0 0 0 0 0 0⎤
 ## 影響
 
 ### 修正前
+
 - ❌ TTAプロセスの50%のみがモデル化
 - ❌ シミュレーション結果が物理的に不正確
 - ❌ QubitとClassical実装がQudit実装と不一致
 - ❌ 理論文書の行列表現が誤り
 
 ### 修正後
+
 - ✅ 完全なTTAプロセスが正しくモデル化
 - ✅ 3つの実装（Classical、Qubit、Qudit）すべてが数学的に一致
 - ✅ 理論文書が正確
@@ -167,6 +179,7 @@ PR#94での修正は、このバグの**根本原因に触れていませんで�
 ## 重要な注意事項
 
 問題文で要求された通り：
+
 - ✅ **ヒューリスティックな処理やごまかしは一切使用していません**
 - ✅ **既存の機能を損なっていません**
 - ✅ **理論的に完全に正しい実装**
@@ -175,15 +188,18 @@ PR#94での修正は、このバグの**根本原因に触れていませんで�
 ## ファイル一覧
 
 修正されたファイル：
+
 1. `tutorials/quantum_dynamics_complete_comparison.ipynb` - Classical simulator
 2. `tutorials/exact_qubit_hamiltonians.py` - Qubit simulator
 3. `tutorials/doc/theory_quantum_dynamics_complete_comparison.md` - 理論文書
 
 新規作成ファイル：
+
 1. `test_tta_fix.py` - 包括的テストスクリプト
 2. `TTA_HAMILTONIAN_BUG_FIX_REPORT.md` - 英語版詳細レポート
 
 修正不要だったファイル：
+
 1. `tutorials/exact_hamiltonian_builders.py` - Qudit実装（既に正しい）
 
 ## 結論
@@ -199,7 +215,7 @@ PR#94での修正は、このバグの**根本原因に触れていませんで�
 
 ---
 
-**報告日：** 2025-11-13  
-**修正者：** GitHub Copilot Coding Agent  
-**重要度：** 致命的 - すべての量子ダイナミクスシミュレーション結果に影響  
+**報告日：** 2025-11-13
+**修正者：** GitHub Copilot Coding Agent
+**重要度：** 致命的 - すべての量子ダイナミクスシミュレーション結果に影響
 **状態：** ✅ 修正完了・検証済み

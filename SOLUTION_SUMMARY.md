@@ -2,9 +2,9 @@
 
 ## Quick Summary
 
-✅ **FIXED**: Critical bug in H_TTA Hamiltonian causing 10× worse accuracy in Qudit simulations  
-✅ **VERIFIED**: All tests pass, mathematically exact solution  
-✅ **DOCUMENTED**: Comprehensive reports in English and Japanese  
+✅ **FIXED**: Critical bug in H_TTA Hamiltonian causing 10× worse accuracy in Qudit simulations
+✅ **VERIFIED**: All tests pass, mathematically exact solution
+✅ **DOCUMENTED**: Comprehensive reports in English and Japanese
 
 ---
 
@@ -24,11 +24,12 @@ This was strange because Qudit used **21× fewer gates** but had **10× worse ac
 **Location**: `tutorials/exact_hamiltonian_builders.py`, function `build_H_TTA_matrix()`
 
 **The Bug**:
+
 ```python
 # WRONG (before fix) - only 2 terms
 H_TTA = J(|02⟩⟨11| + |11⟩⟨02|)
 
-# CORRECT (after fix) - all 4 terms  
+# CORRECT (after fix) - all 4 terms
 H_TTA = J(|02⟩⟨11| + |11⟩⟨02| + |11⟩⟨20| + |20⟩⟨11|)
 ```
 

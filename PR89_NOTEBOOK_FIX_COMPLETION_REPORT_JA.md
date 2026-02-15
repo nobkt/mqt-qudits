@@ -15,6 +15,7 @@ PR#89で`exact_qudit_basic_gates.py`の`apply_H_TTA_basic_gates()`関数を修�
 ノートブックのシミュレーションには2つのコードパスがあります：
 
 1. **実際のシミュレーション** (正しかった):
+
    - `build_trotter_step_unitary_direct()`を使用
    - Hamiltonianから直接`scipy.linalg.expm()`でユニタリを計算
    - `build_H_TTA_unitary()`を使用（元から正しい実装）
@@ -51,12 +52,14 @@ PR#89で`exact_qudit_basic_gates.py`の`apply_H_TTA_basic_gates()`関数を修�
 ### 3. `decompose_custom_two_gates()`の実装
 
 **旧実装** (エラーを投げる):
+
 ```python
 if has_custom_two:
     raise ValueError("CustomTwoゲートが検出されました...")
 ```
 
 **新実装** (LogEntQRCEXPassで厳密に分解):
+
 ```python
 # CustomTwoゲートを検出
 custom_two_gates = [...]
@@ -101,12 +104,14 @@ if custom_two_count > 0:
 すべてのテストがパス：
 
 1. **厳密なユニタリ実装の検証**
+
    - H_TTAユニタリ誤差: 3.74e-16
    - H_TTA解析公式誤差: 3.55e-16
    - H_transferユニタリ誤差: 4.97e-16
    - ✓ すべて機械精度で正確
 
 2. **PR#89修正の確認**
+
    - ✓ `apply_H_TTA_basic_gates()`がCustomTwoゲートを使用
    - CustomTwoゲートのユニタリ誤差: 0.00e+00
    - ✓ CustomTwoゲートに正しいユニタリが含まれる
@@ -134,6 +139,7 @@ if custom_two_count > 0:
 ## 変更ファイル
 
 1. **tutorials/mqt_qudits_four_molecule_sparse_implementation.py**
+
    - ファイルヘッダー: PR#89対応を明記
    - `add_H_TTA_evolution_gates()`: CustomTwo使用を文書化
    - `decompose_custom_two_gates()`: 厳密分解を実装
@@ -166,11 +172,12 @@ if custom_two_count > 0:
 ### 次のステップ
 
 ノートブック`tutorials/quantum_dynamics_complete_comparison.ipynb`を実行すると：
+
 - Quditシミュレーション結果が正確に表示される
 - ゲート数が正しくカウントされる（CustomTwo分解後）
 - すべてのドキュメントが実装と一致する
 
 ---
 
-**日付**: 2025年11月13日  
+**日付**: 2025年11月13日
 **ステータス**: 修正完了、テスト済み、検証済み、セキュリティチェック済み

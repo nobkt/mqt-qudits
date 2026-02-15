@@ -7,11 +7,13 @@
 ## エグゼクティブサマリー
 
 **現状**: ✅ **Phase 1-2完了（80%）**
+
 - ✅ グローバル位相問題の解決（100% pass rate）
 - ✅ ゲートシーケンス最適化（H_transfer: 80%削減）
 - ⏳ 統合とテスト（Phase 3）が残っている
 
 **次のステップ**: Phase 3統合作業
+
 1. gate_converter.py ThreeLevelGateConverterの更新
 2. 包括的統合テスト
 3. integrated_sparse_compiler_v2.pyの作成（オプション）
@@ -27,6 +29,7 @@
 **機能**: ZYZ分解のグローバル位相π曖昧性を検出・補正
 
 **主要クラス**:
+
 ```python
 class GivensGlobalPhaseCorrector:
     def check_phase_correction_needed(G_target, U_zyz) -> (bool, float)
@@ -41,6 +44,7 @@ class GivensGlobalPhaseCorrector:
 **機能**: Givens回転をMQT-Quditsゲートに変換（グローバル位相補正付き）
 
 **主要クラス**:
+
 ```python
 class GivensToZYZDecomposerV2:
     def decompose(theta, phi) -> Dict  # グローバル位相補正付き
@@ -49,6 +53,7 @@ class GivensToZYZDecomposerV2:
 ```
 
 **テスト結果**:
+
 - 単一Givens回転: 12/12（100%）
 - ランダムGivens回転: 100/100（100%）
 - すべて忠実度 1.0
@@ -58,6 +63,7 @@ class GivensToZYZDecomposerV2:
 **機能**: VirtRz結合とゲート数削減
 
 **主要クラス**:
+
 ```python
 class GateSequenceOptimizer:
     def optimize(gates) -> List[MQTGate]
@@ -66,6 +72,7 @@ class GateSequenceOptimizer:
 ```
 
 **テスト結果**:
+
 - VirtRz結合: 57.1%削減
 - H_transfer: 80.0%削減
 - 恒等R除去: 40.0%削減
@@ -89,7 +96,7 @@ gate_converter.pyのThreeLevelGateConverterを更新し、v2分解器とオプ�
 """
 Gate Converter v2 - ThreeLevelGateConverter with v2 Decomposer
 
-PR#42: 
+PR#42:
 - givens_to_zyz_decomposer_v2.pyを統合
 - gate_sequence_optimizer.pyを統合
 - 100% pass rateと最大ゲート削減を達成
@@ -113,10 +120,10 @@ class MQTGateSequence:
     gates: List[MQTGate]
     fidelity: float
     method: str
-    
+
     def get_gate_count(self) -> int:
         return len(self.gates)
-    
+
     def get_physical_gate_count(self) -> int:
         return sum(1 for g in self.gates if g.cost > 0)
 
@@ -124,74 +131,74 @@ class MQTGateSequence:
 class TwoLevelGateConverterV2:
     """
     2準位ユニタリのゲート変換器 v2
-    
+
     変更点: gate_sequence_optimizerを統合
     """
-    
+
     def __init__(self, tolerance: float = 1e-10, optimize: bool = True):
         self.tolerance = tolerance
         self.optimize_flag = optimize
-        
+
         # v2分解器
         self.decomposer = GivensToZYZDecomposerV2(tolerance)
-        
+
         # オプティマイザー
         if optimize:
             self.optimizer = GateSequenceOptimizer(tolerance)
         else:
             self.optimizer = None
-    
+
     def convert(self, params: Dict, active_indices: List[int]) -> MQTGateSequence:
         """
         2×2 ZYZ分解結果をMQT-Quditsゲートに変換
-        
+
         Args:
             params: {'theta', 'phi', 'lambda', 'global_phase'}
             active_indices: [i, j] のグローバルインデックス
-            
+
         Returns:
             MQTGateSequence
         """
         i, j = active_indices[0], active_indices[1]
-        
+
         # ZYZパラメータからゲート生成
         # （注: paramsは既にZYZ分解済みと仮定）
         alpha = params['global_phase']
         phi_zyz = params['phi']
         theta_zyz = params['theta']
         lambda_zyz = params['lambda']
-        
+
         gates = []
-        
+
         # e^(iα) Rz(φ/2)
         phase_i_1 = alpha + phi_zyz / 2
         phase_j_1 = alpha - phi_zyz / 2
-        
+
         if abs(phase_i_1) > self.tolerance:
             gates.append(MQTGate('VirtRz', {'level': i, 'phase': phase_i_1}, 0))
         if abs(phase_j_1) > self.tolerance:
             gates.append(MQTGate('VirtRz', {'level': j, 'phase': phase_j_1}, 0))
-        
+
         # Ry(θ) → R(-θ, 0)
         if abs(theta_zyz) > self.tolerance:
             gates.append(MQTGate('R', {
-                'level1': i, 'level2': j, 
+                'level1': i, 'level2': j,
                 'theta': -theta_zyz, 'phi': 0.0
             }, 1))
-        
+
         # Rz(λ)
         phase_i_2 = lambda_zyz / 2
         phase_j_2 = -lambda_zyz / 2
-        
+
         if abs(phase_i_2) > self.tolerance:
             gates.append(MQTGate('VirtRz', {'level': i, 'phase': phase_i_2}, 0))
         if abs(phase_j_2) > self.tolerance:
             gates.append(MQTGate('VirtRz', {'level': j, 'phase': phase_j_2}, 0))
-        
+
         # 最適化
         if self.optimize_flag and self.optimizer:
             gates = self.optimizer.optimize(gates)
-        
+
         return MQTGateSequence(
             gates=gates,
             fidelity=1.0,
@@ -202,53 +209,53 @@ class TwoLevelGateConverterV2:
 class ThreeLevelGateConverterV2:
     """
     3準位ユニタリのゲート変換器 v2
-    
+
     変更点:
     - givens_to_zyz_decomposer_v2.pyを使用（グローバル位相補正付き）
     - gate_sequence_optimizerを統合
     """
-    
+
     def __init__(self, tolerance: float = 1e-10, optimize: bool = True):
         self.tolerance = tolerance
         self.optimize_flag = optimize
-        
+
         # v2分解器
         self.givens_decomposer = GivensToZYZDecomposerV2(tolerance)
-        
+
         # オプティマイザー
         if optimize:
             self.optimizer = GateSequenceOptimizer(tolerance)
         else:
             self.optimizer = None
-    
+
     def convert(self, params: Dict, active_indices: List[int]) -> MQTGateSequence:
         """
         3×3 Givens分解結果をMQT-Quditsゲートに変換
-        
+
         Args:
             params: {
                 'rotations': [(local_i, local_j, theta, phi), ...],
                 'diagonal_phases': [phase0, phase1, phase2]
             }
             active_indices: [i, j, k] のグローバルインデックス
-            
+
         Returns:
             MQTGateSequence（忠実度 1.0）
         """
         gates = []
-        
+
         # 各Givens回転をv2分解器で変換
         rotations = params.get('rotations', [])
         for local_level1, local_level2, theta, phi in rotations:
             global_level1 = active_indices[local_level1]
             global_level2 = active_indices[local_level2]
-            
+
             # Givens → ZYZ → MQT-Qudits（グローバル位相補正付き）
             givens_gates = self.givens_decomposer.convert_to_mqt_gates(
                 global_level1, global_level2, theta, phi
             )
             gates.extend(givens_gates)
-        
+
         # 対角位相をVirtRzに変換
         diagonal_phases = params.get('diagonal_phases', [])
         for local_level, phase in enumerate(diagonal_phases):
@@ -259,41 +266,41 @@ class ThreeLevelGateConverterV2:
                     {'level': global_level, 'phase': phase},
                     0
                 ))
-        
+
         # ゲートシーケンスを最適化
         if self.optimize_flag and self.optimizer:
             gates = self.optimizer.optimize(gates)
-        
+
         return MQTGateSequence(
             gates=gates,
             fidelity=1.0,
             method='3x3_Givens_v2_optimized' if self.optimize_flag else '3x3_Givens_v2'
         )
-    
+
     def verify_conversion(
-        self, 
-        params: Dict, 
+        self,
+        params: Dict,
         active_indices: List[int],
         target_unitary: np.ndarray
     ) -> float:
         """
         変換の忠実度を検証
-        
+
         Args:
             params: Givens分解パラメータ
             active_indices: グローバルインデックス
             target_unitary: 目標ユニタリ行列（サイズ size×size）
-            
+
         Returns:
             忠実度
         """
         # ゲート変換
         result = self.convert(params, active_indices)
-        
+
         # 行列再構築
         size = target_unitary.shape[0]
         U_reconstructed = np.eye(size, dtype=complex)
-        
+
         for gate in reversed(result.gates):
             if gate.gate_type == 'VirtRz':
                 level = gate.parameters['level']
@@ -306,7 +313,7 @@ class ThreeLevelGateConverterV2:
                 level2 = gate.parameters['level2']
                 theta = gate.parameters['theta']
                 phi = gate.parameters['phi']
-                
+
                 c = np.cos(theta / 2)
                 s = np.sin(theta / 2)
                 R = np.eye(size, dtype=complex)
@@ -315,11 +322,11 @@ class ThreeLevelGateConverterV2:
                 R[level2, level1] = -s * np.exp(1j * phi)
                 R[level2, level2] = c
                 U_reconstructed = R @ U_reconstructed
-        
+
         # 忠実度計算
         trace = np.trace(target_unitary.conj().T @ U_reconstructed)
         fidelity = abs(trace) / size
-        
+
         return fidelity
 ```
 
@@ -348,27 +355,27 @@ def test_h_transfer_v2():
     print("="*70)
     print("H_transfer (2×2) v2テスト")
     print("="*70)
-    
+
     # H_transfer行列を生成（実際の値を使用）
     # （省略 - 実装時に追加）
-    
+
     # integrated_sparse_compilerで分解
     compiler = IntegratedSparseCompiler()
     decomp = compiler.compile(U_transfer)
-    
+
     # v2コンバーターで変換
     converter = TwoLevelGateConverterV2(optimize=True)
     result = converter.convert(decomp.decomposition_params, decomp.structure_info.active_subspace)
-    
+
     # 検証
     print(f"ゲート数: {result.get_gate_count()} (物理: {result.get_physical_gate_count()})")
     print(f"忠実度: {result.fidelity:.10f}")
     print(f"方法: {result.method}")
-    
+
     # 期待: 1ゲート（R のみ）、忠実度 1.0
     assert result.get_gate_count() == 1
     assert result.fidelity > 0.9999
-    
+
     print("✓ 合格")
 
 
@@ -377,31 +384,31 @@ def test_h_tta_v2():
     print("\n" + "="*70)
     print("H_TTA (3×3) v2テスト")
     print("="*70)
-    
+
     # H_TTA行列を生成
     # （省略 - 実装時に追加）
-    
+
     # integrated_sparse_compilerで分解
     compiler = IntegratedSparseCompiler()
     decomp = compiler.compile(U_tta)
-    
+
     # v2コンバーターで変換
     converter = ThreeLevelGateConverterV2(optimize=True)
     result = converter.convert(decomp.decomposition_params, decomp.structure_info.active_subspace)
-    
+
     # 忠実度検証
-    fidelity = converter.verify_conversion(decomp.decomposition_params, 
+    fidelity = converter.verify_conversion(decomp.decomposition_params,
                                           decomp.structure_info.active_subspace,
                                           U_tta)
-    
+
     print(f"ゲート数: {result.get_gate_count()} (物理: {result.get_physical_gate_count()})")
     print(f"忠実度: {fidelity:.10f}")
     print(f"方法: {result.method}")
-    
+
     # 期待: 9-12ゲート、忠実度 1.0
     assert 9 <= result.get_gate_count() <= 12
     assert fidelity > 0.9999
-    
+
     print("✓ 合格")
 
 
@@ -410,28 +417,28 @@ def test_random_3x3_unitaries():
     print("\n" + "="*70)
     print("ランダム3×3ユニタリテスト (N=20)")
     print("="*70)
-    
+
     np.random.seed(42)
     converter = ThreeLevelGateConverterV2(optimize=True)
-    
+
     pass_count = 0
     gate_counts = []
-    
+
     for i in range(20):
         # ランダム3×3ユニタリを生成
         # （省略 - QR分解を使用）
-        
+
         # 分解とゲート変換
         # （省略）
-        
+
         # 検証
         if fidelity > 0.9999:
             pass_count += 1
             gate_counts.append(result.get_gate_count())
-    
+
     print(f"合格率: {pass_count}/20 ({100*pass_count/20:.1f}%)")
     print(f"平均ゲート数: {np.mean(gate_counts):.1f}")
-    
+
     assert pass_count == 20
     print("✓ 合格")
 
@@ -440,7 +447,7 @@ def main():
     test_h_transfer_v2()
     test_h_tta_v2()
     test_random_3x3_unitaries()
-    
+
     print("\n" + "="*70)
     print("✓✓✓ すべてのテストに合格")
     print("="*70)
@@ -493,15 +500,18 @@ H_TTA (3×3) v2テスト:
 **テストケース**:
 
 1. **単一コンポーネントテスト**
+
    - givens_global_phase_corrector: 4つの既知の失敗ケース
    - givens_to_zyz_decomposer_v2: 100個のランダムGivens
    - gate_sequence_optimizer: H_transfer最適化
 
 2. **2コンポーネント統合テスト**
+
    - v2分解器 + オプティマイザー: H_transfer
    - v2分解器 + gate_converter_v2: H_TTA
 
 3. **エンドツーエンドテスト**
+
    - integrated_sparse_compiler + v2分解器 + オプティマイザー + gate_converter_v2
    - H_transfer: 忠実度 1.0、1ゲート
    - H_TTA: 忠実度 1.0、9-12ゲート
@@ -528,25 +538,27 @@ integrated_sparse_compiler.pyを修正せず、v2分解器とオプティマイ�
 **ファイル**: `tools/integrated_sparse_compiler_v2.py`
 
 **変更点**:
+
 1. IntegratedTwoLevelDecomposer → v2分解器を使用
 2. IntegratedThreeLevelDecomposer → v2分解器を使用
 3. ゲート変換にgate_sequence_optimizerを追加
 
 **主要クラス**:
+
 ```python
 class IntegratedSparseCompilerV2:
     """
     統合疎構造コンパイラ v2
-    
+
     v1からの変更点:
     - givens_to_zyz_decomposer_v2.pyを使用（グローバル位相補正）
     - gate_sequence_optimizer.pyを統合
     """
-    
+
     def __init__(self, tolerance: float = 1e-10, optimize_gates: bool = True):
         # v2分解器とオプティマイザーを初期化
         ...
-    
+
     def compile(self, U: np.ndarray) -> IntegratedDecompositionResultV2:
         # 疎構造解析
         # v2分解器で分解
@@ -582,20 +594,24 @@ H_TTA:
 ### Week 1: 統合作業（2-3日）
 
 **Day 1 (0.5-1日)**:
+
 - Task 3.1: gate_converter_v2.pyの実装
 - 基本的なテスト
 
 **Day 2 (0.75-1日)**:
+
 - Task 3.2: 包括的統合テストの実施
 - H_transfer、H_TTAでの検証
 
 **Day 3 (0.75-1日, オプション)**:
+
 - Task 3.3: integrated_sparse_compiler_v2.pyの作成
 - パフォーマンス測定
 
 ### Week 2: ドキュメントと完了（0.5日）
 
 **Day 4 (0.5日)**:
+
 - ドキュメント更新
 - tools/README.mdの更新
 - PR#42完了報告書の最終化
@@ -605,14 +621,17 @@ H_TTA:
 ### 必須基準
 
 1. ✅ **H_transfer**:
+
    - 忠実度 > 0.9999
    - ゲート数 = 1
 
 2. ✅ **H_TTA**:
+
    - 忠実度 > 0.9999
    - ゲート数 ≤ 12
 
 3. ✅ **ランダム3×3ユニタリ**:
+
    - 合格率 = 100%
 
 4. ✅ **数学的厳密性**:
@@ -623,9 +642,11 @@ H_TTA:
 ### 望ましい基準
 
 5. ⭐ **H_TTA**:
+
    - ゲート数 < 11
 
 6. ⭐ **パフォーマンス**:
+
    - 実行時間 < integrated_sparse_compiler.pyの1.5倍
 
 7. ⭐ **ドキュメント**:
@@ -639,6 +660,7 @@ H_TTA:
 **可能性**: 低（v2分解器は100% pass rate）
 
 **対策**:
+
 1. 個別のGivens回転で検証
 2. グローバル位相補正が適用されているか確認
 3. 行列再構築の順序を確認
@@ -648,6 +670,7 @@ H_TTA:
 **可能性**: 中
 
 **対策**:
+
 1. VirtRz結合が正しく動作しているか確認
 2. 対角位相との重複がないか確認
 3. さらなる最適化アルゴリズムを検討
@@ -657,6 +680,7 @@ H_TTA:
 **可能性**: 中
 
 **対策**:
+
 1. 段階的な統合（1コンポーネントずつ）
 2. 各ステップで忠実度を検証
 3. デバッグツールの作成
@@ -678,6 +702,7 @@ H_TTA:
 ### PR#42で作成したドキュメント
 
 1. **PR42_COMPLETION_REPORT_JA.md**
+
    - Phase 1-2の完了報告
    - 実装の詳細説明
    - テスト結果
@@ -689,6 +714,7 @@ H_TTA:
 ### PR#41からの参考資料
 
 1. **PR41_CONTINUATION_SPECIFICATION_JA.md**
+
    - グローバル位相問題の分析
    - 解決策の理論的根拠
 
@@ -699,9 +725,11 @@ H_TTA:
 ### PR#37-40からの参考資料
 
 1. **improved_unitary_decomposition.py**
+
    - 2×2 ZYZ分解（忠実度 1.0）
 
 2. **perfect_3x3_decomposition.py**
+
    - 3×3 QR分解（忠実度 1.0）
 
 3. **integrated_sparse_compiler.py**
@@ -712,14 +740,17 @@ H_TTA:
 ### Phase 3の見通し
 
 ✅ **技術的実現可能性**: 非常に高い
+
 - すべてのコンポーネントは個別にテスト済み
 - 統合は比較的単純
 
 ✅ **数学的厳密性**: 保証されている
+
 - すべての変換は厳密な線形代数
 - ヒューリスティックゼロ
 
 ✅ **期待される成果**: 明確
+
 - H_transfer: 1ゲート、忠実度 1.0
 - H_TTA: 9-12ゲート、忠実度 1.0
 - ランダム3×3: 100% pass rate
@@ -742,7 +773,7 @@ H_TTA:
 
 ---
 
-**文書作成日**: 2025年10月21日  
-**作成者**: GitHub Copilot AI分析システム  
-**バージョン**: 1.0  
+**文書作成日**: 2025年10月21日
+**作成者**: GitHub Copilot AI分析システム
+**バージョン**: 1.0
 **ステータス**: PR#42 Phase 3継続作業詳細仕様

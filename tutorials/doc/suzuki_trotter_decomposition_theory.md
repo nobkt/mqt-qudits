@@ -127,12 +127,14 @@ $$
 初期状態 $|\Psi(0)\rangle$ から時刻 $T$ の状態 $|\Psi(T)\rangle$ を求める：
 
 **入力**:
+
 - 初期状態: $|\Psi_0\rangle = |\Psi(0)\rangle$
 - ハミルトニアン: $\hat{H}_1, \hat{H}_2, \ldots, \hat{H}_M$
 - 全時間: $T$
 - 時間ステップ数: $N$
 
 **計算**:
+
 1. 時間刻み幅を計算: $\Delta t = T / N$
 2. $|\Psi\rangle \leftarrow |\Psi_0\rangle$ と初期化
 3. $n = 1$ から $N$ まで繰り返し:
@@ -165,6 +167,7 @@ $$
 $$
 
 **実装ステップ**:
+
 1. $|\Psi\rangle$ を固有基底 $\{|k^{(m)}\rangle\}$ に展開: $c_k = \langle k^{(m)}|\Psi\rangle$
 2. 各係数に位相を掛ける: $c_k' = e^{-iE_k^{(m)} \Delta t/\hbar} c_k$
 3. 固有基底から元の基底に戻す: $|\Psi'\rangle = \sum_k c_k' |k^{(m)}\rangle$
@@ -178,6 +181,7 @@ U_m(\Delta t) = \exp\left(-i\frac{\Delta t}{\hbar} H_m\right)
 $$
 
 行列指数関数の計算方法：
+
 1. **固有値分解法**: $H_m = V D V^\dagger$ と分解し、$U_m = V e^{-iD\Delta t/\hbar} V^\dagger$
 2. **Padé近似法**: 有理関数近似を用いる
 3. **テイラー展開法**: $e^X = \sum_{n=0}^\infty \frac{X^n}{n!}$ を有限項で打ち切る
@@ -186,7 +190,7 @@ $$
 
 ### 5.1 定義
 
-2次の対称鈴木トロッター分解（Strang splitting）は：
+2次の対称鈴木トロッター分解（Strange splitting）は：
 
 $$
 e^{-i(\hat{H}_1 + \hat{H}_2)t/\hbar} = \lim_{N \to \infty} \left( e^{-i\hat{H}_1 \Delta t/(2\hbar)} e^{-i\hat{H}_2 \Delta t/\hbar} e^{-i\hat{H}_1 \Delta t/(2\hbar)} \right)^N + \mathcal{O}(\Delta t^2)
@@ -209,12 +213,14 @@ $N$ ステップの累積誤差: $\mathcal{O}(\Delta t^2)$
 ### 5.4 具体的なアルゴリズム（2次、2項の場合）
 
 **入力**:
+
 - 初期状態: $|\Psi_0\rangle$
 - ハミルトニアン: $\hat{H}_1, \hat{H}_2$
 - 全時間: $T$
 - 時間ステップ数: $N$
 
 **計算**:
+
 1. $\Delta t = T / N$
 2. $|\Psi\rangle \leftarrow |\Psi_0\rangle$
 3. $n = 1$ から $N$ まで繰り返し:
@@ -238,6 +244,7 @@ $$
 $$
 
 **アルゴリズム**:
+
 1. $\Delta t = T / N$
 2. $|\Psi\rangle \leftarrow |\Psi_0\rangle$
 3. $n = 1$ から $N$ まで繰り返し:
@@ -281,6 +288,7 @@ $$
 **入力**: $|\Psi_0\rangle$, $\hat{H}_1, \hat{H}_2$, $T$, $N$
 
 **計算**:
+
 1. $\Delta t = T / N$
 2. $p = 1/(4 - 4^{1/3})$
 3. 時間刻み: $\tau_1 = \tau_2 = \tau_4 = \tau_5 = p\Delta t$, $\tau_3 = (1-4p)\Delta t$
@@ -474,19 +482,19 @@ function apply_transfer_evolution(state, dt):
     for each pair (i, j) in adjacent_pairs:
         V = V_ij
         theta = V * dt / hbar
-        
+
         # 抽出
         c_01 = state.coefficient(i=S0, j=T1)
         c_10 = state.coefficient(i=T1, j=S0)
-        
+
         # 時間発展
         c_01_new = cos(theta) * c_01 - 1j * sin(theta) * c_10
         c_10_new = -1j * sin(theta) * c_01 + cos(theta) * c_10
-        
+
         # 更新
         state.set_coefficient(i=S0, j=T1, c_01_new)
         state.set_coefficient(i=T1, j=S0, c_10_new)
-    
+
     return state
 ```
 
@@ -525,6 +533,7 @@ $$
 固有値: $0, \pm 1$
 
 固有ベクトル:
+
 - $\lambda = 0$: $|0\rangle = (1, 0, 0)^T$ すなわち $|T_1,T_1\rangle$
 - $\lambda = +1$: $|+\rangle = (0, 1, 1)^T/\sqrt{2}$ すなわち $(|S_1,S_0\rangle + |S_0,S_1\rangle)/\sqrt{2}$
 - $\lambda = -1$: $|-\rangle = (0, 1, -1)^T/\sqrt{2}$ すなわち $(|S_1,S_0\rangle - |S_0,S_1\rangle)/\sqrt{2}$
@@ -554,22 +563,22 @@ function apply_TTA_evolution(state, dt):
     for each pair (i, j) in adjacent_pairs:
         J = J_ij
         phi = J * dt / hbar
-        
+
         # 抽出
         c_TT = state.coefficient(i=T1, j=T1)
         c_S0 = state.coefficient(i=S1, j=S0)
         c_0S = state.coefficient(i=S0, j=S1)
-        
+
         # 時間発展（|T1,T1>は変化しない）
         c_TT_new = c_TT
         c_S0_new = cos(phi) * c_S0 - 1j * sin(phi) * c_0S
         c_0S_new = -1j * sin(phi) * c_S0 + cos(phi) * c_0S
-        
+
         # 更新
         state.set_coefficient(i=T1, j=T1, c_TT_new)
         state.set_coefficient(i=S1, j=S0, c_S0_new)
         state.set_coefficient(i=S0, j=S1, c_0S_new)
-    
+
     return state
 ```
 
@@ -595,15 +604,15 @@ $$
 function apply_radiative_evolution(state, dt):
     gamma_fl = radiation_decay_rate
     decay_factor = exp(-gamma_fl * dt / 2)
-    
+
     for each basis_state in state.basis:
         count_S1 = number of S1 states in basis_state
         state.coefficients[basis_state] *= decay_factor^count_S1
-    
+
     # 規格化
     norm = sqrt(sum(|c|^2 for c in state.coefficients))
     state.coefficients /= norm
-    
+
     return state
 ```
 
@@ -612,6 +621,7 @@ function apply_radiative_evolution(state, dt):
 ### 7.4 完全な鈴木トロッター法の実装（2次対称）
 
 **入力**:
+
 - 初期状態: $|\Psi_0\rangle$
 - パラメータ: $E_T, E_S, V_{ij}, J_{ij}, \Gamma_{\text{fl}}$
 - 分子数: $N$
@@ -621,24 +631,24 @@ function apply_radiative_evolution(state, dt):
 **アルゴリズム**:
 
 ```
-function suzuki_trotter_simulation_2nd_order(Psi0, params, T, N_steps):
+function suzuki_trotter_simulation_2and_order(Psi0, params, T, N_steps):
     dt = T / N_steps
     Psi = Psi0
-    
+
     for step = 1 to N_steps:
         # 前半の対称分解
         Psi = apply_H0_evolution(Psi, dt/2)
         Psi = apply_transfer_evolution(Psi, dt/2)
         Psi = apply_TTA_evolution(Psi, dt/2)
-        
+
         # 中央（放射項は全時間）
         Psi = apply_radiative_evolution(Psi, dt)
-        
+
         # 後半の対称分解（逆順）
         Psi = apply_TTA_evolution(Psi, dt/2)
         Psi = apply_transfer_evolution(Psi, dt/2)
         Psi = apply_H0_evolution(Psi, dt/2)
-    
+
     return Psi
 ```
 
@@ -667,7 +677,7 @@ function calculate_populations(Psi):
     N_S0 = 0
     N_T1 = 0
     N_S1 = 0
-    
+
     for each basis_state, coeff in Psi:
         prob = |coeff|^2
         for i = 1 to N:
@@ -677,7 +687,7 @@ function calculate_populations(Psi):
                 N_T1 += prob
             elif basis_state[i] == S1:
                 N_S1 += prob
-    
+
     return N_S0, N_T1, N_S1
 ```
 
@@ -715,7 +725,7 @@ $$
 function apply_transfer_evolution_parallel(state, dt):
     Parallel for each pair (i, j) in adjacent_pairs:
         apply_local_evolution(state, i, j, dt)
-    
+
     return state
 ```
 
@@ -726,24 +736,24 @@ function apply_transfer_evolution_parallel(state, dt):
 ```
 function adaptive_time_step(Psi, H, dt_initial, tolerance):
     dt = dt_initial
-    
+
     while time < T:
         # 時間刻み dt で1ステップ進める
         Psi1 = one_step(Psi, dt)
-        
+
         # 時間刻み dt/2 で2ステップ進める
         Psi_half = one_step(Psi, dt/2)
         Psi2 = one_step(Psi_half, dt/2)
-        
+
         # 誤差評価
         error = norm(Psi1 - Psi2)
-        
+
         if error < tolerance:
             Psi = Psi2  # より精度の高い方を採用
             dt = dt * 1.5  # 時間刻みを増やす
         else:
             dt = dt * 0.5  # 時間刻みを減らす
-    
+
     return Psi
 ```
 
@@ -824,6 +834,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import expm_multiply
 
+
 class MolecularTripletSystem:
     def __init__(self, N, E_T, E_S, V, J, Gamma_fl):
         self.N = N  # 分子数
@@ -832,48 +843,48 @@ class MolecularTripletSystem:
         self.V = V  # エネルギー移動積分
         self.J = J  # TTA相互作用
         self.Gamma_fl = Gamma_fl  # 蛍光放出速度
-        
+
         # 状態空間の次元
         self.dim = 3**N
-        
+
         # ハミルトニアン行列の構築（疎行列）
         self.H0 = self.build_H0()
         self.H_transfer = self.build_H_transfer()
         self.H_TTA = self.build_H_TTA()
-    
+
     def build_H0(self):
         # 対角的なハミルトニアン H0 を構築
         H0 = csr_matrix((self.dim, self.dim), dtype=complex)
         # ... 実装 ...
         return H0
-    
+
     def build_H_transfer(self):
         # エネルギー移動ハミルトニアンを構築
         H_transfer = csr_matrix((self.dim, self.dim), dtype=complex)
         # ... 実装 ...
         return H_transfer
-    
+
     def build_H_TTA(self):
         # TTAハミルトニアンを構築
         H_TTA = csr_matrix((self.dim, self.dim), dtype=complex)
         # ... 実装 ...
         return H_TTA
-    
+
     def apply_H0_evolution(self, psi, dt):
         # 対角項の時間発展（効率的）
         psi_new = psi.copy()
         # ... 対角位相の掛け算 ...
         return psi_new
-    
+
     def apply_H_transfer_evolution(self, psi, dt):
         # 行列指数関数を疎行列で計算
         psi_new = expm_multiply(-1j * self.H_transfer * dt, psi)
         return psi_new
-    
+
     def apply_H_TTA_evolution(self, psi, dt):
         psi_new = expm_multiply(-1j * self.H_TTA * dt, psi)
         return psi_new
-    
+
     def apply_radiative_evolution(self, psi, dt):
         # 減衰項の適用
         decay_factor = np.exp(-self.Gamma_fl * dt / 2)
@@ -883,35 +894,35 @@ class MolecularTripletSystem:
         # 規格化
         psi_new /= np.linalg.norm(psi_new)
         return psi_new
-    
-    def suzuki_trotter_2nd_order(self, psi0, T, N_steps):
+
+    def suzuki_trotter_2and_order(self, psi0, T, N_steps):
         dt = T / N_steps
         psi = psi0.copy()
-        
+
         # 時間発展の記録
         times = []
         populations = []
-        
+
         for step in range(N_steps):
             # 2次対称分解
-            psi = self.apply_H0_evolution(psi, dt/2)
-            psi = self.apply_H_transfer_evolution(psi, dt/2)
-            psi = self.apply_H_TTA_evolution(psi, dt/2)
-            
+            psi = self.apply_H0_evolution(psi, dt / 2)
+            psi = self.apply_H_transfer_evolution(psi, dt / 2)
+            psi = self.apply_H_TTA_evolution(psi, dt / 2)
+
             psi = self.apply_radiative_evolution(psi, dt)
-            
-            psi = self.apply_H_TTA_evolution(psi, dt/2)
-            psi = self.apply_H_transfer_evolution(psi, dt/2)
-            psi = self.apply_H0_evolution(psi, dt/2)
-            
+
+            psi = self.apply_H_TTA_evolution(psi, dt / 2)
+            psi = self.apply_H_transfer_evolution(psi, dt / 2)
+            psi = self.apply_H0_evolution(psi, dt / 2)
+
             # 観測量の計算
             t = (step + 1) * dt
             N_S0, N_T1, N_S1 = self.calculate_populations(psi)
             times.append(t)
             populations.append((N_S0, N_T1, N_S1))
-        
+
         return times, populations
-    
+
     def calculate_populations(self, psi):
         # 各状態の個体数を計算
         N_S0 = 0.0
@@ -920,43 +931,45 @@ class MolecularTripletSystem:
         # ... 実装 ...
         return N_S0, N_T1, N_S1
 
+
 # 使用例
 if __name__ == "__main__":
     # パラメータ設定
     N_molecules = 10
     E_T = 1.5  # eV
     E_S = 3.0  # eV
-    V = 0.1    # eV
-    J = 0.05   # eV
+    V = 0.1  # eV
+    J = 0.05  # eV
     Gamma_fl = 1.0  # ns^-1
-    
+
     # システム初期化
     system = MolecularTripletSystem(N_molecules, E_T, E_S, V, J, Gamma_fl)
-    
+
     # 初期状態（すべての分子が三重項状態）
     psi0 = np.zeros(system.dim, dtype=complex)
     # ... 初期状態の設定 ...
-    
+
     # シミュレーション実行
     T_final = 100.0  # ns
     N_steps = 1000
-    times, populations = system.suzuki_trotter_2nd_order(psi0, T_final, N_steps)
-    
+    times, populations = system.suzuki_trotter_2and_order(psi0, T_final, N_steps)
+
     # 結果の可視化
     import matplotlib.pyplot as plt
+
     N_S0_list = [p[0] for p in populations]
     N_T1_list = [p[1] for p in populations]
     N_S1_list = [p[2] for p in populations]
-    
+
     plt.figure(figsize=(10, 6))
-    plt.plot(times, N_S0_list, label='$N_{S_0}$')
-    plt.plot(times, N_T1_list, label='$N_{T_1}$')
-    plt.plot(times, N_S1_list, label='$N_{S_1}$')
-    plt.xlabel('Time (ns)')
-    plt.ylabel('Population')
+    plt.plot(times, N_S0_list, label="$N_{S_0}$")
+    plt.plot(times, N_T1_list, label="$N_{T_1}$")
+    plt.plot(times, N_S1_list, label="$N_{S_1}$")
+    plt.xlabel("Time (ns)")
+    plt.ylabel("Population")
     plt.legend()
-    plt.title('Quantum Dynamics of Molecular Triplet States')
-    plt.savefig('triplet_dynamics.png')
+    plt.title("Quantum Dynamics of Molecular Triplet States")
+    plt.savefig("triplet_dynamics.png")
     plt.show()
 ```
 
@@ -967,11 +980,13 @@ if __name__ == "__main__":
 ### 12.1 主要な結果
 
 1. **鈴木トロッター分解の理論的基礎**
+
    - 1次分解: $\mathcal{O}(\Delta t)$ の全体誤差
    - 2次対称分解: $\mathcal{O}(\Delta t^2)$ の全体誤差
    - 4次分解: $\mathcal{O}(\Delta t^4)$ の全体誤差
 
 2. **ハミルトニアンの具体的分解**
+
    - $\hat{H}_0$: 対角的、位相の掛け算で計算
    - $\hat{H}_{\text{transfer}}$: 2サイト間の回転、解析的に計算可能
    - $\hat{H}_{\text{TTA}}$: 3状態間の混合、解析的に計算可能
@@ -1003,20 +1018,20 @@ if __name__ == "__main__":
 
 鈴木トロッター分解の理論と応用に関する文献：
 
-1. **Trotter, H. F.** (1959). "On the product of semi-groups of operators". *Proc. Amer. Math. Soc.* **10**, 545-551.
+1. **Trotter, H. F.** (1959). "On the product of semi-groups of operators". _Proc. Amer. Math. Soc._ **10**, 545-551.
 
-2. **Suzuki, M.** (1990). "Fractal decomposition of exponential operators with applications to many-body theories and Monte Carlo simulations". *Phys. Lett. A* **146**, 319-323.
+2. **Suzuki, M.** (1990). "Fractal decomposition of exponential operators with applications to many-body theories and Monte Carlo simulations". _Phys. Lett. A_ **146**, 319-323.
 
-3. **Suzuki, M.** (1991). "General theory of fractal path integrals with applications to many-body theories and statistical physics". *J. Math. Phys.* **32**, 400-407.
+3. **Suzuki, M.** (1991). "General theory of fractal path integrals with applications to many-body theories and statistical physics". _J. Math. Phys._ **32**, 400-407.
 
-4. **Hatano, N. & Suzuki, M.** (2005). "Finding exponential product formulas of higher orders". *Lecture Notes in Physics* **679**, 37-68.
+4. **Hatano, N. & Suzuki, M.** (2005). "Finding exponential product formulas of higher orders". _Lecture Notes in Physics_ **679**, 37-68.
 
-5. **Lloyd, S.** (1996). "Universal Quantum Simulators". *Science* **273**, 1073-1078.
+5. **Lloyd, S.** (1996). "Universal Quantum Simulators". _Science_ **273**, 1073-1078.
 
-6. **Childs, A. M. & Su, Y.** (2019). "Nearly optimal lattice simulation by product formulas". *Phys. Rev. Lett.* **123**, 050503.
+6. **Children, A. M. & Su, Y.** (2019). "Nearly optimal lattice simulation by product formulas". _Phys. Rev. Lett._ **123**, 050503.
 
 ---
 
-**文書作成日**: 2025-10-14  
-**分野**: 計算量子力学、数値シミュレーション、鈴木トロッター分解  
+**文書作成日**: 2025-10-14
+**分野**: 計算量子力学、数値シミュレーション、鈴木トロッター分解
 **対象**: MQT Qudits フレームワークにおける量子ダイナミクスシミュレーション実装

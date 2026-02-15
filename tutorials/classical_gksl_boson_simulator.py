@@ -15,6 +15,8 @@ from scipy.integrate import solve_ivp
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from typing import TYPE_CHECKING
+
 from gksl_math_utils import (
     build_H_total_boson,
     build_lindblad_operators,
@@ -24,7 +26,9 @@ from gksl_math_utils import (
     extend_lindblad_operators,
     partial_trace_phonon,
 )
-from gksl_physical_parameters import GKSLPhysicalParameters
+
+if TYPE_CHECKING:
+    from gksl_physical_parameters import GKSLPhysicalParameters
 
 
 class ClassicalGKSLBosonSimulator:
@@ -37,7 +41,7 @@ class ClassicalGKSLBosonSimulator:
         self.params = params
 
         # Dimensions
-        self.dim_el = params.d ** params.N_molecules
+        self.dim_el = params.d**params.N_molecules
         self.dim_ph = (params.n_max + 1) ** params.N_molecules
         self.dim_total = self.dim_el * self.dim_ph
 
@@ -63,7 +67,7 @@ class ClassicalGKSLBosonSimulator:
         """Prepare initial density matrix: electronic state ⊗ phonon vacuum."""
         d = self.params.d
         N = self.params.N_molecules
-        dim_el = d ** N
+        dim_el = d**N
 
         # Electronic initial state
         psi_el = np.zeros(dim_el, dtype=np.complex128)
@@ -140,9 +144,7 @@ class ClassicalGKSLBosonSimulator:
             rho_el = partial_trace_phonon(rho_total, self.dim_el, self.dim_ph)
 
             traces.append(float(np.real(np.trace(rho_el))))
-            populations.append(
-                compute_populations_from_density_matrix(rho_el, self.params)
-            )
+            populations.append(compute_populations_from_density_matrix(rho_el, self.params))
             entropies.append(compute_von_neumann_entropy(rho_el))
             purities.append(compute_purity(rho_el))
 

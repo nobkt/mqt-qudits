@@ -9,6 +9,7 @@
 ### 完了した作業
 
 1. ✅ **疎構造解析器** (`tools/sparse_structure_compiler.py`)
+
    - ユニタリ行列の疎構造を正確に検出
    - H_transfer: 2×2部分空間を正しく識別
    - H_TTA: 3×3部分空間を正しく識別
@@ -22,11 +23,13 @@
 ### 未完了の作業
 
 1. ⏳ **2準位回転の正確な分解**
+
    - 現在の実装には数値精度の問題がある
    - ZYZ分解の改良が必要
    - 推奨: Qiskit等の既存実装を参考にする
 
 2. ⏳ **MQT-Quditsフレームワークとの統合**
+
    - 基本ゲート（CEx, R, Rz, VirtRz）への変換
    - CompilerPassとしての実装
    - QuantumCircuitへの適用
@@ -61,20 +64,21 @@
 **目的**: 9×9ユニタリ行列Uの疎構造を特定
 
 **手順**:
+
 ```python
 def analyze(U: np.ndarray) -> SparseStructureInfo:
     # ステップ1: ユニタリ性の検証
     assert is_unitary(U), "入力はユニタリ行列である必要があります"
-    
+
     # ステップ2: 恒等行の検出
     identity_rows = []
     for i in range(d):
         if is_identity_row(U, i):
             identity_rows.append(i)
-    
+
     # ステップ3: 作用する部分空間の特定
     active_subspace = [i for i in range(d) if i not in identity_rows]
-    
+
     # ステップ4: 部分空間の次元による分類
     if len(active_subspace) == 0:
         return 'identity'
@@ -85,6 +89,7 @@ def analyze(U: np.ndarray) -> SparseStructureInfo:
 ```
 
 **判定条件**:
+
 - 恒等行: `U[i,i] = 1` かつ `U[i,j≠i] = 0` (許容誤差 ε = 1e-10)
 - ユニタリ性: `U† U = I` (許容誤差 ε = 1e-10)
 
@@ -101,6 +106,7 @@ U = e^(iα) Rz(β) Ry(θ) Rz(γ)
 ```
 
 ここで：
+
 - α: グローバル位相（量子ゲートでは無視可能）
 - θ: Y軸回転角
 - β, γ: Z軸回転角
@@ -112,10 +118,10 @@ def decompose_2x2_unitary(U: np.ndarray) -> (θ, β, γ):
     # ZYZ分解
     # U = [[u00, u01],
     #      [u10, u11]]
-    
+
     # ステップ1: θを計算
     θ = 2 * arccos(min(1.0, |u00|))
-    
+
     # ステップ2: β, γを計算
     if sin(θ/2) > ε:
         β = angle(u10 / sin(θ/2))
@@ -124,7 +130,7 @@ def decompose_2x2_unitary(U: np.ndarray) -> (θ, β, γ):
         # θ ≈ 0 または π の特異点処理
         β = 0
         γ = angle(u00)
-    
+
     return (θ, β, γ)
 ```
 
@@ -134,32 +140,32 @@ def decompose_2x2_unitary(U: np.ndarray) -> (θ, β, γ):
 def to_mqt_gates(θ, β, γ, qudits, levels):
     """
     ZYZ分解をMQT-Quditsの基本ゲートに変換
-    
+
     Args:
         θ, β, γ: 回転パラメータ
         qudits: [i, j] quditインデックス
         levels: [l1, l2] 作用する準位
-    
+
     Returns:
         ゲートのリスト
     """
     gates = []
-    
+
     # 準位の基底変更（levelsを標準位置に移動）
     gates.extend(move_levels_to_standard_position(qudits, levels))
-    
+
     # Rz(β) on qudit j
     gates.append(VirtRz(qudits[1], [levels[0], β]))
-    
+
     # Ry(θ) as CRot block
     gates.extend(implement_controlled_y_rotation(qudits, levels, θ))
-    
+
     # Rz(γ) on qudit j
     gates.append(VirtRz(qudits[1], [levels[0], γ]))
-    
+
     # 準位を元に戻す
     gates.extend(move_levels_back(qudits, levels))
-    
+
     return gates
 ```
 
@@ -169,41 +175,41 @@ def to_mqt_gates(θ, β, γ, qudits, levels):
 def implement_controlled_y_rotation(qudits, levels, θ):
     """
     制御Y回転をCEx, R, Rzゲートで実装
-    
+
     理論:
     Ry(θ) = exp(-i θ/2 Y) を2-quditゲートで実装
-    
+
     分解:
     Ry(θ) = Rz(-π/2) Rx(θ) Rz(π/2)
     Rx(θ) = H Rz(θ) H
-    
+
     最終的に:
     CRy(θ) = 制御版 [Rz(-π/2) H Rz(θ) H Rz(π/2)]
            ≈ 8-10 基本ゲート
     """
     i, j = qudits
     l1, l2 = levels
-    
+
     gates = []
-    
+
     # フレーム設定
     gates.append(R(j, [l1, l2, π/2, -π/2]))
-    
+
     # 制御Exchange
     gates.append(CEx([i, j]))
-    
+
     # Z回転（θ/2）
     gates.append(Rz(j, [l1, l2, -θ/2]))
-    
+
     # 再びCEx
     gates.append(CEx([i, j]))
-    
+
     # Z回転（-θ/2）
     gates.append(Rz(j, [l1, l2, θ/2]))
-    
+
     # フレーム復元
     gates.append(R(j, [l1, l2, -π/2, π/2]))
-    
+
     return gates
 ```
 
@@ -220,6 +226,7 @@ U = G(0,1;θ1,φ1) G(0,2;θ2,φ2) G(1,2;θ3,φ3) D
 ```
 
 ここで：
+
 - G(i,j;θ,φ): 準位iとj間のGivens回転
 - D: 対角位相行列
 
@@ -229,67 +236,67 @@ U = G(0,1;θ1,φ1) G(0,2;θ2,φ2) G(1,2;θ3,φ3) D
 def decompose_3x3_unitary(U: np.ndarray) -> List[(i, j, θ, φ)]:
     """
     3×3ユニタリをGivens回転に分解
-    
+
     目標: Uを上三角行列化
     """
     rotations = []
     U_work = U.copy()
-    
+
     # ステップ1: U[1,0]をゼロにする（G(0,1)を左から適用）
     θ1, φ1 = givens_params(U_work[0,0], U_work[1,0])
     if |θ1| > ε:
         rotations.append((0, 1, θ1, φ1))
         G1 = construct_givens(3, 0, 1, θ1, φ1)
         U_work = G1† @ U_work
-    
+
     # ステップ2: U[2,0]をゼロにする（G(0,2)を左から適用）
     θ2, φ2 = givens_params(U_work[0,0], U_work[2,0])
     if |θ2| > ε:
         rotations.append((0, 2, θ2, φ2))
         G2 = construct_givens(3, 0, 2, θ2, φ2)
         U_work = G2† @ U_work
-    
+
     # ステップ3: U[2,1]をゼロにする（G(1,2)を左から適用）
     θ3, φ3 = givens_params(U_work[1,1], U_work[2,1])
     if |θ3| > ε:
         rotations.append((1, 2, θ3, φ3))
         G3 = construct_givens(3, 1, 2, θ3, φ3)
         U_work = G3† @ U_work
-    
+
     # U_workは今や上三角（ほぼ対角）
     # 対角位相は別途処理
-    
+
     return rotations
 
 
 def givens_params(a: complex, b: complex) -> (θ, φ):
     """
     Givens回転パラメータを計算
-    
+
     目標:
     [[c, -s*],  [[a],     [[r],
      [s,  c ]]   [b]]  =   [0]]
-    
+
     where c = cos(θ/2)e^(iφ/2), s = sin(θ/2)
     """
     r = sqrt(|a|² + |b|²)
-    
+
     if r < ε:
         return (0, 0)
-    
+
     # 正規化
     a_norm = a / r
     b_norm = b / r
-    
+
     # θを計算
     θ = 2 * arctan2(|b_norm|, |a_norm|)
-    
+
     # φを計算
     if |b_norm| > ε:
         φ = angle(a_norm) - angle(-b_norm)
     else:
         φ = 0
-    
+
     return (θ, φ)
 ```
 
@@ -299,31 +306,31 @@ def givens_params(a: complex, b: complex) -> (θ, φ):
 def three_level_to_mqt_gates(rotations, qudits, levels):
     """
     3準位回転をMQT-Quditsゲートに変換
-    
+
     Args:
         rotations: [(i, j, θ, φ), ...] Givens回転のリスト
         qudits: [q1, q2] quditインデックス
         levels: [l1, l2, l3] 3つの準位インデックス
-    
+
     Returns:
         ゲートのリスト
     """
     gates = []
-    
+
     for (i, j, θ, φ) in rotations:
         # 準位iとjを使った2準位回転
         level_i = levels[i]
         level_j = levels[j]
-        
+
         # 準位の配置
         gates.extend(arrange_levels(qudits, level_i, level_j))
-        
+
         # 2準位回転を実装（前述の方法）
         gates.extend(implement_two_level_rotation(qudits, θ, φ))
-        
+
         # 準位を戻す
         gates.extend(restore_levels(qudits, level_i, level_j))
-    
+
     return gates
 ```
 
@@ -357,53 +364,53 @@ U_transfer[1:4, 1:4] = [[cos(θ), 0,  -i·sin(θ), ...],
 def add_H_transfer_optimized(circuit, dt, i, j, V):
     """
     H_transferの最適化実装
-    
+
     ゲート数: 約15ゲート
     - 準備: 4ゲート
     - CRot: 8ゲート
     - 復元: 3ゲート
-    
+
     vs 元の実装: ~1000ゲート
     """
     θ = V * dt / ℏ
-    
+
     # 疎構造解析（実行時にはスキップ可能、事前に構造が既知）
     # |01⟩ (index 1) と |10⟩ (index 3) が作用部分空間
-    
+
     # 2×2ユニタリを構築
     U_2x2 = np.array([
         [cos(θ), -1j*sin(θ)],
         [-1j*sin(θ), cos(θ)]
     ])
-    
+
     # ZYZ分解
     θ_rot, β, γ = decompose_2x2_unitary(U_2x2)
-    
+
     # MQT-Quditsゲートに変換
     # qudit i の準位1 と qudit j の準位0 が関連
     # これは|01⟩基底に対応
-    
+
     # 実装（簡略版）:
     gates = []
-    
+
     # ステップ1: 準位の基底変更（|01⟩を標準位置に）
     gates.append(circuit.r(j, [0, 1, π/2, -π/2]))
-    
+
     # ステップ2: Rz(β)
     gates.append(circuit.virtrz(j, [1, β]))
-    
+
     # ステップ3: 制御Y回転
     gates.append(circuit.cex([i, j]))
     gates.append(circuit.rz(j, [0, 1, -θ_rot/2]))
     gates.append(circuit.cex([i, j]))
     gates.append(circuit.rz(j, [0, 1, θ_rot/2]))
-    
+
     # ステップ4: Rz(γ)
     gates.append(circuit.virtrz(j, [1, γ]))
-    
+
     # ステップ5: 基底を戻す
     gates.append(circuit.r(j, [0, 1, -π/2, π/2]))
-    
+
     return gates
 ```
 
@@ -445,11 +452,11 @@ U_sub = V @ diag(e^(-i λ_k t/ℏ)) @ V†
 def add_H_TTA_optimized(circuit, dt, i, j, J):
     """
     H_TTAの最適化実装
-    
+
     ゲート数: 約35ゲート
     - 各Givens回転: ~12ゲート × 3回
     - 対角位相調整: ~3ゲート
-    
+
     vs 元の実装: ~1000ゲート
     """
     # 部分空間のハミルトニアン
@@ -458,38 +465,38 @@ def add_H_TTA_optimized(circuit, dt, i, j, J):
         [1, 0, 0],
         [1, 0, 0]
     ])
-    
+
     # 固有値分解
     eigenvalues, eigenvectors = np.linalg.eigh(H_sub)
-    
+
     # 時間発展演算子
     phases = np.exp(-1j * eigenvalues * dt / ℏ)
     U_sub = eigenvectors @ np.diag(phases) @ eigenvectors.conj().T
-    
+
     # Givens分解
     rotations = decompose_3x3_unitary(U_sub)
-    
+
     # MQT-Quditsゲートに変換
     gates = []
-    
+
     # 部分空間: |02⟩, |11⟩, |20⟩
     # これらを標準位置 |0⟩, |1⟩, |2⟩ に写像
-    
+
     for (level_a, level_b, θ, φ) in rotations:
         # 準位の対応:
         # level 0 → |02⟩: qudit i = 0, qudit j = 2
         # level 1 → |11⟩: qudit i = 1, qudit j = 1
         # level 2 → |20⟩: qudit i = 2, qudit j = 0
-        
+
         # 準位の配置
         gates.extend(arrange_subspace_levels(circuit, i, j, level_a, level_b))
-        
+
         # 2準位回転
         gates.extend(implement_two_level_rotation(circuit, i, j, θ, φ))
-        
+
         # 準位を戻す
         gates.extend(restore_subspace_levels(circuit, i, j, level_a, level_b))
-    
+
     return gates
 ```
 
@@ -499,30 +506,30 @@ def add_H_TTA_optimized(circuit, dt, i, j, J):
 class OptimizedQuditCompiler:
     """
     疎構造認識型Quditコンパイラ
-    
+
     使用方法:
         compiler = OptimizedQuditCompiler()
         optimized_circuit = compiler.compile(circuit)
     """
-    
+
     def __init__(self):
         self.analyzer = SparseStructureAnalyzer()
         self.two_level_decomposer = TwoLevelRotationDecomposer()
         self.three_level_decomposer = ThreeLevelRotationDecomposer()
-    
+
     def compile(self, circuit: QuantumCircuit) -> QuantumCircuit:
         """
         量子回路を最適化
-        
+
         Args:
             circuit: 入力回路（CustomTwoゲート含む）
-        
+
         Returns:
             最適化された回路（基本ゲートのみ）
         """
         optimized_circuit = QuantumCircuit()
         optimized_circuit.append(circuit.qregisters[0])
-        
+
         for gate in circuit.instructions:
             if gate.gate_type == GateTypes.TWO:
                 # CustomTwoゲートを最適化
@@ -531,64 +538,64 @@ class OptimizedQuditCompiler:
             else:
                 # その他のゲートはそのまま
                 optimized_circuit.append(gate)
-        
+
         return optimized_circuit
-    
+
     def optimize_custom_two(self, gate: Gate) -> List[Gate]:
         """
         単一CustomTwoゲートを最適化
         """
         # ユニタリ行列を取得
         U = gate.to_matrix(identities=0)
-        
+
         # 構造解析
         structure = self.analyzer.analyze(U)
-        
+
         # 構造に応じて分解
         if structure.structure_type == 'identity':
             # 恒等変換: ゲート不要
             return []
-        
+
         elif structure.structure_type == 'sparse_subspace':
             # 部分空間のユニタリを抽出
             U_sub = self.analyzer.extract_subspace_unitary(
                 U, structure.active_subspace
             )
-            
+
             if structure.active_dimension == 2:
                 # 2準位回転
                 return self.compile_two_level_rotation(
-                    U_sub, gate.reference_lines, 
+                    U_sub, gate.reference_lines,
                     structure.active_subspace
                 )
-            
+
             elif structure.active_dimension == 3:
                 # 3準位回転
                 return self.compile_three_level_rotation(
                     U_sub, gate.reference_lines,
                     structure.active_subspace
                 )
-            
+
             else:
                 # より大きな部分空間: 一般的分解
                 return self.general_decomposition(U, gate)
-        
+
         else:
             # 密行列: 一般的分解
             return self.general_decomposition(U, gate)
-    
+
     def compile_two_level_rotation(self, U_sub, qudits, levels):
         """2準位回転をMQT-Quditsゲートに変換"""
         # 前述の実装を使用
         θ, β, γ = self.two_level_decomposer.decompose_2x2_unitary(U_sub)
         return self.two_level_to_gates(θ, β, γ, qudits, levels)
-    
+
     def compile_three_level_rotation(self, U_sub, qudits, levels):
         """3準位回転をMQT-Quditsゲートに変換"""
         # 前述の実装を使用
         rotations = self.three_level_decomposer.decompose_3x3_unitary(U_sub)
         return self.three_level_to_gates(rotations, qudits, levels)
-    
+
     def general_decomposition(self, U, gate):
         """一般的な分解（LogEntQRCEXPassにフォールバック）"""
         # 既存のコンパイラを使用
@@ -603,12 +610,14 @@ class OptimizedQuditCompiler:
 #### 単一トロッターステップ:
 
 **現在の実装**:
+
 - H0: 8ゲート（変更なし）
 - H_transfer: 3 × 1,000 = 3,000ゲート
 - H_TTA: 3 × 1,000 = 3,000ゲート
 - **合計: 6,008ゲート**
 
 **最適化後**:
+
 - H0: 8ゲート
 - H_transfer: 3 × 15 = 45ゲート
 - H_TTA: 3 × 35 = 105ゲート
@@ -669,7 +678,8 @@ class OptimizedQuditCompiler:
 
 **問題**: 9×9行列の特定の基底（例: |01⟩, |10⟩）を標準位置（|0⟩, |1⟩）に写像する必要がある
 
-**解決策**: 
+**解決策**:
+
 - Rゲートによる準位の交換
 - 準位のマッピング表を作成
 - 変換前後の整合性を検証
@@ -679,6 +689,7 @@ class OptimizedQuditCompiler:
 **問題**: ユニタリ分解において浮動小数点誤差が蓄積する
 
 **解決策**:
+
 - 各ステップでユニタリ性を検証
 - 許容誤差を適切に設定（1e-10）
 - 必要に応じて再正規化
@@ -688,6 +699,7 @@ class OptimizedQuditCompiler:
 **問題**: MQT-Quditsの内部APIが複雑で、直接的なゲート追加が困難
 
 **解決策**:
+
 - 既存のCRotGen、PSwapGen等の実装を参考にする
 - Gate Factory パターンを使用
 - 段階的に機能を追加
@@ -697,12 +709,14 @@ class OptimizedQuditCompiler:
 ### 検証方法
 
 1. **ユニタリ性の保持**:
+
    ```python
    def verify_unitary(U):
        assert np.allclose(U @ U.conj().T, np.eye(d), atol=1e-10)
    ```
 
 2. **固有値の保存**:
+
    ```python
    def verify_eigenvalues(H_original, U_decomposed):
        evals_orig = np.linalg.eigvals(H_original)
@@ -723,12 +737,15 @@ class OptimizedQuditCompiler:
 ## 参考文献
 
 1. **ユニタリ分解**:
+
    - Shende, V. V., Bullock, S. S., & Markov, I. L. (2006). "Synthesis of quantum-logic circuits". IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems.
 
 2. **Givens回転**:
+
    - Golub, G. H., & Van Loan, C. F. (2013). "Matrix computations" (4th ed.). Johns Hopkins University Press.
 
 3. **量子ゲート分解**:
+
    - Nielsen, M. A., & Chuang, I. L. (2010). "Quantum Computation and Quantum Information" (10th Anniversary ed.). Cambridge University Press.
 
 4. **MQT-Qudits**:
@@ -740,10 +757,12 @@ class OptimizedQuditCompiler:
 本仕様書では、疎構造を持つCustomTwoゲートの最適化に関する詳細な技術仕様を提供しました。
 
 **完了した作業**:
+
 - 疎構造解析: 正常に動作
 - ゲート数削減の理論的検証: 98%削減を確認
 
 **今後の作業**:
+
 - 2準位/3準位回転の完全実装
 - MQT-Quditsフレームワークとの統合
 - 包括的なテストと検証
@@ -752,7 +771,7 @@ class OptimizedQuditCompiler:
 
 ---
 
-**文書作成日**: 2025年10月20日  
-**作成者**: GitHub Copilot AI分析システム  
-**バージョン**: 1.0  
+**文書作成日**: 2025年10月20日
+**作成者**: GitHub Copilot AI分析システム
+**バージョン**: 1.0
 **ステータス**: 最終版

@@ -15,7 +15,7 @@ File mqt_qudits_four_molecule_sparse_implementation.py:276
 --> 276 self._add_gates_to_circuit(circuit, gate_info['gates'])
 
 File mqt_qudits_four_molecule_sparse_implementation.py:359
---> 359 circuit.r(qudits[0], [params['level1'], params['level2'], 
+--> 359 circuit.r(qudits[0], [params['level1'], params['level2'],
     360                      params['theta'], params['phi']])
 
 File r.py:88, in R.validate_parameter
@@ -30,7 +30,8 @@ AssertionError:
 The sparse compiler was incorrectly treating **two-qudit operations** as single-qudit R gates:
 
 1. **H_transfer Hamiltonian**: Creates a rotation between states |01⟩ and |10⟩
-   - These states involve **both qudits**: 
+
+   - These states involve **both qudits**:
      - |01⟩ = qudit₀ in state |0⟩, qudit₁ in state |1⟩
      - |10⟩ = qudit₀ in state |1⟩, qudit₁ in state |0⟩
    - This is fundamentally a **two-qudit entangling operation**
@@ -54,6 +55,7 @@ The sparse compiler flow was:
 **The bug**: Indices 1 and 3 are **global indices** in the 9-dimensional composite Hilbert space (3⊗3), but R gates expect **local qudit indices** (0-2 for qutrits).
 
 When `circuit.r(qudit, [level1=3, level2=...])` was called, the R gate validation checked:
+
 ```python
 assert parameter[1] < self.dimensions  # Fails! 3 >= 3
 ```
@@ -63,6 +65,7 @@ assert parameter[1] < self.dimensions  # Fails! 3 >= 3
 ### Conceptual Fix
 
 Added logic to detect whether the active subspace:
+
 - **Spans a single qudit**: Use R/Rz/Rh gates with proper local index conversion
 - **Spans multiple qudits**: Use CustomTwo gate (preserves exact unitary, will be decomposed)
 
@@ -71,10 +74,12 @@ Added logic to detect whether the active subspace:
 #### 1. Added Helper Methods
 
 **`_global_index_to_qudit_states(global_idx, dimensions)`**
+
 - Converts global index in composite space to local qudit states
 - Example: For 3⊗3 system, index 3 = |10⟩ = [1, 0]
 
 **`_analyze_subspace(active_indices, dimensions)`**
+
 - Detects which qudits are involved in the subspace
 - Returns:
   - `type`: 'single_qudit' or 'multi_qudit'
@@ -108,6 +113,7 @@ else:
 #### 3. Updated Circuit Building
 
 **`_add_gates_to_circuit(circuit, gates)`**
+
 - Added handler for CustomTwo gates: `circuit.cu_two(qudits, unitary)`
 - Fixed gate method names: `cex` → `cx` (correct MQT-Qudits API)
 
@@ -115,12 +121,13 @@ else:
 
 The fix maintains complete mathematical rigor:
 
-✅ **No heuristics**: Subspace detection uses exact basis state analysis  
-✅ **No approximations**: CustomTwo preserves the full unitary matrix  
-✅ **No fallbacks**: Proper structural detection, not error handling  
+✅ **No heuristics**: Subspace detection uses exact basis state analysis
+✅ **No approximations**: CustomTwo preserves the full unitary matrix
+✅ **No fallbacks**: Proper structural detection, not error handling
 ✅ **Preserves fidelity = 1.0**: CustomTwo will be exactly decomposed by LogEntQRCEXPass
 
 This is the **correct** approach because:
+
 1. Multi-qudit operations **must** use multi-qudit gates (CustomTwo)
 2. Single-qudit operations can be optimized with R gates (using local indices)
 3. The original design already used CustomTwo + decomposition
@@ -130,6 +137,7 @@ This is the **correct** approach because:
 ### Unit Tests (test_subspace_analysis.py)
 
 All helper function tests pass:
+
 - ✓ `test_global_index_to_qudit_states`: Index conversion works correctly
 - ✓ `test_analyze_subspace_single_qudit`: Detects single-qudit subspaces
 - ✓ `test_analyze_subspace_multi_qudit_h_transfer`: Detects H_transfer as multi-qudit
@@ -140,12 +148,14 @@ All helper function tests pass:
 For the notebook `four_molecule_linear_chain_quantum_dynamics.ipynb`:
 
 **Before fix:**
+
 ```
 H0の時間発展: 8 個のVirtRzゲート
 AssertionError (when adding H_transfer gates)
 ```
 
 **After fix:**
+
 ```
 H0の時間発展: 8 個のVirtRzゲート
 H_transfer分解: sparse_2x2, 1ゲート (CustomTwo), 忠実度=1.0
@@ -172,6 +182,7 @@ To verify the fix works:
 4. Verify gate counts and fidelity = 1.0
 
 Or run the unit tests:
+
 ```bash
 python3 test/python/tutorials/test_subspace_analysis.py
 python3 test/python/tutorials/test_gate_generation_fix.py  # Requires NumPy
@@ -182,10 +193,12 @@ python3 test/python/tutorials/test_gate_generation_fix.py  # Requires NumPy
 ### Why CustomTwo for Multi-Qudit Operations?
 
 A rotation between |01⟩ and |10⟩ mixes states where excitations transfer between qudits. This is analogous to a SWAP or entangling gate in qubits. It **cannot** be expressed as:
+
 - Single-qudit R gate (only affects one qudit)
 - Product of single-qudit gates (no entanglement)
 
 It **must** use:
+
 - Two-qudit gate (CEx, CustomTwo)
 - Or sequence involving two-qudit gates
 

@@ -68,6 +68,9 @@ class ClassicalGKSLBosonSimulator:
         # Electronic initial state
         psi_el = np.zeros(dim_el, dtype=np.complex128)
         if state_type == "edge_triplet":
+            if N < 2:
+                msg = "edge_triplet requires N_molecules >= 2"
+                raise ValueError(msg)
             # Edge molecules in T1 (1), middle ones in S0 (0): |1,0,...,0,1⟩
             index = 1 * (d ** (N - 1)) + 1
             psi_el[index] = 1.0
@@ -101,7 +104,24 @@ class ClassicalGKSLBosonSimulator:
 
         Uses BDF (stiff solver) since phonon coupling creates stiff dynamics.
         Returns dict compatible with ClassicalGKSLSimulator output format.
+
+        When g_eph == 0 the phonon degrees of freedom decouple exactly,
+        so the dynamics reduce to the non-boson ClassicalGKSLSimulator.
         """
+        # Exact reduction: g_eph=0 means no electron-phonon coupling,
+        # so phonon DOFs factor out and we can use the cheaper non-boson solver.
+        if self.params.g_eph == 0.0:
+            reduced_kwargs = self.params.to_dict()
+            reduced_kwargs["with_boson"] = False
+            reduced_params = GKSLPhysicalParameters(**reduced_kwargs)
+            from classical_gksl_simulator import ClassicalGKSLSimulator
+
+            result = ClassicalGKSLSimulator(reduced_params).simulate(
+                t_max=t_max, n_steps=n_steps, initial_state=initial_state
+            )
+            result["method"] = "classical_gksl_boson (g_eph=0 exact reduction)"
+            return result
+
         start = time_module.time()
         dim = self.dim_total
 

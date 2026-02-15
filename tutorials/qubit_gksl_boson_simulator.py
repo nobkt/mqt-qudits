@@ -109,6 +109,9 @@ class QubitGKSLBosonSimulator:
         # Electronic state
         psi_el = np.zeros(dim_el, dtype=np.complex128)
         if state_type == "edge_triplet":
+            if N < 2:
+                msg = "edge_triplet requires N_molecules >= 2"
+                raise ValueError(msg)
             index = 1 * (d ** (N - 1)) + 1
             psi_el[index] = 1.0
         elif state_type == "all_triplet":

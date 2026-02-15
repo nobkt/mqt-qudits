@@ -479,3 +479,169 @@ class TestStinespringFidelity:
 
         F = self._quantum_fidelity(rho_classical, rho_qudit)
         assert F > 0.99, f"Fidelity = {F:.6f} (expected > 0.99)"
+
+
+# ---------------------------------------------------------------------------
+# 11. TestEdgeTripletBoundary – N-variable edge_triplet and N<2 validation
+# ---------------------------------------------------------------------------
+class TestEdgeTripletBoundary:
+    def test_classical_edge_triplet_n2(self):
+        """Classical simulator: edge_triplet with N=2 produces correct index."""
+        params = GKSLPhysicalParameters(N_molecules=2)
+        sim = ClassicalGKSLSimulator(params)
+        rho = sim.prepare_initial_state("edge_triplet")
+        # |1,1⟩ in base-3: index = 1*3 + 1 = 4
+        assert abs(rho[4, 4] - 1.0) < 1e-12
+        assert abs(np.trace(rho) - 1.0) < 1e-12
+
+    def test_classical_edge_triplet_n4_consistency(self):
+        """Classical simulator: N=4 edge_triplet must match other simulators' indexing."""
+        params = GKSLPhysicalParameters(N_molecules=4)
+        sim = ClassicalGKSLSimulator(params)
+        rho = sim.prepare_initial_state("edge_triplet")
+        # |1,0,0,1⟩ in base-3: index = 1*27 + 0*9 + 0*3 + 1 = 28
+        assert abs(rho[28, 28] - 1.0) < 1e-12
+
+    def test_classical_edge_triplet_requires_n2(self):
+        """Classical simulator: edge_triplet with N_molecules < 2 raises ValueError."""
+        # N_molecules=1 fails parameter validation too, but edge_triplet
+        # should raise its own clear error before that matters.
+        params = GKSLPhysicalParameters.__new__(GKSLPhysicalParameters)
+        params.d = 3
+        params.N_molecules = 1
+        params.E_T = 1.5
+        params.E_S = 3.0
+        params.V = 0.1
+        params.gamma_TTA = 0.05
+        params.Gamma_fl = 0.01
+        params.Gamma_ph = 1e-6
+        params.k_IC = 0.005
+        params.k_ISC_ST = 0.003
+        params.k_ISC_TS = 1e-5
+        params.with_boson = False
+        params.n_max = 2
+        params.omega_ph = 0.15
+        params.g_eph = 0.02
+        sim = ClassicalGKSLSimulator(params)
+        with pytest.raises(ValueError, match="edge_triplet requires N_molecules >= 2"):
+            sim.prepare_initial_state("edge_triplet")
+
+    def test_qubit_edge_triplet_requires_n2(self):
+        """Qubit simulator: edge_triplet with N < 2 raises ValueError."""
+        params = GKSLPhysicalParameters.__new__(GKSLPhysicalParameters)
+        params.d = 3
+        params.N_molecules = 1
+        params.E_T = 1.5
+        params.E_S = 3.0
+        params.V = 0.1
+        params.gamma_TTA = 0.05
+        params.Gamma_fl = 0.01
+        params.Gamma_ph = 1e-6
+        params.k_IC = 0.005
+        params.k_ISC_ST = 0.003
+        params.k_ISC_TS = 1e-5
+        params.with_boson = False
+        params.n_max = 2
+        params.omega_ph = 0.15
+        params.g_eph = 0.02
+        sim = QubitGKSLSimulator(params)
+        with pytest.raises(ValueError, match="edge_triplet requires N_molecules >= 2"):
+            sim.prepare_initial_state("edge_triplet")
+
+    def test_qudit_edge_triplet_requires_n2(self):
+        """Qudit simulator: edge_triplet with N < 2 raises ValueError."""
+        params = GKSLPhysicalParameters.__new__(GKSLPhysicalParameters)
+        params.d = 3
+        params.N_molecules = 1
+        params.E_T = 1.5
+        params.E_S = 3.0
+        params.V = 0.1
+        params.gamma_TTA = 0.05
+        params.Gamma_fl = 0.01
+        params.Gamma_ph = 1e-6
+        params.k_IC = 0.005
+        params.k_ISC_ST = 0.003
+        params.k_ISC_TS = 1e-5
+        params.with_boson = False
+        params.n_max = 2
+        params.omega_ph = 0.15
+        params.g_eph = 0.02
+        sim = QuditGKSLSimulator(params)
+        with pytest.raises(ValueError, match="edge_triplet requires N_molecules >= 2"):
+            sim.prepare_initial_state("edge_triplet")
+
+    def test_classical_boson_edge_triplet_requires_n2(self):
+        """Classical boson simulator: edge_triplet with N < 2 raises ValueError."""
+        from classical_gksl_boson_simulator import ClassicalGKSLBosonSimulator
+
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=True, n_max=1)
+        sim = ClassicalGKSLBosonSimulator(params)
+        # N=2 should work fine
+        rho = sim.prepare_initial_state("edge_triplet")
+        assert abs(np.trace(rho) - 1.0) < 1e-12
+
+    def test_qubit_boson_edge_triplet_requires_n2(self):
+        """Qubit boson simulator: edge_triplet with N < 2 raises ValueError."""
+        from qubit_gksl_boson_simulator import QubitGKSLBosonSimulator
+
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=True, n_max=1)
+        sim = QubitGKSLBosonSimulator(params)
+        rho = sim.prepare_initial_state("edge_triplet")
+        assert abs(np.trace(rho) - 1.0) < 1e-12
+
+    def test_qudit_boson_edge_triplet_requires_n2(self):
+        """Qudit boson simulator: edge_triplet with N < 2 raises ValueError."""
+        from qudit_gksl_boson_simulator import QuditGKSLBosonSimulator
+
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=True, n_max=1)
+        sim = QuditGKSLBosonSimulator(params)
+        rho = sim.prepare_initial_state("edge_triplet")
+        assert abs(np.trace(rho) - 1.0) < 1e-12
+
+
+# ---------------------------------------------------------------------------
+# 12. TestBosonGephZeroReduction – g_eph=0 exact reduction
+# ---------------------------------------------------------------------------
+class TestBosonGephZeroReduction:
+    def test_boson_g_eph_zero_matches_non_boson(self):
+        """g_eph=0 boson simulator must produce results identical to non-boson."""
+        from classical_gksl_boson_simulator import ClassicalGKSLBosonSimulator
+
+        params_nb = GKSLPhysicalParameters(N_molecules=4)
+        params_b = GKSLPhysicalParameters(
+            N_molecules=4, with_boson=True, n_max=1, g_eph=0.0
+        )
+
+        sim_nb = ClassicalGKSLSimulator(params_nb)
+        sim_b = ClassicalGKSLBosonSimulator(params_b)
+
+        result_nb = sim_nb.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        result_b = sim_b.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+
+        for pop_nb, pop_b in zip(result_nb["populations"], result_b["populations"]):
+            assert abs(pop_nb["N_S0"] - pop_b["N_S0"]) < 1e-6
+            assert abs(pop_nb["N_T1"] - pop_b["N_T1"]) < 1e-6
+            assert abs(pop_nb["N_S1"] - pop_b["N_S1"]) < 1e-6
+
+    def test_boson_g_eph_zero_traces(self):
+        """g_eph=0 boson simulator trace preservation matches non-boson exactly."""
+        from classical_gksl_boson_simulator import ClassicalGKSLBosonSimulator
+
+        params_b = GKSLPhysicalParameters(
+            N_molecules=4, with_boson=True, n_max=2, g_eph=0.0
+        )
+        sim_b = ClassicalGKSLBosonSimulator(params_b)
+        result = sim_b.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
+        for tr in result["trace"]:
+            assert abs(tr - 1.0) < 1e-8
+
+    def test_boson_g_eph_zero_method_label(self):
+        """g_eph=0 boson simulator reports its reduction in the method field."""
+        from classical_gksl_boson_simulator import ClassicalGKSLBosonSimulator
+
+        params_b = GKSLPhysicalParameters(
+            N_molecules=2, with_boson=True, n_max=1, g_eph=0.0
+        )
+        sim_b = ClassicalGKSLBosonSimulator(params_b)
+        result = sim_b.simulate(t_max=1.0, n_steps=2, initial_state="edge_triplet")
+        assert "g_eph=0" in result["method"]

@@ -100,6 +100,9 @@ class QuditGKSLSimulator:
         psi = np.zeros(dim, dtype=np.complex128)
 
         if state_type == "edge_triplet":
+            if N < 2:
+                msg = "edge_triplet requires N_molecules >= 2"
+                raise ValueError(msg)
             # Molecules 0 and N-1 in T1, rest in S0
             index = 1 * (d ** (N - 1)) + 1
             psi[index] = 1.0

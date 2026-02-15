@@ -4695,7 +4695,9 @@ $$
 - [x] パラメータバリデーションのV=0/全γ=0対応（PR#147で修正）
 - [x] edge_triplet初期状態のN汎用化（PR#151で修正：N=4ハードコードを任意N≥2対応に変更、全6シミュレータでN<2バリデーション追加）
 - [x] ドキュメントが整備されている（進捗書を更新済み）
-- [x] MQT-Qudits実回路構築（本PRで実装：QuditGKSLCircuitSimulator）
+- [x] MQT-Qudits実回路構築（PR#153で実装：QuditGKSLCircuitSimulator）
+- [x] MQT-Quditsネイティブゲートセットへの自動分解（本PRで実装：compileO0/compileO1によるcu_one/cu_two→VirtRz, R, Rh, Rz, CExへの分解。cu_multiはMQT-Quditsコンパイラの制限により未分解）
+- [x] ボソン有り回路構築（本PRで実装：QuditGKSLCircuitBosonSimulator）
 
 ---
 
@@ -4709,3 +4711,4 @@ $$
 - v3.2.0 (2026-02-15): edge_tripletのN汎用化（classical_gksl_simulator.pyのN=4ハードコードをN汎用インデックスに修正）。全6シミュレータにedge_tripletのN<2境界バリデーション追加。ClassicalGKSLBosonSimulatorにg_eph=0厳密リダクション追加（フォノン分離の物理的厳密性に基づき高次元計算を回避）。追加テスト11件。56/56テスト通過。
 - v3.3.0 (2026-02-15): ハードウェアノイズモデル実装。QuditGKSLNoisySimulator（ローカル脱分極+位相緩和）とQubitGKSLNoisySimulator（ローカル脱分極+熱緩和）を新規作成。付録Cの設計仕様に基づくが、グローバル脱分極ではなくゲート単位のローカル脱分極チャネルを実装（物理的に正確）。各ノイズチャネルのCPTP性（トレース保存、Hermiticity保存、正定値性保存）をテストで検証。追加テスト22件。78/78テスト通過。
 - v3.4.0 (2026-02-15): MQT-Qudits実回路構築。QuditGKSLCircuitSimulatorを新規作成。ハミルトニアンをcu_one（局所位相）+cu_two（ペア移動）に分解、Stinespringをcu_two（単一サイト6×6）+cu_multi（TTAペア18×18）として構築。ローカルStinespringの厳密性を全26チャネルで検証（フル計算と完全一致）。MQT-Qudits tnsimバックエンド実行による回路検証。Classical-Qudit/Qubit収束テスト（n_steps=20で1e-3精度達成）。追加テスト14件。92/92テスト通過。
+- v3.5.0 (2026-02-15): ネイティブゲート分解とボソン回路構築。compile_to_native_gates()メソッドでcu_one/cu_twoをMQT-Quditsネイティブゲートセット（VirtRz, R, Rh, Rz, CEx）に分解（cu_multiはMQT-Quditsコンパイラの制限により未分解）。QuditGKSLCircuitBosonSimulatorを新規作成（電子+フォノンqutrit空間での回路ベースGKSLシミュレーション、g_eph=0厳密リダクション付き）。マトリクスボソンシミュレータとの一致を浮動小数点精度で検証。追加テスト15件。107/107テスト通過。

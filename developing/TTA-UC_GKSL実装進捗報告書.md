@@ -159,21 +159,22 @@ $$\gamma_{\max} \cdot \Delta t / \hbar \ll 1$$
 
 ```
 tutorials/
-├── gksl_physical_parameters.py        # パラメータクラス
-├── gksl_math_utils.py                 # 数学的基盤（15関数）
-├── stinespring_utils.py               # Stinespring dilation
-├── gksl_validation.py                 # 物理的検証
-├── classical_gksl_simulator.py        # シナリオ1: Classical NB
-├── classical_gksl_boson_simulator.py  # シナリオ2: Classical B
-├── qubit_gksl_simulator.py            # シナリオ3: Qubit NB
-├── qubit_gksl_boson_simulator.py      # シナリオ4: Qubit B
-├── qudit_gksl_simulator.py            # シナリオ5: Qudit NB
-├── qudit_gksl_boson_simulator.py      # シナリオ6: Qudit B
-├── qubit_gksl_noisy_simulator.py      # シナリオ7: Qubit NB + ハードウェアノイズ
-├── qudit_gksl_noisy_simulator.py      # シナリオ8: Qudit NB + ハードウェアノイズ
-├── qudit_gksl_circuit_simulator.py    # シナリオ5c: Qudit NB（MQT-Qudits実回路）
-├── gksl_visualization.py              # 可視化
-└── test_gksl_simulators.py            # テスト（92テスト）
+├── gksl_physical_parameters.py              # パラメータクラス
+├── gksl_math_utils.py                       # 数学的基盤（15関数）
+├── stinespring_utils.py                     # Stinespring dilation
+├── gksl_validation.py                       # 物理的検証
+├── classical_gksl_simulator.py              # シナリオ1: Classical NB
+├── classical_gksl_boson_simulator.py        # シナリオ2: Classical B
+├── qubit_gksl_simulator.py                  # シナリオ3: Qubit NB
+├── qubit_gksl_boson_simulator.py            # シナリオ4: Qubit B
+├── qudit_gksl_simulator.py                  # シナリオ5: Qudit NB
+├── qudit_gksl_boson_simulator.py            # シナリオ6: Qudit B
+├── qubit_gksl_noisy_simulator.py            # シナリオ7: Qubit NB + ハードウェアノイズ
+├── qudit_gksl_noisy_simulator.py            # シナリオ8: Qudit NB + ハードウェアノイズ
+├── qudit_gksl_circuit_simulator.py          # シナリオ5c: Qudit NB（MQT-Qudits実回路 + ネイティブゲート分解）
+├── qudit_gksl_circuit_boson_simulator.py    # シナリオ6c: Qudit B（MQT-Qudits実回路）
+├── gksl_visualization.py                    # 可視化
+└── test_gksl_simulators.py                  # テスト（107テスト）
 ```
 
 ---
@@ -182,11 +183,11 @@ tutorials/
 
 1. ~~統合ノートブック `quantum_dynamics_gksl_comparison.ipynb` の作成~~ ✅ PR#147で完了
 2. ~~追加テストケース（ユニタリ極限、蛍光解析解、定常状態）の実装~~ ✅ PR#147で完了
-3. ~~MQT-Quditsの実回路構築（インストール後）~~ ✅ 本PRで完了（QuditGKSLCircuitSimulator）
+3. ~~MQT-Quditsの実回路構築（インストール後）~~ ✅ PR#153で完了（QuditGKSLCircuitSimulator）
 4. ~~ハードウェアノイズモデルの実装~~ ✅ PR#152で完了
 5. パフォーマンス最適化（疎行列、並列計算）
-6. MQT-Quditsネイティブゲートセットへの自動分解（compileO0/compileO1）
-7. ボソン有り回路構築（QuditGKSLCircuitSimulatorの拡張）
+6. ~~MQT-Quditsネイティブゲートセットへの自動分解（compileO0/compileO1）~~ ✅ 本PRで完了（cu_one/cu_twoをVirtRz, R, Rh, Rz, CExに分解。cu_multiはMQT-Quditsコンパイラの制限により未分解）
+7. ~~ボソン有り回路構築（QuditGKSLCircuitSimulatorの拡張）~~ ✅ 本PRで完了（QuditGKSLCircuitBosonSimulator）
 
 ---
 
@@ -521,5 +522,110 @@ GKSL開放系ダイナミクスは密度行列（混合状態）の発展を要�
 ### 9.4 残存する未完了項目
 
 1. **パフォーマンス最適化**: 疎行列実装、並列計算はスコープ外。現在の実装は密行列を使用しており、N>4の大規模系では計算時間とメモリが問題になる。
-2. **MQT-Qudits基本ゲート分解**: 現在の回路はcu_one/cu_two/cu_multiのカスタムユニタリゲートを使用。MQT-Quditsのネイティブゲートセット（VirtRz, R, Rh, Rz, CEx）への自動分解（compileO0/compileO1）は未実装。これは実ハードウェア実行の前提条件。
-3. **ボソン有り回路構築**: QuditGKSLCircuitSimulatorはボソン無し（シナリオ5）のみ。ボソン有り（シナリオ6）の回路構築は未実装。
+2. ~~**MQT-Qudits基本ゲート分解**: 現在の回路はcu_one/cu_two/cu_multiのカスタムユニタリゲートを使用。MQT-Quditsのネイティブゲートセット（VirtRz, R, Rh, Rz, CEx）への自動分解（compileO0/compileO1）は未実装。これは実ハードウェア実行の前提条件。~~ ✅ 本PRで完了（§10参照）
+3. ~~**ボソン有り回路構築**: QuditGKSLCircuitSimulatorはボソン無し（シナリオ5）のみ。ボソン有り（シナリオ6）の回路構築は未実装。~~ ✅ 本PRで完了（§10参照）
+
+---
+
+## 10. 本PRでの追加実装（2026-02-15）
+
+### 10.1 MQT-Quditsネイティブゲートセットへの自動分解 ✅
+
+`QuditGKSLCircuitSimulator`に`compile_to_native_gates()`メソッドと`verify_compiled_circuit()`メソッドを追加。
+
+#### 10.1.1 compile_to_native_gates()
+
+各カスタムゲートを個別にMQT-Quditsコンパイラで分解:
+
+| ゲート種別 | 元のゲート | コンパイル結果 | 備考 |
+|-----------|-----------|--------------|------|
+| cu_one（局所位相、3×3対角） | 4ゲート/半ステップ | VirtRzのみ（2ゲート/cu_one） | 対角ユニタリのため最小限 |
+| cu_two（ペア移動、9×9） | 3ゲート/半ステップ | R, Rz, Rh, VirtRz, CEx（約966ゲート/cu_two） | 一般的な2-qutritユニタリの分解 |
+| cu_two（Stinespring単一サイト、6×6） | 20ゲート/ステップ | R, Rz, Rh, VirtRz, CEx（約205ゲート/cu_two） | qutrit⊗qubitの分解 |
+| cu_multi（Stinespring TTAペア、18×18） | 6ゲート/ステップ | **未分解** | MQT-Quditsコンパイラは3-qudit以上のゲート分解を未サポート |
+
+**1 Trotterステップあたりのネイティブゲート数**: 約9,908 + 6 cu_multi（compileO0）
+
+**cu_multiが未分解の理由**: MQT-Quditsの`compileO0`/`compileO1`は、`PhyLocQRPass`（1-quditゲート分解）と`PhyEntQRCEXPass`（2-quditゲート分解）を適用するが、3-qudit以上のゲートを2-quditプリミティブに分解するパスは現在実装されていない。これはMQT-Quditsフレームワーク自体の制限であり、ヒューリスティックな回避策を使用せず正直に報告する。
+
+#### 10.1.2 verify_compiled_circuit()
+
+コンパイル前後の回路をMQT-Qudits state-vectorシミュレーションで実行し、出力状態ベクトルが一致することを検証:
+- 検証結果: 状態ベクトル距離 = 0.0（完全一致）
+- コンパイルは数学的に等価な変換であり、物理的結果に影響しない
+
+#### 10.1.3 対応する最適化レベル
+
+- **compileO0**: 基本分解（PhyLocQRPass + PhyEntQRCEXPass）
+- **compileO1**: 最適化分解（NaiveLocResynthOptPass + 基本分解）
+
+### 10.2 QuditGKSLCircuitBosonSimulator（ボソン有り回路構築）✅
+
+- **ファイル**: `tutorials/qudit_gksl_circuit_boson_simulator.py`
+- **概要**: QuditGKSLCircuitSimulatorをボソン有りモデル（シナリオ6c）に拡張。電子系qutritに加えてフォノンqutritレジスタを追加。
+
+#### 10.2.1 回路構成
+
+**量子資源**: N電子qutrit + Nフォノンqutrit + 26 ancilla qubit
+
+**ゲート分解（1 Trotterステップあたり）:**
+
+| ゲート種別 | 数量（N=4, g_eph≠0） | 説明 |
+|-----------|---------------------|------|
+| cu_one（電子onsite） | 8 | 4ゲート × 2半ステップ |
+| cu_two（電子transfer） | 6 | 3ゲート × 2半ステップ |
+| cu_one（フォノンonsite） | 8 | 4ゲート × 2半ステップ |
+| cu_two（電子-フォノン結合） | 8 | 4ゲート × 2半ステップ |
+| cu_two（Stinespring単一） | 20 | 5種類 × 4分子 |
+| cu_multi（Stinespring TTA） | 6 | 2チャネル × 3ペア |
+| **合計** | **56** | |
+
+#### 10.2.2 電子-フォノン結合ゲート
+
+Holstein結合 $H_{\text{eph},i} = g_{\text{eph}} |T_1\rangle\langle T_1|_i \otimes (a_i + a_i^\dagger)$ は、各分子サイトの電子qutritとフォノンqutritの間のcu_twoゲート（$(d \times d_{\text{ph}}) \times (d \times d_{\text{ph}})$ユニタリ）として構築。
+
+#### 10.2.3 g_eph=0厳密リダクション
+
+$g_{\text{eph}} = 0$のとき、フォノン自由度は電子系から完全に分離するため、非ボソン回路シミュレータ（QuditGKSLCircuitSimulator）に委譲。これは物理法則からの厳密な帰結であり、近似を含まない。
+
+#### 10.2.4 検証結果
+
+マトリクスレベルボソンシミュレータ（QuditGKSLBosonSimulator）との比較:
+- N=2, n_max=1, g_eph=0.005での個体数最大差: 5.8×10⁻¹⁵（浮動小数点精度）
+- トレース保存: 全時刻で|Tr[ρ]-1| < 1e-10
+- g_eph=0リダクション: 非ボソン回路シミュレータと完全一致（差 < 1e-10）
+
+### 10.3 追加テスト（15件）✅
+
+**ネイティブゲートコンパイルテスト（7件）:**
+
+| テスト名 | 内容 | 結果 |
+|---------|------|------|
+| test_compile_to_native_gates_o0 | compileO0でネイティブゲート統計が得られる | PASS |
+| test_compile_to_native_gates_o1 | compileO1でもネイティブゲート統計が得られる | PASS |
+| test_cu_one_compiles_to_virtrz | cu_one（対角）がVirtRzのみにコンパイル | PASS |
+| test_cu_two_compiles_to_native_set | cu_twoがネイティブゲートセットにコンパイル | PASS |
+| test_cu_multi_not_decomposed | cu_multiが未分解として正しく報告 | PASS |
+| test_verify_compiled_circuit | コンパイル前後で状態ベクトルが一致 | PASS |
+| test_invalid_optimization_level | 不正なoptimization_levelでValueError | PASS |
+
+**ボソン回路シミュレータテスト（8件）:**
+
+| テスト名 | 内容 | 結果 |
+|---------|------|------|
+| test_requires_boson_params | 非ボソンパラメータでValueError | PASS |
+| test_g_eph_zero_exact_reduction | g_eph=0で非ボソンシミュレータに委譲 | PASS |
+| test_g_eph_zero_matches_non_boson | g_eph=0ボソンが非ボソンと一致 | PASS |
+| test_trace_preservation | g_eph>0でトレース保存 | PASS |
+| test_matches_matrix_boson_simulator | 回路シミュレータがマトリクスシミュレータと一致 | PASS |
+| test_gate_breakdown | ゲート内訳が正しい | PASS |
+| test_method_label | メソッドラベルが正しい | PASS |
+| test_edge_triplet_requires_n2 | N<2でValueError | PASS |
+
+**テスト合計: 107/107 通過**（既存92 + 新規15）
+
+### 10.4 残存する未完了項目
+
+1. **パフォーマンス最適化**: 疎行列実装、並列計算はスコープ外。現在の実装は密行列を使用しており、N>4の大規模系では計算時間とメモリが問題になる。
+2. **cu_multi→2-quditゲート分解**: MQT-Quditsコンパイラが3-qudit以上のゲート分解をサポートしていないため、TTA Stinespringのcu_multi（18×18）は現時点でネイティブゲートに分解できない。これはフレームワーク側の拡張を待つ必要がある。
+3. **Qiskit実回路構築（Qubit側）**: QubitGKSLSimulatorのQiskit実回路構築は未実装。MQT-Qudits側の実回路はQuditGKSLCircuitSimulatorで完了。

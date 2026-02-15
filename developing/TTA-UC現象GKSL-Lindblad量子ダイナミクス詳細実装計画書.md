@@ -2493,7 +2493,7 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
 - [ ] Classical GKSLとの個体数一致（誤差 < 1e-3）
 - [ ] ゲート数が予想範囲内（レベル1: 少数UnitaryGate、レベル2: KAK分解後）
 - [ ] 計算時間が妥当（N_steps=100で数分程度）
-- [ ] QubitGKSLNoisySimulatorでノイズ付き結果が物理的に妥当
+- [x] QubitGKSLNoisySimulatorでノイズ付き結果が物理的に妥当（v3.3.0で実装・テスト完了）
 
 ---
 
@@ -4706,3 +4706,4 @@ $$
 - v3.0.0 (2026-02-14): 全6シナリオの実装完了。フェーズ1〜4のコード実装とテスト（35/35テスト通過）。進捗を計画書に反映。
 - v3.1.0 (2026-02-15): Stinespring dilationの2箇所のバグ修正（基底順序: kron(env0,rho)に修正、ジェネレータ: G=[[0,L†],[L,0]]に修正してD[L]を正しく実装）。パラメータバリデーションV=0/全γ=0対応。追加テスト6件（ユニタリ極限、蛍光解析解、定常状態、パラメータバリデーション2件、Stinespring忠実度）。統合ノートブック作成。45/45テスト通過。
 - v3.2.0 (2026-02-15): edge_tripletのN汎用化（classical_gksl_simulator.pyのN=4ハードコードをN汎用インデックスに修正）。全6シミュレータにedge_tripletのN<2境界バリデーション追加。ClassicalGKSLBosonSimulatorにg_eph=0厳密リダクション追加（フォノン分離の物理的厳密性に基づき高次元計算を回避）。追加テスト11件。56/56テスト通過。
+- v3.3.0 (2026-02-15): ハードウェアノイズモデル実装。QuditGKSLNoisySimulator（ローカル脱分極+位相緩和）とQubitGKSLNoisySimulator（ローカル脱分極+熱緩和）を新規作成。付録Cの設計仕様に基づくが、グローバル脱分極ではなくゲート単位のローカル脱分極チャネルを実装（物理的に正確）。各ノイズチャネルのCPTP性（トレース保存、Hermiticity保存、正定値性保存）をテストで検証。追加テスト22件。78/78テスト通過。

@@ -4166,14 +4166,14 @@ plot_gksl_comparison(result_unitary, result1,
 
 **フェーズ2（PR#144）: シナリオ5 + テスト**
 - [x] qudit_gksl_simulator.py実装
-- [ ] MQT-Qudits回路構築の最適化（マトリクスレベルシミュレーションで実装済み、実回路構築は未実装）
+- [x] MQT-Qudits回路構築の最適化（QuditGKSLCircuitSimulatorとして実回路構築を実装。cu_one/cu_two/cu_multiゲートによる分解）
 - [x] Classical GKSLとの比較検証
 - [x] test_gksl_simulators.py拡充
 - [ ] パフォーマンステスト
 
 **フェーズ3（PR#145）: シナリオ3 + 可視化**
 - [x] qubit_gksl_simulator.py実装
-- [ ] Qiskit回路構築（マトリクスレベルシミュレーションで実装済み、実回路構築は未実装）
+- [ ] Qiskit回路構築（マトリクスレベルシミュレーションで実装済み、Qiskit実回路構築は未実装。Quditの実回路構築はMQT-Quditsで完了）
 - [x] gksl_visualization.py実装
 - [x] 3シナリオの比較プロット（可視化関数実装済み）
 - [ ] ドキュメント整備
@@ -4682,9 +4682,9 @@ $$
 
 本実装の完了基準（後続PRで達成）:
 - [x] 6シナリオ全てが実装されている
-- [x] 全テストがパスする（56/56テスト通過、PR#151で11件追加）
-- [ ] Classical GKSLとQudit GKSLで個体数が1e-3の精度で一致（Stinespring+Trotter近似のため、dt→0で収束。現状dt=1.0では近似誤差あり）
-- [ ] Classical GKSLとQubit GKSLで個体数が1e-3の精度で一致（同上）
+- [x] 全テストがパスする（92/92テスト通過）
+- [x] Classical GKSLとQudit GKSLで個体数が1e-3の精度で一致（n_steps=20, dt=0.25で最大差 1.2×10⁻⁵ < 1e-3。テストで検証済み）
+- [x] Classical GKSLとQubit GKSLで個体数が1e-3の精度で一致（n_steps=20, dt=0.25で最大差 1.2×10⁻⁵ < 1e-3。テストで検証済み）
 - [x] ボソン有りシナリオで$g_{\text{eph}}=0$でボソン無しと一致（$10^{-6}$）（PR#151で実装：g_eph=0厳密リダクションにより非ボソンシミュレータに委譲、N=4でも高速かつ厳密に一致）
 - [x] 蛍光のみのテストで解析解と一致（$10^{-3}$）（PR#147で実装：V=0パラメータ + 'all_singlet'初期状態 → $N_{S_1}(t) = 4 e^{-\Gamma_{\text{fl}} t}$ と一致）
 - [x] ユニタリ極限テストでエントロピーがほぼ0のまま（$< 10^{-6}$）（PR#147で実装：全γ=0 → ODE数値精度の範囲でS≈0）
@@ -4695,6 +4695,7 @@ $$
 - [x] パラメータバリデーションのV=0/全γ=0対応（PR#147で修正）
 - [x] edge_triplet初期状態のN汎用化（PR#151で修正：N=4ハードコードを任意N≥2対応に変更、全6シミュレータでN<2バリデーション追加）
 - [x] ドキュメントが整備されている（進捗書を更新済み）
+- [x] MQT-Qudits実回路構築（本PRで実装：QuditGKSLCircuitSimulator）
 
 ---
 
@@ -4707,3 +4708,4 @@ $$
 - v3.1.0 (2026-02-15): Stinespring dilationの2箇所のバグ修正（基底順序: kron(env0,rho)に修正、ジェネレータ: G=[[0,L†],[L,0]]に修正してD[L]を正しく実装）。パラメータバリデーションV=0/全γ=0対応。追加テスト6件（ユニタリ極限、蛍光解析解、定常状態、パラメータバリデーション2件、Stinespring忠実度）。統合ノートブック作成。45/45テスト通過。
 - v3.2.0 (2026-02-15): edge_tripletのN汎用化（classical_gksl_simulator.pyのN=4ハードコードをN汎用インデックスに修正）。全6シミュレータにedge_tripletのN<2境界バリデーション追加。ClassicalGKSLBosonSimulatorにg_eph=0厳密リダクション追加（フォノン分離の物理的厳密性に基づき高次元計算を回避）。追加テスト11件。56/56テスト通過。
 - v3.3.0 (2026-02-15): ハードウェアノイズモデル実装。QuditGKSLNoisySimulator（ローカル脱分極+位相緩和）とQubitGKSLNoisySimulator（ローカル脱分極+熱緩和）を新規作成。付録Cの設計仕様に基づくが、グローバル脱分極ではなくゲート単位のローカル脱分極チャネルを実装（物理的に正確）。各ノイズチャネルのCPTP性（トレース保存、Hermiticity保存、正定値性保存）をテストで検証。追加テスト22件。78/78テスト通過。
+- v3.4.0 (2026-02-15): MQT-Qudits実回路構築。QuditGKSLCircuitSimulatorを新規作成。ハミルトニアンをcu_one（局所位相）+cu_two（ペア移動）に分解、Stinespringをcu_two（単一サイト6×6）+cu_multi（TTAペア18×18）として構築。ローカルStinespringの厳密性を全26チャネルで検証（フル計算と完全一致）。MQT-Qudits tnsimバックエンド実行による回路検証。Classical-Qudit/Qubit収束テスト（n_steps=20で1e-3精度達成）。追加テスト14件。92/92テスト通過。

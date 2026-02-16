@@ -15,8 +15,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from classical_gksl_simulator import ClassicalGKSLSimulator
@@ -113,7 +111,7 @@ def run_verification_workflow(
                 )
             )
         except Exception as exc:  # noqa: BLE001
-            errors.append({"scenario": scenario, "error": str(exc)})
+            errors.append({"scenario": scenario, "error": f"{type(exc).__name__}: {exc}"})
 
     report = {
         "timestamp": timestamp,
@@ -143,6 +141,8 @@ def run_verification_workflow(
         f"- t_max: {t_max}",
         f"- n_steps: {n_steps}",
         f"- initial_state: {initial_state}",
+        "- 評価指標: max_trace_errorはTr(ρ)=1からの最大偏差、max_particle_errorはN_S0+N_T1+N_S1からN_moleculesの最大偏差。",
+        "- 合格目安: density_validation=PASS かつ max_trace_error, max_particle_errorが十分小さいこと。",
         "",
         "## シナリオ別結果",
         "",

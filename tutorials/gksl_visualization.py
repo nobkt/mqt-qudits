@@ -91,7 +91,15 @@ def compare_multiple_scenarios(results_dict, title=None, save_path=None):
 
 
 def plot_per_molecule_populations(result, title=None, save_path=None):
-    """Plot per-molecule S0/T1/S1 populations."""
+    """Plot per-molecule S0/T1/S1 populations.
+
+    Args:
+        result: Result dictionary containing `times` and
+            `per_molecule_populations`, where each entry has
+            `S0_per_mol`, `T1_per_mol`, and `S1_per_mol`.
+        title: Optional figure title.
+        save_path: Optional output image path.
+    """
     per_mol = result["per_molecule_populations"]
     times = result["times"]
     n_molecules = len(per_mol[0]["S0_per_mol"])
@@ -190,7 +198,14 @@ def plot_gksl_comparison(result_unitary, result_gksl, title=None, save_path=None
 
 
 def plot_entropy_dynamics(results_list, labels, title=None, save_path=None):
-    """Plot entropy dynamics for multiple result dictionaries."""
+    """Plot entropy dynamics for multiple result dictionaries.
+
+    Args:
+        results_list: List of result dictionaries containing `times` and `entropy`.
+        labels: List of labels corresponding to `results_list`.
+        title: Optional figure title.
+        save_path: Optional output image path.
+    """
     fig, ax = plt.subplots(figsize=(10, 6))
     for result, label in zip(results_list, labels):
         ax.plot(result["times"], result["entropy"], linewidth=2, label=label)
@@ -208,7 +223,16 @@ def plot_entropy_dynamics(results_list, labels, title=None, save_path=None):
 
 
 def plot_6scenario_comparison(results_dict, title=None, save_path=None):
-    """Plot a 2x3 comparison grid for six GKSL scenarios."""
+    """Plot a 2x3 comparison grid for six GKSL scenarios.
+
+    Args:
+        results_dict: Mapping from scenario name to result dictionary.
+            Supported keys are `Classical NB`, `Qubit NB`, `Qudit NB`,
+            `Classical B`, `Qubit B`, and `Qudit B`.
+            Missing scenarios are rendered as `Not implemented`.
+        title: Optional figure title.
+        save_path: Optional output image path.
+    """
     scenario_order = [
         ("Classical NB", 0, 0),
         ("Qubit NB", 0, 1),
@@ -229,7 +253,7 @@ def plot_6scenario_comparison(results_dict, title=None, save_path=None):
             ax.plot(times, [p["N_S1"] for p in result["populations"]], "g-", label="$N_{S_1}$", linewidth=2)
             ax.legend(fontsize=8)
         else:
-            ax.text(0.5, 0.5, "Not implemented", transform=ax.transAxes, ha="center", va="center")
+            ax.text(0.5, 0.5, "Not implemented", transform=ax.transAxes, ha="center", va="center", fontsize=11)
         ax.set_title(scenario_name, fontsize=11)
         ax.set_xlabel("Time ($\\hbar$/eV)")
         ax.set_ylabel("Population")

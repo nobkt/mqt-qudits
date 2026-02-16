@@ -7,7 +7,7 @@ from tutorials.gksl_visualization import (
 )
 
 
-def _sample_result() -> dict:
+def _create_sample_gksl_result() -> dict:
     return {
         "times": [0.0, 1.0],
         "populations": [
@@ -19,7 +19,7 @@ def _sample_result() -> dict:
 
 
 def test_plot_per_molecule_populations_returns_figure() -> None:
-    result = _sample_result()
+    result = _create_sample_gksl_result()
     result["per_molecule_populations"] = [
         {"S0_per_mol": [1.0, 1.0], "T1_per_mol": [0.5, 0.5], "S1_per_mol": [0.5, 0.5]},
         {"S0_per_mol": [1.1, 1.1], "T1_per_mol": [0.45, 0.45], "S1_per_mol": [0.45, 0.45]},
@@ -29,14 +29,14 @@ def test_plot_per_molecule_populations_returns_figure() -> None:
 
 
 def test_plot_entropy_dynamics_returns_figure() -> None:
-    result_a = _sample_result()
-    result_b = _sample_result()
+    result_a = _create_sample_gksl_result()
+    result_b = _create_sample_gksl_result()
     result_b["entropy"] = [0.0, 0.2]
     fig = plot_entropy_dynamics([result_a, result_b], ["A", "B"], title="entropy")
     assert fig is not None
 
 
-def test_plot_6scenario_comparison_returns_figure_with_partial_inputs() -> None:
-    result = _sample_result()
+def test_plot_6scenario_comparison_returns_figure() -> None:
+    result = _create_sample_gksl_result()
     fig = plot_6scenario_comparison({"Classical NB": result, "Qudit NB": result}, title="6 scenarios")
     assert fig is not None

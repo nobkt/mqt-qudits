@@ -628,4 +628,64 @@ $g_{\text{eph}} = 0$のとき、フォノン自由度は電子系から完全に
 
 1. **パフォーマンス最適化**: 疎行列実装、並列計算はスコープ外。現在の実装は密行列を使用しており、N>4の大規模系では計算時間とメモリが問題になる。
 2. **cu_multi→2-quditゲート分解**: MQT-Quditsコンパイラが3-qudit以上のゲート分解をサポートしていないため、TTA Stinespringのcu_multi（18×18）は現時点でネイティブゲートに分解できない。これはフレームワーク側の拡張を待つ必要がある。
-3. **Qiskit実回路構築（Qubit側）**: QubitGKSLSimulatorのQiskit実回路構築は未実装。MQT-Qudits側の実回路はQuditGKSLCircuitSimulatorで完了。
+3. ~~**Qiskit実回路構築（Qubit側）**: QubitGKSLSimulatorのQiskit実回路構築は未実装。MQT-Qudits側の実回路はQuditGKSLCircuitSimulatorで完了。~~ ✅ 本PRで完了（§11参照）
+
+---
+
+## 11. 本PRでの追加実装（2026-02-16）
+
+### 11.1 QubitGKSLCircuitSimulator（Qiskit実回路構築）✅
+
+- **ファイル**: `tutorials/qubit_gksl_circuit_simulator.py`
+- **概要**: QiskitのQuantumCircuit APIを使用した実量子回路構築。QubitGKSLSimulator（マトリクスレベル）をQiskit回路として再構成。
+
+#### 11.1.1 回路分解
+
+**ハミルトニアン回路:**
+- **UnitaryGate (4×4)**: 各分子の局所位相回転。qutrit→qubit埋め込み（|00⟩=S0, |01⟩=T1, |10⟩=S1, |11⟩=forbidden→identity）。4ゲート/半ステップ。
+- **UnitaryGate (16×16)**: 最近接ペアのエネルギー移動。qutrit対9×9→qubit対16×16埋め込み。3ゲート/半ステップ。
+
+**Stinespring回路:**
+- **UnitaryGate (8×8)**: 単一サイトLindblad演算子のStinespring dilation。qutrit+ancilla 6×6→qubit+ancilla 8×8埋め込み（3 qubit）。20ゲート/ステップ。
+- **UnitaryGate (32×32)**: TTAペアLindblad演算子のStinespring dilation。qutrit対+ancilla 18×18→qubit対+ancilla 32×32埋め込み（5 qubit）。6ゲート/ステップ。
+
+**1 Trotterステップあたりのゲート数: 40**（QuditGKSLCircuitSimulatorと同数）
+
+#### 11.1.2 qutrit→qubit埋め込みの厳密性
+
+全ての埋め込みは以下の性質を保存する:
+- **ユニタリ性**: 埋め込み後のqubit行列がユニタリ（||U†U - I||_F < 1e-10、全ゲートで検証済み）
+- **物理的部分空間の保存**: 禁止状態|11⟩はidentityにマッピング（リーク無し）
+- **テンソル積構造**: ローカルKraus演算子はqutrit空間で構築し、テンソル積で全系に埋め込み
+
+#### 11.1.3 Qiskit回路検証
+
+- Qiskit `Operator` クラスによる回路演算子の抽出
+- qubit空間で直接計算した期待値演算子との比較: Frobenius距離 = 1.2×10⁻¹⁵（浮動小数点精度）
+- マトリクスシミュレータ（QubitGKSLSimulator）との個体数一致: 最大差 8.9×10⁻⁶ < 1e-3
+
+#### 11.1.4 Qiskitトランスパイル
+
+`transpile_to_basic_gates()` メソッドにより、UnitaryGateをQiskitの基本ゲートセット（CX, Rz, SX等）に分解可能。
+
+### 11.2 追加テスト（10件）✅
+
+| テスト名 | 内容 | 結果 |
+|---------|------|------|
+| test_initialization | 正しい初期化（N=4, d=3, 26 Lindblad演算子） | PASS |
+| test_boson_rejected | ボソンパラメータでValueError | PASS |
+| test_embedding_unitarity | 全埋め込みユニタリの検証 | PASS |
+| test_qiskit_circuit_matches_operator | Qiskit回路演算子と直接計算の一致 | PASS |
+| test_trace_preservation | トレース保存（< 1e-10） | PASS |
+| test_circuit_matches_matrix_simulator | 回路シミュレータがマトリクスシミュレータと1e-3で一致 | PASS |
+| test_gate_breakdown | ゲート内訳が正しい（40ゲート/ステップ） | PASS |
+| test_method_label | メソッドラベルが"qubit_gksl_circuit" | PASS |
+| test_build_full_trotter_step_circuit | フルTrotterステップ回路の構築と統計 | PASS |
+| test_qubit_circuit_info | qubitリソース情報（8系qubit + 26 ancilla = 34） | PASS |
+
+**テスト合計: 117/117 通過**（既存107 + 新規10）
+
+### 11.3 残存する未完了項目
+
+1. **パフォーマンス最適化**: 疎行列実装、並列計算はスコープ外。
+2. **cu_multi→2-quditゲート分解**: MQT-Quditsコンパイラの制限により未分解。

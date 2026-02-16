@@ -4173,7 +4173,7 @@ plot_gksl_comparison(result_unitary, result1,
 
 **フェーズ3（PR#145）: シナリオ3 + 可視化**
 - [x] qubit_gksl_simulator.py実装
-- [ ] Qiskit回路構築（マトリクスレベルシミュレーションで実装済み、Qiskit実回路構築は未実装。Quditの実回路構築はMQT-Quditsで完了）
+- [x] Qiskit回路構築（本PRで実装：QubitGKSLCircuitSimulatorとしてQiskit QuantumCircuit APIによる実回路構築を実装。UnitaryGateによるqutrit→qubit埋め込み、Qiskit Operatorによる検証）
 - [x] gksl_visualization.py実装
 - [x] 3シナリオの比較プロット（可視化関数実装済み）
 - [ ] ドキュメント整備
@@ -4712,3 +4712,4 @@ $$
 - v3.3.0 (2026-02-15): ハードウェアノイズモデル実装。QuditGKSLNoisySimulator（ローカル脱分極+位相緩和）とQubitGKSLNoisySimulator（ローカル脱分極+熱緩和）を新規作成。付録Cの設計仕様に基づくが、グローバル脱分極ではなくゲート単位のローカル脱分極チャネルを実装（物理的に正確）。各ノイズチャネルのCPTP性（トレース保存、Hermiticity保存、正定値性保存）をテストで検証。追加テスト22件。78/78テスト通過。
 - v3.4.0 (2026-02-15): MQT-Qudits実回路構築。QuditGKSLCircuitSimulatorを新規作成。ハミルトニアンをcu_one（局所位相）+cu_two（ペア移動）に分解、Stinespringをcu_two（単一サイト6×6）+cu_multi（TTAペア18×18）として構築。ローカルStinespringの厳密性を全26チャネルで検証（フル計算と完全一致）。MQT-Qudits tnsimバックエンド実行による回路検証。Classical-Qudit/Qubit収束テスト（n_steps=20で1e-3精度達成）。追加テスト14件。92/92テスト通過。
 - v3.5.0 (2026-02-15): ネイティブゲート分解とボソン回路構築。compile_to_native_gates()メソッドでcu_one/cu_twoをMQT-Quditsネイティブゲートセット（VirtRz, R, Rh, Rz, CEx）に分解（cu_multiはMQT-Quditsコンパイラの制限により未分解）。QuditGKSLCircuitBosonSimulatorを新規作成（電子+フォノンqutrit空間での回路ベースGKSLシミュレーション、g_eph=0厳密リダクション付き）。マトリクスボソンシミュレータとの一致を浮動小数点精度で検証。追加テスト15件。107/107テスト通過。
+- v3.6.0 (2026-02-16): Qiskit実回路構築。QubitGKSLCircuitSimulatorを新規作成。QiskitのQuantumCircuit APIとUnitaryGateを使用し、qutrit→qubit埋め込み（4×4 on-site, 16×16 transfer, 8×8/32×32 Stinespring）によるQubit GKSL回路を構築。Qiskit Operatorによる回路検証（Frobenius距離 1.2e-15）。マトリクスシミュレータとの一致（個体数差 < 1e-5）。transpile_to_basic_gates()でQiskitネイティブゲート分解。追加テスト10件。117/117テスト通過。

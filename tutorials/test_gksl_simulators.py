@@ -1311,3 +1311,128 @@ class TestQuditGKSLCircuitBosonSimulator:
         sim = QuditGKSLCircuitBosonSimulator(params)
         with pytest.raises(ValueError, match="edge_triplet"):
             sim.prepare_initial_state("edge_triplet")
+
+
+# ================================================================
+# Qubit GKSL Circuit Simulator (Qiskit) tests
+# ================================================================
+
+
+class TestQubitGKSLCircuitSimulator:
+    """Tests for the Qiskit circuit-based Qubit GKSL simulator."""
+
+    def test_initialization(self):
+        """Circuit simulator initializes with correct operators."""
+        from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QubitGKSLCircuitSimulator(params)
+        assert sim.N == 4
+        assert sim.d == 3
+        assert sim.dim == 81
+        assert len(sim.lindblad_local_info) == 26
+
+    def test_boson_rejected(self):
+        """Circuit simulator rejects boson parameters."""
+        from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters(with_boson=True)
+        with pytest.raises(ValueError, match="non-boson"):
+            QubitGKSLCircuitSimulator(params)
+
+    def test_embedding_unitarity(self):
+        """All embedded qubit unitaries are unitary."""
+        from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QubitGKSLCircuitSimulator(params)
+        v = sim.verify_embedding_unitarity(0.5)
+        assert v["all_unitary"]
+        assert v["onsite_unitarity_residual"] < 1e-10
+        assert v["transfer_max_unitarity_residual"] < 1e-10
+        assert v["stinespring_single_max_unitarity_residual"] < 1e-10
+        assert v["stinespring_pair_max_unitarity_residual"] < 1e-10
+
+    def test_qiskit_circuit_matches_operator(self):
+        """Qiskit circuit operator matches direct computation."""
+        from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QubitGKSLCircuitSimulator(params)
+        v = sim.verify_circuit_via_qiskit(0.5)
+        assert v["match"]
+        assert v["operator_distance"] < 1e-8
+
+    def test_trace_preservation(self):
+        """Circuit-based simulation preserves trace."""
+        from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QubitGKSLCircuitSimulator(params)
+        result = sim.simulate(t_max=5.0, n_steps=5)
+        for tr in result["trace"]:
+            assert abs(tr - 1.0) < 1e-10
+
+    def test_circuit_matches_matrix_simulator(self):
+        """Circuit simulator matches matrix-level QubitGKSLSimulator."""
+        from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
+        from qubit_gksl_simulator import QubitGKSLSimulator
+
+        params = GKSLPhysicalParameters()
+        sim_matrix = QubitGKSLSimulator(params)
+        sim_circuit = QubitGKSLCircuitSimulator(params)
+
+        r_m = sim_matrix.simulate(t_max=5.0, n_steps=5)
+        r_c = sim_circuit.simulate(t_max=5.0, n_steps=5)
+
+        for key in ["N_S0", "N_T1", "N_S1"]:
+            diff = abs(r_m["populations"][-1][key] - r_c["populations"][-1][key])
+            assert diff < 1e-3, f"{key} mismatch: {diff}"
+
+    def test_gate_breakdown(self):
+        """Gate breakdown is reported correctly."""
+        from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QubitGKSLCircuitSimulator(params)
+        result = sim.simulate(t_max=5.0, n_steps=5)
+        gb = result["gate_breakdown"]
+        N = params.N_molecules
+        n_pairs = len(params.neighbors)
+        n_single = 5 * N
+        n_pair_ops = 2 * n_pairs
+        assert gb["unitary_4x4_onsite"] == 2 * N
+        assert gb["unitary_16x16_transfer"] == 2 * n_pairs
+        assert gb["unitary_8x8_stinespring_single"] == n_single
+        assert gb["unitary_32x32_stinespring_pair"] == n_pair_ops
+        assert result["gates_per_step"] == 2 * (N + n_pairs) + n_single + n_pair_ops
+
+    def test_method_label(self):
+        """Result contains correct method label."""
+        from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QubitGKSLCircuitSimulator(params)
+        result = sim.simulate(t_max=5.0, n_steps=5)
+        assert result["method"] == "qubit_gksl_circuit"
+
+    def test_build_full_trotter_step_circuit(self):
+        """Full Trotter step circuit construction reports correct counts."""
+        from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QubitGKSLCircuitSimulator(params)
+        info = sim.build_full_trotter_step_circuit(dt=1.0)
+        assert info["total_gates"] == 40
+        assert info["n_stinespring_gates"] == 26
+
+    def test_qubit_circuit_info(self):
+        """Simulation result includes correct qubit resource info."""
+        from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
+
+        params = GKSLPhysicalParameters()
+        sim = QubitGKSLCircuitSimulator(params)
+        result = sim.simulate(t_max=1.0, n_steps=2)
+        assert result["n_system_qubits"] == 2 * params.N_molecules
+        assert result["n_ancilla_qubits"] == 26
+        assert result["n_total_qubits"] == 2 * params.N_molecules + 26

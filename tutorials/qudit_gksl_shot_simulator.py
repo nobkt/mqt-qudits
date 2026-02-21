@@ -263,7 +263,8 @@ class QuditGKSLShotSimulator:
 
         elapsed = time_module.time() - start
 
-        gates_per_step = 4 + 3 + 26  # same as QuditGKSLSimulator
+        # 4 VirtRz (H_0 diagonal) + 3 CustomTwo (NN transfer) + 26 Stinespring channels
+        gates_per_step = 4 + 3 + 26
 
         return {
             "times": times,
@@ -337,11 +338,11 @@ def _apply_stochastic_depolarization_single(
     if r < p_identity:
         return psi
 
-    # Select random non-identity Weyl-Heisenberg operator
+    # Select random non-identity Weyl-Heisenberg operator X^a Z^b.
+    # error_idx in [0, d^2-2] maps to ab in [1, d^2-1] (skipping identity at ab=0).
+    # ab encodes (a, b) as ab = a*d + b, giving d^2-1 non-identity operators.
     error_idx = rng.integers(0, d * d - 1)
-    # Map error_idx to (a, b) excluding (0, 0)
-    # indices 0..d^2-2 map to (a,b) in {(0,1), (0,2), ..., (d-1, d-1)}
-    ab = error_idx + 1  # skip (0,0)
+    ab = error_idx + 1
     a = ab // d
     b = ab % d
     return _apply_weyl_heisenberg_single_site(psi, site, a, b, d, N)

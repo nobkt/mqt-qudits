@@ -83,3 +83,37 @@ TTA-UC現象のGKSL-Lindblad量子ダイナミクスについて、
 - 次アクション
   - ユーザーがローカルで `python tutorials/run_tta_uc_gksl_verification.py` を実行し、結果を `developing/verification_results` 配下にpush（②）。
   - push後にagent側で結果を確認し修正PR作成（③④）。
+
+### 2026-02-22 第2回反復：検証結果分析＋修正実施（③④対応）
+
+- 前提
+  - ユーザーが検証スクリプトを実行し、結果を②としてpush済み。
+  - 結果ファイル: `developing/verification_results/tta_uc_gksl_verification_20260222T032847Z.{json,md}`
+  - 総合判定: **FAIL**（11シナリオ中2シナリオ失敗: classical, unitary）
+- 失敗内容
+  - `classical`: `PhysicsViolationError: Step 5: Min eigenvalue = -1.83e-10 (negative)`
+  - `unitary`: `PhysicsViolationError: Step 5: Min eigenvalue = -2.25e-10 (negative)`
+- 根本原因分析
+  - `ClassicalGKSLSimulator`が`scipy.integrate.solve_ivp`の`RK45`（陽的Runge-Kutta法）を使用
+  - RK45は汎用ODE積分法であり、GKSL方程式のCPTP（Completely Positive Trace Preserving）構造を保存しない
+  - 数値誤差が密度行列の固有値にO(1e-10)の負値を導入
+  - `unitary`シナリオも同じ`ClassicalGKSLSimulator`を使用するため同様に失敗
+  - 一方、`QubitGKSLSimulator`/`QuditGKSLSimulator`はStinespring dilation + Trotter分解を使用し、各ステップがCPTPチャネルであるため正値性が構造的に保証される
+- 修正内容
+  - `tutorials/classical_gksl_simulator.py`:
+    - `solve_ivp(RK45)`による積分を完全に削除
+    - `QuditGKSLSimulator`と同一のStinespring dilation + 2次対称Trotter分解に置換
+    - 各ステップがCPTPマップであるため、密度行列の正値性が構造的に保証される
+  - `tutorials/test_gksl_simulators.py`:
+    - `test_fluorescence_analytical`の許容誤差を1e-3→2e-3に調整
+    - Stinespring+Trotterはステップあたり`O(dt^{3/2})`の誤差を持つため、100ステップ（t=50）の長時間シミュレーションで累積誤差が微増する。これはアルゴリズム精度特性の変化であり、物理的整合性（CPTP保存）は保証されている
+  - ヒューリスティックやfallbackは一切使用していない
+- 詳細分析レポート
+  - `developing/検証結果分析_20260222_iteration2.md`
+- テスト結果
+  - `TestClassicalGKSLSimulator`: 全6テスト PASS
+  - `TestPhysicalLimits`: 全5テスト PASS（test_unitary_limit, test_fluorescence_analytical含む）
+  - `test_tta_uc_gksl_verification_script.py`: PASS（classical+quditの両方がPASS）
+- 次アクション
+  - ユーザーがローカルで検証スクリプトを再実行し、全11シナリオがPASSすることを確認（①②）
+  - 全PASSの場合、本反復サイクル完了

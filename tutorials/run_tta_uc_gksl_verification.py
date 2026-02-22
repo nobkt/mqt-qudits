@@ -252,15 +252,19 @@ def _compute_fidelities(
             rho_b = rho_map[name_b]
             if rho_a.shape != rho_b.shape:
                 continue
+            error_msg = None
             try:
                 f_val = quantum_fidelity(rho_a, rho_b)
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
                 f_val = None
+                error_msg = f"{type(exc).__name__}: {exc}"
+                print(f"  WARNING: fidelity({name_a}, {name_b}) failed: {error_msg}")
             fidelities.append({
                 "scenario_a": name_a,
                 "scenario_b": name_b,
                 "dim": int(rho_a.shape[0]),
                 "fidelity": float(f_val) if f_val is not None else None,
+                "error": error_msg,
             })
     return fidelities
 
@@ -465,7 +469,14 @@ def _build_markdown_report(
         ])
         for f in report["fidelities"]:
             f_str = f"{f['fidelity']:.6f}" if f["fidelity"] is not None else "N/A"
-            md.append(f"| {f['scenario_a']} | {f['scenario_b']} | {f['dim']} | {f_str} |")
+            err_note = f" ({f['error']})" if f.get("error") else ""
+            md.append(f"| {f['scenario_a']} | {f['scenario_b']} | {f['dim']} | {f_str}{err_note} |")
+        has_na = any(f["fidelity"] is None for f in report["fidelities"])
+        if has_na:
+            md.extend([
+                "",
+                "> N/A: 忠実度計算が失敗した組合せ。原因は数値的不安定性や計算エラー。",
+            ])
         md.append("")
 
     # Unitary analysis

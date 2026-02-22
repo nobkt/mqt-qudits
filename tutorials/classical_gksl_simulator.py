@@ -1,8 +1,9 @@
 """Classical GKSL-Lindblad simulator (Scenario 1: no boson interaction).
 
-Uses scipy.integrate.solve_ivp to integrate the GKSL master equation
-directly in density-matrix form (not the full superoperator), keeping
-memory usage manageable for 4-molecule, 3-level systems (dim=81).
+Uses Stinespring dilation + 2nd-order Trotter decomposition to integrate
+the GKSL master equation.  Each step is a CPTP (Completely Positive,
+Trace Preserving) map by construction, guaranteeing that density-matrix
+positivity is preserved throughout the evolution.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ import sys
 import time as time_module
 
 import numpy as np
-from scipy.integrate import solve_ivp
+from scipy.linalg import expm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -23,21 +24,25 @@ from gksl_math_utils import (
     compute_populations_from_density_matrix,
     compute_purity,
     compute_von_neumann_entropy,
-    unvectorize_density_matrix,
-    vectorize_density_matrix,
 )
 from gksl_physical_parameters import GKSLPhysicalParameters
 from gksl_validation import PhysicsViolationError, validate_density_matrix  # noqa: F401
+from stinespring_utils import (
+    apply_stinespring_to_density_matrix,
+    stinespring_unitary_from_lindblad,
+)
 
 
 class ClassicalGKSLSimulator:
     """Integrate the GKSL master equation for the non-boson model.
 
-    The right-hand side is evaluated with the direct matrix approach:
+    Uses Stinespring dilation + 2nd-order symmetric Trotter decomposition:
 
-        dρ/dt = -i[H, ρ] + Σ_α (L_α ρ L_α† − ½{L_α†L_α, ρ})
+        exp(L dt) ≈ exp(L_H dt/2) ∏_α exp(L_D_α dt) exp(L_H dt/2)
 
-    where each L_α already contains the √γ factor.
+    where each Hamiltonian step is a unitary channel and each Lindblad
+    channel is implemented via Stinespring dilation.  Both are CPTP by
+    construction, so density-matrix positivity is guaranteed.
     """
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
@@ -51,17 +56,35 @@ class ClassicalGKSLSimulator:
         self.lindblad_ops = build_lindblad_operators(params)
 
     # ------------------------------------------------------------------
-    # RHS of the master equation
+    # Trotter step primitives
     # ------------------------------------------------------------------
 
-    def _gksl_rhs(self, rho: np.ndarray) -> np.ndarray:
-        """Compute dρ/dt = -i[H, ρ] + Σ_α D[L_α](ρ)."""
-        H = self.H_total
-        drho = -1j * (H @ rho - rho @ H)
+    def _apply_hamiltonian_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
+        """Apply unitary Hamiltonian evolution: ρ → e^{-iHdt} ρ e^{iHdt}."""
+        U = expm(-1j * self.H_total * dt)
+        return U @ rho @ U.conj().T
+
+    @staticmethod
+    def _apply_lindblad_stinespring(
+        rho: np.ndarray, L_op: np.ndarray, dt: float
+    ) -> np.ndarray:
+        """Apply a single Lindblad channel via Stinespring dilation."""
+        U = stinespring_unitary_from_lindblad(L_op, dt)
+        return apply_stinespring_to_density_matrix(rho, U)
+
+    def _trotter_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
+        """2nd-order symmetric Trotter step.
+
+        exp(L dt) ≈ exp(L_H dt/2) ∏_α exp(L_D_α dt) exp(L_H dt/2)
+        """
+        # Half Hamiltonian
+        rho = self._apply_hamiltonian_step(rho, dt / 2)
+        # All Lindblad channels
         for L_op, _gamma in self.lindblad_ops:
-            LdL = L_op.conj().T @ L_op
-            drho += L_op @ rho @ L_op.conj().T - 0.5 * (LdL @ rho + rho @ LdL)
-        return drho
+            rho = self._apply_lindblad_stinespring(rho, L_op, dt)
+        # Half Hamiltonian
+        rho = self._apply_hamiltonian_step(rho, dt / 2)
+        return rho
 
     # ------------------------------------------------------------------
     # Initial state preparation
@@ -128,40 +151,21 @@ class ClassicalGKSLSimulator:
         """
         start = time_module.time()
 
-        rho_0 = self.prepare_initial_state(initial_state)
-        dim = rho_0.shape[0]
+        dt = t_max / n_steps
+        rho = self.prepare_initial_state(initial_state)
 
-        y0 = vectorize_density_matrix(rho_0)
-        t_eval = np.linspace(0, t_max, n_steps + 1)
+        times: list[float] = [0.0]
+        populations: list[dict] = [
+            compute_populations_from_density_matrix(rho, self.params)
+        ]
+        entropies: list[float] = [compute_von_neumann_entropy(rho)]
+        purities: list[float] = [compute_purity(rho)]
+        traces: list[float] = [float(np.real(np.trace(rho)))]
 
-        def ode_func(_t: float, y: np.ndarray) -> np.ndarray:
-            rho = unvectorize_density_matrix(y, dim)
-            drho = self._gksl_rhs(rho)
-            return vectorize_density_matrix(drho)
+        for step in range(n_steps):
+            rho = self._trotter_step(rho, dt)
 
-        sol = solve_ivp(
-            ode_func,
-            [0, t_max],
-            y0,
-            t_eval=t_eval,
-            method="RK45",
-            rtol=1e-9,
-            atol=1e-12,
-        )
-
-        if not sol.success:
-            raise RuntimeError(f"ODE solver failed: {sol.message}")
-
-        # ---- Post-processing ----
-        times: list[float] = sol.t.tolist()
-        populations: list[dict] = []
-        entropies: list[float] = []
-        purities: list[float] = []
-        traces: list[float] = []
-
-        for k in range(len(times)):
-            rho = unvectorize_density_matrix(sol.y[:, k], dim)
-
+            times.append((step + 1) * dt)
             traces.append(float(np.real(np.trace(rho))))
             populations.append(
                 compute_populations_from_density_matrix(rho, self.params)
@@ -169,7 +173,6 @@ class ClassicalGKSLSimulator:
             entropies.append(compute_von_neumann_entropy(rho))
             purities.append(compute_purity(rho))
 
-        rho_final = unvectorize_density_matrix(sol.y[:, -1], dim)
         elapsed = time_module.time() - start
 
         return {
@@ -178,7 +181,7 @@ class ClassicalGKSLSimulator:
             "entropy": entropies,
             "purity": purities,
             "trace": traces,
-            "rho_final": rho_final,
+            "rho_final": rho,
             "elapsed_time": elapsed,
             "method": "classical_gksl",
             "params": self.params.to_dict(),

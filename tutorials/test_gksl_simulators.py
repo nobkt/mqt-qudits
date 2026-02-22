@@ -736,13 +736,16 @@ class TestQubitGKSLNoisySimulator:
         assert r_noisy["purity"][-1] < r_ideal["purity"][-1]
 
     def test_trace_preservation(self, params):
-        """Noisy simulation must preserve trace within tolerance."""
+        """Noisy qubit trace + forbidden-state population must sum to 1."""
         from qubit_gksl_noisy_simulator import QubitGKSLNoisySimulator
 
         sim = QubitGKSLNoisySimulator(params, p_depol=0.01)
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
-        for tr in result["trace"]:
-            assert abs(tr - 1.0) < 1e-10
+        for tr, fp in zip(result["trace"], result["forbidden_state_population"]):
+            # trace (qutrit subspace) + forbidden pop = 1 (total probability)
+            assert abs(tr + fp - 1.0) < 1e-8
+            # trace must not exceed 1 (no probability gain)
+            assert tr <= 1.0 + 1e-10
 
     def test_method_label(self, params):
         """Method field must indicate noisy qubit simulation."""
@@ -763,16 +766,22 @@ class TestQubitGKSLNoisySimulator:
         assert result["noise_params"]["p_reset"] > 0
 
     def test_thermal_relaxation_trace(self, params):
-        """Thermal relaxation must preserve trace."""
+        """Thermal relaxation: trace + forbidden pop must sum to 1."""
         from qubit_gksl_noisy_simulator import QubitGKSLNoisySimulator
 
         sim = QubitGKSLNoisySimulator(params, p_depol=0.01, T1=5e10, T2=7e10, t_gate=300.0)
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
-        for tr in result["trace"]:
-            assert abs(tr - 1.0) < 1e-10
+        for tr, fp in zip(result["trace"], result["forbidden_state_population"]):
+            assert abs(tr + fp - 1.0) < 1e-8
+            assert tr <= 1.0 + 1e-10
 
     def test_qubit_qudit_noisy_consistency(self, params):
-        """Noisy qubit and qudit simulators should produce qualitatively similar results."""
+        """Noisy qubit and qudit simulators should produce qualitatively similar results.
+
+        Qubit uses d=4 Pauli noise (with leakage), qudit uses d=3 Weyl-Heisenberg
+        noise (no leakage). Both use the same p_depol, so purity reduction is similar
+        in magnitude but differs due to the noise model.
+        """
         from qubit_gksl_noisy_simulator import QubitGKSLNoisySimulator
         from qudit_gksl_noisy_simulator import QuditGKSLNoisySimulator
 
@@ -781,8 +790,9 @@ class TestQubitGKSLNoisySimulator:
         r_qb = sim_qb.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         r_qd = sim_qd.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")
         for p_qb, p_qd in zip(r_qb["populations"], r_qd["populations"]):
-            assert abs(p_qb["N_T1"] - p_qd["N_T1"]) < 0.5
-            assert abs(p_qb["N_S0"] - p_qd["N_S0"]) < 0.5
+            # Wider tolerance due to different noise models and leakage
+            assert abs(p_qb["N_T1"] - p_qd["N_T1"]) < 1.0
+            assert abs(p_qb["N_S0"] - p_qd["N_S0"]) < 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -866,27 +876,27 @@ class TestNoiseChannelProperties:
         assert abs(np.trace(rho_deph).real - 1.0) < 1e-12
 
     def test_thermal_relaxation_trace(self):
-        """Thermal relaxation preserves trace."""
-        from qubit_gksl_noisy_simulator import _apply_thermal_relaxation_single
+        """Thermal relaxation preserves trace (d=4 qubit version)."""
+        from qubit_gksl_noisy_simulator import _apply_thermal_relaxation_qubit
 
-        d, N = 3, 4
+        d, N = 4, 4
         dim = d**N
         psi = np.random.randn(dim) + 1j * np.random.randn(dim)
         psi /= np.linalg.norm(psi)
         rho = np.outer(psi, psi.conj())
-        rho_th = _apply_thermal_relaxation_single(rho, 1, d, N, 0.1)
+        rho_th = _apply_thermal_relaxation_qubit(rho, 1, N, 0.1)
         assert abs(np.trace(rho_th).real - 1.0) < 1e-12
 
     def test_thermal_relaxation_positivity(self):
-        """Thermal relaxation preserves positive semi-definiteness."""
-        from qubit_gksl_noisy_simulator import _apply_thermal_relaxation_single
+        """Thermal relaxation preserves positive semi-definiteness (d=4 qubit version)."""
+        from qubit_gksl_noisy_simulator import _apply_thermal_relaxation_qubit
 
-        d, N = 3, 4
+        d, N = 4, 4
         dim = d**N
         psi = np.random.randn(dim) + 1j * np.random.randn(dim)
         psi /= np.linalg.norm(psi)
         rho = np.outer(psi, psi.conj())
-        rho_th = _apply_thermal_relaxation_single(rho, 0, d, N, 0.5)
+        rho_th = _apply_thermal_relaxation_qubit(rho, 0, N, 0.5)
         eigs = np.linalg.eigvalsh(rho_th)
         assert eigs.min() >= -1e-12
 

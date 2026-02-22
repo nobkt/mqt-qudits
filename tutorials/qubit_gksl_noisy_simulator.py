@@ -3,26 +3,18 @@
 Scenario 8: Qubit-based GKSL-Lindblad with hardware depolarization + thermal relaxation.
 
 Extends QubitGKSLSimulator by applying per-gate local noise channels after
-each 2-qubit gate operation in the Trotter step. Since the matrix-level
-simulation operates in the 81-dim qutrit Hilbert space, the depolarization
-is applied as a local qutrit-space channel on the molecule subsystem(s)
-involved in each gate.
+each gate operation in the Trotter step. The simulation runs in the 4^N = 256
+dimensional qubit-encoded space, using d=4 depolarization per molecule (equivalent
+to d=2 Pauli depolarization on each physical qubit pair).
 
 Physical distinction:
   - Lindblad dissipators (TTA, fluorescence, etc.) model real physical processes
   - Hardware noise (depolarization, thermal relaxation) models gate imperfections
   These are conceptually independent and both included in this simulator.
 
-Noise channels (2-qubit gates only; 1-qubit gates are ideal):
-  - Depolarization: per-gate local depolarization on the molecule subsystem(s)
-  - Thermal relaxation: amplitude damping toward |S0> (ground state) per molecule,
-    modeling T1 energy decay during gate execution
-
-Gate-noise mapping for the Trotter step:
-  - Hamiltonian transfer: one local pair depolarization per nearest-neighbor pair
-  - Stinespring channel: one local depolarization on the acted subsystem
-    (single molecule for site-local operators, molecule pair for TTA)
-  - Thermal relaxation: applied per molecule after each Trotter step
+Noise channels use d=4 Pauli operators on the 2-qubit encoding of each molecule.
+This correctly models forbidden-state (|11>) leakage from qubit hardware noise,
+which is absent in the native qutrit (d=3) encoding.
 """
 
 from __future__ import annotations
@@ -35,91 +27,171 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gksl_physical_parameters import GKSLPhysicalParameters
 from qubit_gksl_simulator import QubitGKSLSimulator
-from qudit_gksl_noisy_simulator import (
-    _apply_local_depolarization_pair,
-    _apply_local_depolarization_single,
-)
 
 
-def _apply_thermal_relaxation_single(
-    rho: np.ndarray, site: int, d: int, N: int, p_reset: float
+def _apply_local_depolarization_single_qubit(
+    rho: np.ndarray, site: int, N: int, p: float
 ) -> np.ndarray:
-    """Apply thermal relaxation (amplitude damping toward |0>) on a single molecule.
+    """Apply d=4 depolarization on a single molecule in 4^N qubit space.
 
-    Models T1 energy decay during gate execution. In the qutrit encoding
-    (|0>=S0, |1>=T1, |2>=S1), thermal relaxation causes transitions
-    |1> -> |0> and |2> -> |0> with probability p_reset.
+    E_site[rho] = (1-p) rho + p/d * I_site ⊗ Tr_site[rho]
 
-    Kraus operators for molecule k (in the {|0>,|1>,|2>} basis):
-      K0 = diag(1, sqrt(1-p), sqrt(1-p))  (no decay)
-      K1 = sqrt(p) * |0><1|  (T1 -> S0)
-      K2 = sqrt(p) * |0><2|  (S1 -> S0)
+    where d=4 is the local 2-qubit dimension per molecule.
+    This can cause forbidden-state leakage via the I_site term.
+    """
+    if p <= 0.0:
+        return rho
+    d = 4  # local dimension per molecule (2 qubits)
+    dim = d**N
+    rho_tensor = rho.reshape([d] * (2 * N))
 
-    Parameters:
-        rho: d^N × d^N density matrix
-        site: molecule index
-        d: local dimension (3)
-        N: number of molecules
-        p_reset: reset probability = 1 - exp(-t_gate/T1)
+    # Partial trace over 'site': contract ket[site] with bra[site]
+    rho_rest = np.trace(rho_tensor, axis1=site, axis2=N + site)
+
+    # Construct I_site/d ⊗ rho_rest
+    mixed = np.zeros_like(rho_tensor)
+    for m in range(d):
+        idx = [slice(None)] * (2 * N)
+        idx[site] = m
+        idx[N + site] = m
+        mixed[tuple(idx)] = rho_rest / d
+
+    return ((1 - p) * rho_tensor + p * mixed).reshape(dim, dim)
+
+
+def _apply_local_depolarization_pair_qubit(
+    rho: np.ndarray, site_a: int, site_b: int, N: int, p: float
+) -> np.ndarray:
+    """Apply d=16 depolarization on a molecule pair in 4^N qubit space.
+
+    E_{a,b}[rho] = (1-p) rho + p/d^2 * I_{a,b} ⊗ Tr_{a,b}[rho]
+
+    where d=4 and d^2=16 is the joint pair dimension.
+    """
+    if p <= 0.0:
+        return rho
+    d = 4
+    dim = d**N
+    d_pair = d * d  # 16
+    rho_tensor = rho.reshape([d] * (2 * N))
+
+    # Partial trace over sites a and b
+    rho_rest_sum = None
+    for ma in range(d):
+        for mb in range(d):
+            idx = [slice(None)] * (2 * N)
+            idx[site_a] = ma
+            idx[N + site_a] = ma
+            idx[site_b] = mb
+            idx[N + site_b] = mb
+            block = rho_tensor[tuple(idx)]
+            if rho_rest_sum is None:
+                rho_rest_sum = block.copy()
+            else:
+                rho_rest_sum = rho_rest_sum + block
+
+    # Construct I_{a,b}/d^2 ⊗ rho_rest
+    mixed = np.zeros_like(rho_tensor)
+    for ka in range(d):
+        for kb in range(d):
+            idx = [slice(None)] * (2 * N)
+            idx[site_a] = ka
+            idx[N + site_a] = ka
+            idx[site_b] = kb
+            idx[N + site_b] = kb
+            mixed[tuple(idx)] = rho_rest_sum / d_pair
+
+    return ((1 - p) * rho_tensor + p * mixed).reshape(dim, dim)
+
+
+def _apply_thermal_relaxation_qubit(
+    rho: np.ndarray, site: int, N: int, p_reset: float
+) -> np.ndarray:
+    """Apply 2-qubit thermal relaxation on a molecule in 4^N qubit space.
+
+    Models independent T1 relaxation on each physical qubit of the molecule's
+    2-qubit encoding. Each qubit independently decays to |0> with probability
+    p_reset.
+
+    4x4 Kraus operators for the 2-qubit encoding |b1 b0>:
+      K_00 = diag(1, sqrt(1-p), sqrt(1-p), (1-p))  (no decay)
+      K_01 = sqrt(p) * [[0,1,0,0],[0,0,0,0],[0,0,0,sqrt(1-p)],[0,0,0,0]]
+      K_10 = sqrt(p) * [[0,0,1,0],[0,0,0,sqrt(1-p)],[0,0,0,0],[0,0,0,0]]
+      K_11 = p * |00><11|
+
+    These satisfy Σ K†K = I and model independent qubit relaxation.
     """
     if p_reset <= 0.0:
         return rho
+    d = 4
     dim = d**N
+    sq = np.sqrt(1.0 - p_reset)
+    sqp = np.sqrt(p_reset)
+
+    # Build 4x4 Kraus matrices
+    K00 = np.diag(np.array([1.0, sq, sq, sq * sq], dtype=np.complex128))
+    K01 = sqp * np.array(
+        [[0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, sq], [0, 0, 0, 0]],
+        dtype=np.complex128,
+    )
+    K10 = sqp * np.array(
+        [[0, 0, 1, 0], [0, 0, 0, sq], [0, 0, 0, 0], [0, 0, 0, 0]],
+        dtype=np.complex128,
+    )
+    K11 = p_reset * np.array(
+        [[0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+        dtype=np.complex128,
+    )
+
     rho_tensor = rho.reshape([d] * (2 * N))
     result = np.zeros_like(rho_tensor)
 
-    sq = np.sqrt(1.0 - p_reset)
-    # Build 3x3 Kraus matrices for the single site
-    # K0[a,b] coefficients for |a><b| contribution
-    # K0 = diag(1, sqrt(1-p), sqrt(1-p))
-    k0_diag = np.array([1.0, sq, sq], dtype=np.complex128)
-    # K1 = sqrt(p) * |0><1|
-    # K2 = sqrt(p) * |0><2|
-    sqp = np.sqrt(p_reset)
+    for K in [K00, K01, K10, K11]:
+        # Apply K on ket index (site), K† on bra index (N + site)
+        # temp = K_site ρ K†_site
+        temp = rho_tensor.copy()
 
-    # Apply Kraus: rho' = K0 rho K0† + K1 rho K1† + K2 rho K2†
-    # This is done element-wise on the site's local indices.
-    # For the tensor with indices (..., ket_site, ..., bra_site, ...):
-    # (K rho K†)_{a,b}^{site} = sum_{c,d} K_{a,c} * rho_{c,d}^{site} * conj(K_{b,d})
+        # Apply K on ket index
+        new_temp = np.zeros_like(temp)
+        for a in range(d):
+            for c in range(d):
+                if abs(K[a, c]) < 1e-15:
+                    continue
+                idx_in = [slice(None)] * (2 * N)
+                idx_in[site] = c
+                idx_out = [slice(None)] * (2 * N)
+                idx_out[site] = a
+                new_temp[tuple(idx_out)] += K[a, c] * temp[tuple(idx_in)]
+        temp = new_temp
 
-    for a in range(d):
+        # Apply K† on bra index
+        new_temp = np.zeros_like(temp)
         for b in range(d):
-            idx_out = [slice(None)] * (2 * N)
-            idx_out[site] = a
-            idx_out[N + site] = b
+            for e in range(d):
+                kbe_conj = np.conj(K[b, e])
+                if abs(kbe_conj) < 1e-15:
+                    continue
+                idx_in = [slice(None)] * (2 * N)
+                idx_in[N + site] = e
+                idx_out = [slice(None)] * (2 * N)
+                idx_out[N + site] = b
+                new_temp[tuple(idx_out)] += kbe_conj * temp[tuple(idx_in)]
 
-            # K0 contribution: K0[a,c] * K0[b,d]* = k0_diag[a] * k0_diag[b] when c=a, d=b
-            idx_in = [slice(None)] * (2 * N)
-            idx_in[site] = a
-            idx_in[N + site] = b
-            result[tuple(idx_out)] += (
-                k0_diag[a] * np.conj(k0_diag[b]) * rho_tensor[tuple(idx_in)]
-            )
-
-            # K1 contribution: K1 = sqp * |0><1|
-            # K1[a,c] = sqp if a=0,c=1 else 0
-            # K1[b,d]* = sqp if b=0,d=1 else 0
-            if a == 0 and b == 0:
-                idx_k1 = [slice(None)] * (2 * N)
-                idx_k1[site] = 1  # c=1
-                idx_k1[N + site] = 1  # d=1
-                result[tuple(idx_out)] += p_reset * rho_tensor[tuple(idx_k1)]
-
-            # K2 contribution: K2 = sqp * |0><2|
-            if a == 0 and b == 0:
-                idx_k2 = [slice(None)] * (2 * N)
-                idx_k2[site] = 2  # c=2
-                idx_k2[N + site] = 2  # d=2
-                result[tuple(idx_out)] += p_reset * rho_tensor[tuple(idx_k2)]
+        result += new_temp
 
     return result.reshape(dim, dim)
 
 
 class QubitGKSLNoisySimulator(QubitGKSLSimulator):
-    """Qubit GKSL simulator with hardware depolarization and thermal relaxation.
+    """Qubit GKSL simulator with d=4 Pauli depolarization and thermal relaxation.
 
     Inherits the Stinespring + 2nd-order Trotter approach from QubitGKSLSimulator
-    and adds per-gate local noise channels to model hardware imperfections.
+    (running in 4^N = 256 dim qubit space) and adds per-gate local noise channels
+    using d=4 two-qubit Pauli operators to model hardware imperfections.
+
+    The noise model correctly accounts for forbidden-state leakage: d=4 Pauli
+    errors can drive the state into the |11> forbidden subspace, which is a
+    fundamental property of qubit encoding that is absent in native qutrit encoding.
 
     Parameters:
         params: GKSLPhysicalParameters (with_boson=False)
@@ -127,11 +199,6 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
         T1: energy relaxation time in natural units (default None = no relaxation)
         T2: dephasing time in natural units (default None = no relaxation)
         t_gate: 2-qubit gate time in natural units (default 300.0 fs)
-
-    Note on thermal relaxation:
-        For typical superconducting qubit parameters (T1=50μs, gate_time=300fs),
-        p_reset = 1 - exp(-t_gate/T1) ≈ 6e-9, which is negligible compared to
-        depolarization (p=0.01). Thermal relaxation is included for completeness.
     """
 
     def __init__(
@@ -161,12 +228,7 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
         self._lindblad_sites = self._compute_lindblad_sites()
 
     def _compute_lindblad_sites(self) -> list[list[int]]:
-        """Determine molecule indices for each Lindblad operator.
-
-        Same structure as build_lindblad_operators:
-          - 2*len(neighbors) TTA operators: each pair (i,j) -> 2 ops
-          - 5*N single-site operators: fl, ph, IC, ISC_ST, ISC_TS
-        """
+        """Determine molecule indices for each Lindblad operator."""
         sites: list[list[int]] = []
         for i, j in self.params.neighbors:
             sites.append([i, j])
@@ -177,46 +239,62 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
         assert len(sites) == len(self.lindblad_ops)
         return sites
 
-    def _trotter_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
-        """2nd-order Trotter step with hardware noise.
+    def check_forbidden_states(
+        self, rho_qubit: np.ndarray, step: int | None = None
+    ) -> float:
+        """Track leakage without raising.
 
-        Gate noise is applied after each 2-body gate operation:
+        For the noisy simulator, forbidden-state leakage is an expected physical
+        effect of qubit encoding with hardware noise, not a validation failure.
+        """
+        from qubit_gksl_simulator import compute_forbidden_state_population
+
+        return float(compute_forbidden_state_population(rho_qubit, self._mapping))
+
+    def _trotter_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
+        """2nd-order Trotter step with d=4 qubit hardware noise.
+
+        Gate noise is applied after each gate operation using d=4 Pauli
+        depolarization in the 256-dim qubit space:
           1. Half Hamiltonian + NN pair depolarization
           2. Lindblad channels + per-channel depolarization
           3. Half Hamiltonian + NN pair depolarization
-          4. Thermal relaxation on all molecules (accumulated gate time)
+          4. Thermal relaxation on all molecules
         """
-        d = self.params.d
         N = self.params.N_molecules
 
         # --- Half Hamiltonian ---
         rho = self._apply_hamiltonian_step(rho, dt / 2)
         for i, j in self.params.neighbors:
-            rho = _apply_local_depolarization_pair(rho, i, j, d, N, self.p_depol)
+            rho = _apply_local_depolarization_pair_qubit(
+                rho, i, j, N, self.p_depol
+            )
 
         # --- All Lindblad channels ---
         for k, (L_op, _gamma) in enumerate(self.lindblad_ops):
             rho = self._apply_lindblad_stinespring(rho, L_op, dt)
             sites = self._lindblad_sites[k]
             if len(sites) == 1:
-                rho = _apply_local_depolarization_single(
-                    rho, sites[0], d, N, self.p_depol
+                rho = _apply_local_depolarization_single_qubit(
+                    rho, sites[0], N, self.p_depol
                 )
             else:
-                rho = _apply_local_depolarization_pair(
-                    rho, sites[0], sites[1], d, N, self.p_depol
+                rho = _apply_local_depolarization_pair_qubit(
+                    rho, sites[0], sites[1], N, self.p_depol
                 )
 
         # --- Half Hamiltonian ---
         rho = self._apply_hamiltonian_step(rho, dt / 2)
         for i, j in self.params.neighbors:
-            rho = _apply_local_depolarization_pair(rho, i, j, d, N, self.p_depol)
+            rho = _apply_local_depolarization_pair_qubit(
+                rho, i, j, N, self.p_depol
+            )
 
         # --- Thermal relaxation (all molecules, accumulated gate time) ---
         if self.p_reset > 0.0:
             for mol in range(N):
-                rho = _apply_thermal_relaxation_single(
-                    rho, mol, d, N, self.p_reset
+                rho = _apply_thermal_relaxation_qubit(
+                    rho, mol, N, self.p_reset
                 )
 
         return rho

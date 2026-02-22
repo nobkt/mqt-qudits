@@ -259,8 +259,7 @@ def _apply_stochastic_qubit_thermal_relaxation(
 
 
 def _apply_stochastic_qubit_dephasing_single(
-    psi: np.ndarray, mol: int, N: int, p: float,
-    rng: np.random.Generator,
+    psi: np.ndarray, mol: int, N: int, p: float, rng: np.random.Generator
 ) -> np.ndarray:
     """Stochastically apply dephasing on a molecule's 2-qubit encoding.
 

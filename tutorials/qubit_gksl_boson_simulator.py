@@ -143,25 +143,20 @@ class QubitGKSLBosonSimulator:
     # Trotter step primitives (in qubit-extended space)
     # ------------------------------------------------------------------
 
-    def _apply_hamiltonian_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
-        """Apply unitary Hamiltonian evolution in qubit-extended space."""
-        U = expm(-1j * self.H_total * dt)
-        return U @ rho @ U.conj().T
+    def _precompute_unitaries(self, dt: float) -> None:
+        """Pre-compute time-step-dependent unitaries (called once per simulation)."""
+        self._U_H_half = expm(-1j * self.H_total * dt / 2)
+        self._U_stines = [
+            stinespring_unitary_from_lindblad(L_op, dt)
+            for L_op, _gamma in self.lindblad_ops
+        ]
 
-    @staticmethod
-    def _apply_lindblad_stinespring(
-        rho: np.ndarray, L_op: np.ndarray, dt: float
-    ) -> np.ndarray:
-        """Apply a single Lindblad channel via Stinespring dilation."""
-        U = stinespring_unitary_from_lindblad(L_op, dt)
-        return apply_stinespring_to_density_matrix(rho, U)
-
-    def _trotter_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
+    def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
         """2nd-order symmetric Trotter step in qubit-extended space."""
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
-        for L_op, _gamma in self.lindblad_ops:
-            rho = self._apply_lindblad_stinespring(rho, L_op, dt)
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
+        rho = self._U_H_half @ rho @ self._U_H_half.conj().T
+        for U_stine in self._U_stines:
+            rho = apply_stinespring_to_density_matrix(rho, U_stine)
+        rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         return rho
 
     # ------------------------------------------------------------------
@@ -244,6 +239,7 @@ class QubitGKSLBosonSimulator:
         start = time_module.time()
 
         dt = t_max / n_steps
+        self._precompute_unitaries(dt)
         rho = self.prepare_initial_state(initial_state)
 
         # Extract electronic observables
@@ -256,7 +252,7 @@ class QubitGKSLBosonSimulator:
         traces = [float(np.real(np.trace(rho)))]
 
         for step in range(n_steps):
-            rho = self._trotter_step(rho, dt)
+            rho = self._trotter_step(rho)
 
             rho_el = self._extract_electronic_rho(rho)
 

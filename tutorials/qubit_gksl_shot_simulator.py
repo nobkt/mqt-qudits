@@ -258,6 +258,61 @@ def _apply_stochastic_qubit_thermal_relaxation(
     return result / norm
 
 
+def _apply_stochastic_qubit_dephasing_single(
+    psi: np.ndarray, mol: int, N: int, p: float,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Stochastically apply dephasing on a molecule's 2-qubit encoding.
+
+    Dephasing projects onto a random 2-qubit computational basis state
+    |q1 q0> with Born rule probabilities:
+      E_deph(rho) = (1-p) rho + p sum_k P_k rho P_k
+    where P_k = |k><k| on the 4-dim local space (k = 0..3).
+
+    With prob (1-p): no dephasing.
+    With prob p: project onto a random local basis state.
+    """
+    if p <= 0.0:
+        return psi
+
+    if rng.random() >= p:
+        return psi
+
+    d_local = 4
+    dim = d_local**N
+    psi_tensor = psi.reshape([d_local] * N)
+
+    # Compute local probabilities
+    local_probs = np.zeros(d_local)
+    for k in range(d_local):
+        idx = [slice(None)] * N
+        idx[mol] = k
+        local_probs[k] = np.real(np.vdot(
+            psi_tensor[tuple(idx)], psi_tensor[tuple(idx)]
+        ))
+
+    total = local_probs.sum()
+    if total < 1e-15:
+        return psi
+    local_probs /= total
+
+    # Sample which local state to project onto
+    k_chosen = rng.choice(d_local, p=local_probs)
+
+    # Apply projection: zero out all components where mol != k_chosen
+    result_tensor = np.zeros_like(psi_tensor)
+    idx = [slice(None)] * N
+    idx[mol] = k_chosen
+    result_tensor[tuple(idx)] = psi_tensor[tuple(idx)]
+
+    result = result_tensor.reshape(dim)
+    norm = np.sqrt(np.real(np.vdot(result, result)))
+    if norm < 1e-15:
+        msg = f"Dephasing projection produced zero state at molecule {mol}"
+        raise PhysicsViolationError(msg)
+    return result / norm
+
+
 class QubitGKSLShotSimulator:
     """Shot-based qubit GKSL simulator using quantum trajectories.
 
@@ -533,6 +588,7 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
     Parameters:
         params: GKSLPhysicalParameters (with_boson=False)
         p_depol: depolarization probability per 2-qubit gate (default 0.01)
+        p_dephasing: dephasing probability per gate (default 0.0)
         T1: energy relaxation time (default None = no relaxation)
         t_gate: 2-qubit gate time (default 300.0)
     """
@@ -541,6 +597,7 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
         self,
         params: GKSLPhysicalParameters,
         p_depol: float = 0.01,
+        p_dephasing: float = 0.0,
         T1: float | None = None,
         t_gate: float = 300.0,
     ) -> None:
@@ -548,7 +605,11 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
         if p_depol < 0.0 or p_depol > 1.0:
             msg = f"p_depol must be in [0, 1], got {p_depol}"
             raise ValueError(msg)
+        if p_dephasing < 0.0 or p_dephasing > 1.0:
+            msg = f"p_dephasing must be in [0, 1], got {p_dephasing}"
+            raise ValueError(msg)
         self.p_depol = p_depol
+        self.p_dephasing = p_dephasing
         self.T1 = T1
         self.t_gate = t_gate
 
@@ -592,10 +653,21 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
                 psi = _apply_stochastic_qubit_depolarization_single(
                     psi, sites[0], N, self.p_depol, rng
                 )
+                if self.p_dephasing > 0.0:
+                    psi = _apply_stochastic_qubit_dephasing_single(
+                        psi, sites[0], N, self.p_dephasing, rng
+                    )
             else:
                 psi = _apply_stochastic_qubit_depolarization_pair(
                     psi, sites[0], sites[1], N, self.p_depol, rng
                 )
+                if self.p_dephasing > 0.0:
+                    psi = _apply_stochastic_qubit_dephasing_single(
+                        psi, sites[0], N, self.p_dephasing, rng
+                    )
+                    psi = _apply_stochastic_qubit_dephasing_single(
+                        psi, sites[1], N, self.p_dephasing, rng
+                    )
 
         # --- Half Hamiltonian + transfer gate noise ---
         psi = self._U_H_half @ psi
@@ -632,6 +704,7 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
         result["method"] = "qubit_gksl_noisy_shot"
         result["noise_params"] = {
             "p_depol": self.p_depol,
+            "p_dephasing": self.p_dephasing,
             "T1": self.T1,
             "t_gate": self.t_gate,
             "p_reset": self.p_reset,

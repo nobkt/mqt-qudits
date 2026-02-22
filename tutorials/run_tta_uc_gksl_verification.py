@@ -114,6 +114,7 @@ def _validate_result(
     """
     max_trace_error = 0.0
     max_particle_error = 0.0
+    max_trace_deficit = 0.0
 
     for pop, trace_val in zip(result["populations"], result["trace"]):
         tv = float(trace_val)
@@ -122,6 +123,9 @@ def _validate_result(
             # Only flag if trace > 1 + tol (unphysical gain).
             if tv > 1.0 + 1e-8:
                 max_trace_error = max(max_trace_error, tv - 1.0)
+            # Track trace deficit (leakage into forbidden states)
+            if tv < 1.0:
+                max_trace_deficit = max(max_trace_deficit, 1.0 - tv)
             # Particle conservation scaled by actual trace
             expected_N = tv * float(params.N_molecules)
         else:
@@ -144,7 +148,7 @@ def _validate_result(
         result["rho_final"], step=n_steps, tolerance=dm_tolerance
     )
 
-    return {
+    validation: dict[str, Any] = {
         "final_density_validation": {
             "trace": float(density_validation["trace"]),
             "hermiticity_error": float(density_validation["hermiticity_error"]),
@@ -156,6 +160,10 @@ def _validate_result(
         "max_trace_error": max_trace_error,
         "max_particle_error": max_particle_error,
     }
+    if allow_leakage:
+        validation["max_trace_deficit"] = max_trace_deficit
+
+    return validation
 
 
 def _build_scenario_report(
@@ -240,7 +248,8 @@ def _run_single_scenario(
             )
         elif scenario == "qubit_noisy_shot":
             simulator = QubitGKSLNoisyShotSimulator(
-                params, p_depol=0.01, T1=50000.0, t_gate=300.0
+                params, p_depol=0.01, p_dephasing=0.005,
+                T1=50000.0, t_gate=300.0,
             )
         else:
             msg = f"Unknown noisy shot scenario: {scenario}"
@@ -475,6 +484,10 @@ def _build_markdown_report(
             f"| elapsed_time | {sr['elapsed_time']:.6f} s |",
             f"| max_trace_error | {sr['max_trace_error']:.3e} |",
             f"| max_particle_error | {sr['max_particle_error']:.3e} |",
+        ])
+        if "max_trace_deficit" in sr:
+            md.append(f"| max_trace_deficit | {sr['max_trace_deficit']:.3e} |")
+        md.extend([
             f"| final_trace | {v['trace']:.12f} |",
             f"| final_hermiticity_error | {v['hermiticity_error']:.3e} |",
             f"| final_min_eigenvalue | {v['min_eigenvalue']:.3e} |",

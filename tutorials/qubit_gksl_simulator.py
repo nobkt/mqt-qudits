@@ -219,31 +219,26 @@ class QubitGKSLSimulator:
     # Trotter step primitives (operating in 256-dim qubit space)
     # ------------------------------------------------------------------
 
-    def _apply_hamiltonian_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
-        """Apply unitary Hamiltonian evolution in qubit space."""
-        U = expm(-1j * self.H_total * dt)
-        return U @ rho @ U.conj().T
+    def _precompute_unitaries(self, dt: float) -> None:
+        """Pre-compute time-step-dependent unitaries (called once per simulation)."""
+        self._U_H_half = expm(-1j * self.H_total * dt / 2)
+        self._U_stines = [
+            stinespring_unitary_from_lindblad(L_op, dt)
+            for L_op, _gamma in self.lindblad_ops
+        ]
 
-    @staticmethod
-    def _apply_lindblad_stinespring(
-        rho: np.ndarray, L_op: np.ndarray, dt: float
-    ) -> np.ndarray:
-        """Apply a single Lindblad channel via Stinespring dilation in qubit space."""
-        U = stinespring_unitary_from_lindblad(L_op, dt)
-        return apply_stinespring_to_density_matrix(rho, U)
-
-    def _trotter_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
+    def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
         """2nd-order symmetric Trotter step in 256-dim qubit space.
 
         exp(L dt) ~ exp(L_H dt/2) prod_k exp(L_k dt) exp(L_H dt/2)
         """
         # Half Hamiltonian
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
+        rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         # All Lindblad channels
-        for L_op, _gamma in self.lindblad_ops:
-            rho = self._apply_lindblad_stinespring(rho, L_op, dt)
+        for U_stine in self._U_stines:
+            rho = apply_stinespring_to_density_matrix(rho, U_stine)
         # Half Hamiltonian
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
+        rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         return rho
 
     # ------------------------------------------------------------------
@@ -298,6 +293,7 @@ class QubitGKSLSimulator:
         start = time_module.time()
 
         dt = t_max / n_steps
+        self._precompute_unitaries(dt)
         rho = self.prepare_initial_state(initial_state)
 
         # Extract to qutrit space for observables
@@ -313,7 +309,7 @@ class QubitGKSLSimulator:
         ]
 
         for step in range(n_steps):
-            rho = self._trotter_step(rho, dt)
+            rho = self._trotter_step(rho)
 
             # Check forbidden-state leakage
             self.check_forbidden_states(rho, step=step + 1)

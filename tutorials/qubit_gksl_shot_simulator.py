@@ -643,6 +643,13 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
             psi = _apply_stochastic_qubit_depolarization_pair(
                 psi, i, j, N, self.p_depol, rng
             )
+            if self.p_dephasing > 0.0:
+                psi = _apply_stochastic_qubit_dephasing_single(
+                    psi, i, N, self.p_dephasing, rng
+                )
+                psi = _apply_stochastic_qubit_dephasing_single(
+                    psi, j, N, self.p_dephasing, rng
+                )
 
         # --- All Lindblad channels + per-channel noise ---
         for k, U_stine in enumerate(self._U_stines):
@@ -674,6 +681,13 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
             psi = _apply_stochastic_qubit_depolarization_pair(
                 psi, i, j, N, self.p_depol, rng
             )
+            if self.p_dephasing > 0.0:
+                psi = _apply_stochastic_qubit_dephasing_single(
+                    psi, i, N, self.p_dephasing, rng
+                )
+                psi = _apply_stochastic_qubit_dephasing_single(
+                    psi, j, N, self.p_dephasing, rng
+                )
 
         # --- Thermal relaxation on all molecules ---
         if self.p_reset > 0.0:

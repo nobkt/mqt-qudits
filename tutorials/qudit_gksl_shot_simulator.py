@@ -487,6 +487,13 @@ class QuditGKSLNoisyShotSimulator(QuditGKSLShotSimulator):
             psi = _apply_stochastic_depolarization_pair(
                 psi, i, j, d, N, self.p_depol, rng
             )
+            if self.p_dephasing > 0.0:
+                psi = _apply_stochastic_dephasing_single(
+                    psi, i, d, N, self.p_dephasing, rng
+                )
+                psi = _apply_stochastic_dephasing_single(
+                    psi, j, d, N, self.p_dephasing, rng
+                )
 
         # --- All Lindblad channels + per-channel noise ---
         for k, U_stine in enumerate(self._U_stines):
@@ -518,6 +525,13 @@ class QuditGKSLNoisyShotSimulator(QuditGKSLShotSimulator):
             psi = _apply_stochastic_depolarization_pair(
                 psi, i, j, d, N, self.p_depol, rng
             )
+            if self.p_dephasing > 0.0:
+                psi = _apply_stochastic_dephasing_single(
+                    psi, i, d, N, self.p_dephasing, rng
+                )
+                psi = _apply_stochastic_dephasing_single(
+                    psi, j, d, N, self.p_dephasing, rng
+                )
 
         return psi
 

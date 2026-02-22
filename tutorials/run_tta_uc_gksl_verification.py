@@ -249,7 +249,6 @@ def _run_single_scenario(
         elif scenario == "qubit_noisy_shot":
             simulator = QubitGKSLNoisyShotSimulator(
                 params, p_depol=0.01, p_dephasing=0.005,
-                T1=50000.0, t_gate=300.0,
             )
         else:
             msg = f"Unknown noisy shot scenario: {scenario}"

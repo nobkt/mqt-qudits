@@ -2,6 +2,10 @@
 
 Extends the electronic system with phonon degrees of freedom using
 Holstein-type electron-phonon coupling.
+
+Uses the exact matrix-exponential of the GKSL Liouvillian superoperator
+in the joint electronic ⊗ phonon space.  The propagator exp(L·dt) is a
+CPTP map by construction (Lindblad–GKS theorem).
 """
 
 from __future__ import annotations
@@ -11,7 +15,7 @@ import sys
 import time as time_module
 
 import numpy as np
-from scipy.integrate import solve_ivp
+from scipy.sparse.linalg import expm_multiply
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -23,12 +27,24 @@ from gksl_math_utils import (
     compute_von_neumann_entropy,
     extend_lindblad_operators,
     partial_trace_phonon,
+    vectorize_density_matrix,
+    unvectorize_density_matrix,
 )
 from gksl_physical_parameters import GKSLPhysicalParameters
+from stinespring_utils import build_gksl_superoperator
 
 
 class ClassicalGKSLBosonSimulator:
-    """GKSL master-equation solver on the joint electronic ⊗ phonon space."""
+    """GKSL master-equation solver on the joint electronic ⊗ phonon space.
+
+    Uses the exact Liouvillian superoperator approach in the extended space:
+
+        ρ_total(t + dt) = unvec( exp(L·dt) · vec(ρ_total(t)) )
+
+    where L is the full GKSL Liouvillian in the extended electronic+phonon
+    Hilbert space.  Electronic observables are obtained by partial-tracing
+    over phonon degrees of freedom.
+    """
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
         if not params.with_boson:
@@ -48,15 +64,8 @@ class ClassicalGKSLBosonSimulator:
         lindblad_ops_el = build_lindblad_operators(params)
         self.lindblad_ops = extend_lindblad_operators(lindblad_ops_el, self.dim_ph)
 
-    # ------------------------------------------------------------------
-    def _gksl_rhs(self, rho: np.ndarray) -> np.ndarray:
-        """Compute dρ/dt directly in matrix form."""
-        H = self.H_total
-        drho = -1j * (H @ rho - rho @ H)
-        for L_op, _gamma in self.lindblad_ops:
-            LdL = L_op.conj().T @ L_op
-            drho += L_op @ rho @ L_op.conj().T - 0.5 * (LdL @ rho + rho @ LdL)
-        return drho
+        # Build the full GKSL Liouvillian superoperator (dim_total^2 × dim_total^2)
+        self._L_super = build_gksl_superoperator(self.H_total, self.lindblad_ops)
 
     # ------------------------------------------------------------------
     def prepare_initial_state(self, state_type: str = "edge_triplet") -> np.ndarray:
@@ -98,12 +107,13 @@ class ClassicalGKSLBosonSimulator:
         t_max: float,
         n_steps: int,
         initial_state: str = "edge_triplet",
-        method: str = "BDF",
+        method: str = "expm",
     ) -> dict:
         """Run GKSL simulation with boson coupling.
 
-        Uses BDF (stiff solver) since phonon coupling creates stiff dynamics.
+        Uses exact Liouvillian expm in the extended electronic+phonon space.
         Returns dict compatible with ClassicalGKSLSimulator output format.
+        Electronic observables are obtained by partial-tracing over phonon DOFs.
 
         When g_eph == 0 the phonon degrees of freedom decouple exactly,
         so the dynamics reduce to the non-boson ClassicalGKSLSimulator.
@@ -125,40 +135,28 @@ class ClassicalGKSLBosonSimulator:
         start = time_module.time()
         dim = self.dim_total
 
-        rho_0 = self.prepare_initial_state(initial_state)
-        y0 = rho_0.flatten()
+        rho = self.prepare_initial_state(initial_state)
+        vec_0 = vectorize_density_matrix(rho)
 
-        t_eval = np.linspace(0, t_max, n_steps + 1)
-
-        def ode_func(_t: float, y: np.ndarray) -> np.ndarray:
-            rho = y.reshape((dim, dim))
-            return self._gksl_rhs(rho).flatten()
-
-        sol = solve_ivp(
-            ode_func,
-            [0, t_max],
-            y0,
-            t_eval=t_eval,
-            method=method,
-            rtol=1e-8,
-            atol=1e-10,
+        # Compute exp(L·t_k)·vec(ρ₀) for all time points at once.
+        dt = t_max / n_steps
+        vecs = expm_multiply(
+            self._L_super, vec_0,
+            start=0.0, stop=t_max, num=n_steps + 1, endpoint=True,
         )
 
-        if not sol.success:
-            msg = f"ODE solver failed: {sol.message}"
-            raise RuntimeError(msg)
-
         # Extract electronic observables via partial trace over phonon
-        times: list[float] = sol.t.tolist()
+        times: list[float] = []
         populations: list[dict] = []
         entropies: list[float] = []
         purities: list[float] = []
         traces: list[float] = []
 
-        for k in range(len(times)):
-            rho_total = sol.y[:, k].reshape((dim, dim))
+        for k in range(n_steps + 1):
+            rho_total = unvectorize_density_matrix(vecs[k], dim)
             rho_el = partial_trace_phonon(rho_total, self.dim_el, self.dim_ph)
 
+            times.append(k * dt)
             traces.append(float(np.real(np.trace(rho_el))))
             populations.append(
                 compute_populations_from_density_matrix(rho_el, self.params)
@@ -166,8 +164,8 @@ class ClassicalGKSLBosonSimulator:
             entropies.append(compute_von_neumann_entropy(rho_el))
             purities.append(compute_purity(rho_el))
 
-        rho_final = sol.y[:, -1].reshape((dim, dim))
-        rho_final_el = partial_trace_phonon(rho_final, self.dim_el, self.dim_ph)
+        rho_final_total = unvectorize_density_matrix(vecs[-1], dim)
+        rho_final_el = partial_trace_phonon(rho_final_total, self.dim_el, self.dim_ph)
         elapsed = time_module.time() - start
 
         return {
@@ -180,6 +178,4 @@ class ClassicalGKSLBosonSimulator:
             "elapsed_time": elapsed,
             "method": "classical_gksl_boson",
             "params": self.params.to_dict(),
-            "ode_solver": method,
-            "n_function_evals": sol.nfev,
         }

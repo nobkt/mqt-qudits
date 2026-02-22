@@ -1,9 +1,12 @@
 """Classical GKSL-Lindblad simulator (Scenario 1: no boson interaction).
 
-Uses Stinespring dilation + 2nd-order Trotter decomposition to integrate
-the GKSL master equation.  Each step is a CPTP (Completely Positive,
-Trace Preserving) map by construction, guaranteeing that density-matrix
-positivity is preserved throughout the evolution.
+Uses the exact matrix-exponential of the GKSL Liouvillian superoperator to
+integrate the master equation.  The propagator exp(L·t) is a CPTP map by
+construction (Lindblad–GKS theorem), so density-matrix positivity and trace
+preservation are structurally guaranteed.
+
+This provides an independent reference solution that does NOT use the
+Stinespring + Trotter decomposition employed by the qubit/qudit simulators.
 """
 
 from __future__ import annotations
@@ -13,7 +16,7 @@ import sys
 import time as time_module
 
 import numpy as np
-from scipy.linalg import expm
+from scipy.sparse.linalg import expm_multiply
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -24,25 +27,30 @@ from gksl_math_utils import (
     compute_populations_from_density_matrix,
     compute_purity,
     compute_von_neumann_entropy,
+    unvectorize_density_matrix,
+    vectorize_density_matrix,
 )
 from gksl_physical_parameters import GKSLPhysicalParameters
 from gksl_validation import PhysicsViolationError, validate_density_matrix  # noqa: F401
-from stinespring_utils import (
-    apply_stinespring_to_density_matrix,
-    stinespring_unitary_from_lindblad,
-)
+from stinespring_utils import build_gksl_superoperator
 
 
 class ClassicalGKSLSimulator:
     """Integrate the GKSL master equation for the non-boson model.
 
-    Uses Stinespring dilation + 2nd-order symmetric Trotter decomposition:
+    Uses the exact Liouvillian superoperator approach:
 
-        exp(L dt) ≈ exp(L_H dt/2) ∏_α exp(L_D_α dt) exp(L_H dt/2)
+        vec(ρ(t)) = exp(L·t) · vec(ρ(0))
 
-    where each Hamiltonian step is a unitary channel and each Lindblad
-    channel is implemented via Stinespring dilation.  Both are CPTP by
-    construction, so density-matrix positivity is guaranteed.
+    where L is the full GKSL Liouvillian.  The matrix exponential exp(L·t)
+    is always a CPTP map for a valid Lindblad generator L (Lindblad–GKS
+    theorem), so density-matrix positivity is guaranteed without Trotter
+    splitting.  This provides an independent reference to compare against
+    the Stinespring + Trotter decomposition used by the qubit/qudit simulators.
+
+    The time evolution is computed via ``scipy.sparse.linalg.expm_multiply``
+    which evaluates exp(L·t)·v efficiently without forming the full matrix
+    exponential.
     """
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
@@ -55,36 +63,10 @@ class ClassicalGKSLSimulator:
         self.H_total = self.H_0 + self.H_transfer
         self.lindblad_ops = build_lindblad_operators(params)
 
-    # ------------------------------------------------------------------
-    # Trotter step primitives
-    # ------------------------------------------------------------------
+        self.dim = params.d ** params.N_molecules
 
-    def _apply_hamiltonian_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
-        """Apply unitary Hamiltonian evolution: ρ → e^{-iHdt} ρ e^{iHdt}."""
-        U = expm(-1j * self.H_total * dt)
-        return U @ rho @ U.conj().T
-
-    @staticmethod
-    def _apply_lindblad_stinespring(
-        rho: np.ndarray, L_op: np.ndarray, dt: float
-    ) -> np.ndarray:
-        """Apply a single Lindblad channel via Stinespring dilation."""
-        U = stinespring_unitary_from_lindblad(L_op, dt)
-        return apply_stinespring_to_density_matrix(rho, U)
-
-    def _trotter_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
-        """2nd-order symmetric Trotter step.
-
-        exp(L dt) ≈ exp(L_H dt/2) ∏_α exp(L_D_α dt) exp(L_H dt/2)
-        """
-        # Half Hamiltonian
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
-        # All Lindblad channels
-        for L_op, _gamma in self.lindblad_ops:
-            rho = self._apply_lindblad_stinespring(rho, L_op, dt)
-        # Half Hamiltonian
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
-        return rho
+        # Build the full GKSL Liouvillian superoperator (dim^2 × dim^2)
+        self._L_super = build_gksl_superoperator(self.H_total, self.lindblad_ops)
 
     # ------------------------------------------------------------------
     # Initial state preparation
@@ -151,21 +133,27 @@ class ClassicalGKSLSimulator:
         """
         start = time_module.time()
 
+        rho_0 = self.prepare_initial_state(initial_state)
+        vec_0 = vectorize_density_matrix(rho_0)
+
+        # Compute exp(L·t_k)·vec(ρ₀) for all time points at once.
+        # This is the exact formal solution of the GKSL master equation.
+        vecs = expm_multiply(
+            self._L_super, vec_0,
+            start=0.0, stop=t_max, num=n_steps + 1, endpoint=True,
+        )
+
+        times: list[float] = []
+        populations: list[dict] = []
+        entropies: list[float] = []
+        purities: list[float] = []
+        traces: list[float] = []
+
         dt = t_max / n_steps
-        rho = self.prepare_initial_state(initial_state)
+        for k in range(n_steps + 1):
+            rho = unvectorize_density_matrix(vecs[k], self.dim)
 
-        times: list[float] = [0.0]
-        populations: list[dict] = [
-            compute_populations_from_density_matrix(rho, self.params)
-        ]
-        entropies: list[float] = [compute_von_neumann_entropy(rho)]
-        purities: list[float] = [compute_purity(rho)]
-        traces: list[float] = [float(np.real(np.trace(rho)))]
-
-        for step in range(n_steps):
-            rho = self._trotter_step(rho, dt)
-
-            times.append((step + 1) * dt)
+            times.append(k * dt)
             traces.append(float(np.real(np.trace(rho))))
             populations.append(
                 compute_populations_from_density_matrix(rho, self.params)
@@ -173,6 +161,7 @@ class ClassicalGKSLSimulator:
             entropies.append(compute_von_neumann_entropy(rho))
             purities.append(compute_purity(rho))
 
+        rho_final = unvectorize_density_matrix(vecs[-1], self.dim)
         elapsed = time_module.time() - start
 
         return {
@@ -181,7 +170,7 @@ class ClassicalGKSLSimulator:
             "entropy": entropies,
             "purity": purities,
             "trace": traces,
-            "rho_final": rho,
+            "rho_final": rho_final,
             "elapsed_time": elapsed,
             "method": "classical_gksl",
             "params": self.params.to_dict(),

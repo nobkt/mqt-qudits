@@ -176,6 +176,10 @@ class QuditGKSLBosonSimulator:
 
         elapsed = time_module.time() - start
 
+        # Return electronic-only reduced density matrix for consistency
+        # with ClassicalGKSLBosonSimulator and to match time-series observables
+        rho_el_final = partial_trace_phonon(rho, self.dim_el, self.dim_ph)
+
         # Gate count estimate for qudit circuit in extended space
         # Qudit advantage: native d-level ops, no forbidden states
         gates_per_step = (
@@ -191,7 +195,7 @@ class QuditGKSLBosonSimulator:
             "entropy": entropies,
             "purity": purities,
             "trace": traces,
-            "rho_final": rho,
+            "rho_final": rho_el_final,
             "elapsed_time": elapsed,
             "method": "qudit_gksl_boson",
             "params": self.params.to_dict(),

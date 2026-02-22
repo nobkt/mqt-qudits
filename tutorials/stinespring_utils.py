@@ -68,12 +68,15 @@ def build_gksl_superoperator(
     lindblad_ops: list,
     hbar: float = 1.0,
 ) -> np.ndarray:
-    """Build the full GKSL Liouvillian superoperator in vectorized (column-major) form.
+    """Build the full GKSL Liouvillian superoperator in column-major vectorized form.
+
+    Uses the identity vec(AXB) = (B^T ⊗ A) vec(X) for column-major (Fortran-order)
+    vectorization, consistent with vectorize_density_matrix / unvectorize_density_matrix.
 
     L_total = L_H + L_D where:
-      L_H = -i/hbar * (H ⊗ I - I ⊗ H^T)
-      L_D = sum_alpha [ L_alpha ⊗ conj(L_alpha)
-                        - 0.5*(L†_alpha L_alpha ⊗ I + I ⊗ (L†_alpha L_alpha)^T) ]
+      L_H = -i/hbar * (I ⊗ H - H^T ⊗ I)
+      L_D = sum_alpha [ conj(L_alpha) ⊗ L_alpha
+                        - 0.5*(I ⊗ L†_alpha L_alpha + (L†_alpha L_alpha)^T ⊗ I) ]
 
     lindblad_ops: list of (L_alpha, gamma_alpha) tuples.
     L_alpha already contains sqrt(gamma) factor.
@@ -81,8 +84,8 @@ def build_gksl_superoperator(
     dim = H_total.shape[0]
     I = np.eye(dim, dtype=np.complex128)
 
-    # Hamiltonian part
-    L_H = (-1j / hbar) * (np.kron(H_total, I) - np.kron(I, H_total.T))
+    # Hamiltonian part: vec(-i[H,rho]/hbar) = (-i/hbar)(I⊗H - H^T⊗I) vec(rho)
+    L_H = (-1j / hbar) * (np.kron(I, H_total) - np.kron(H_total.T, I))
 
     # Dissipator part
     L_D = np.zeros((dim * dim, dim * dim), dtype=np.complex128)
@@ -93,9 +96,9 @@ def build_gksl_superoperator(
             L_op = np.asarray(item, dtype=np.complex128)
         LdL = L_op.conj().T @ L_op
         L_D += (
-            np.kron(L_op, L_op.conj())
-            - 0.5 * np.kron(LdL, I)
-            - 0.5 * np.kron(I, LdL.T)
+            np.kron(L_op.conj(), L_op)
+            - 0.5 * np.kron(I, LdL)
+            - 0.5 * np.kron(LdL.T, I)
         )
 
     return L_H + L_D
@@ -107,7 +110,10 @@ def build_trotter_step_classical(
     lindblad_ops: list,
     dt: float,
 ) -> Callable[[np.ndarray], np.ndarray]:
-    """Build a 2nd-order symmetric Trotter step function.
+    """Build a 2nd-order symmetric Trotter step function using superoperators.
+
+    Uses column-major (Fortran-order) vectorization, consistent with
+    vectorize_density_matrix / unvectorize_density_matrix.
 
     exp(L dt) ≈ exp(L_H dt/2) exp(L_D dt) exp(L_H dt/2)
 
@@ -118,10 +124,10 @@ def build_trotter_step_classical(
     I = np.eye(dim, dtype=np.complex128)
     H_total = np.asarray(H_0, dtype=np.complex128) + np.asarray(H_transfer, dtype=np.complex128)
 
-    # Hamiltonian superoperator
-    L_H = (-1j) * (np.kron(H_total, I) - np.kron(I, H_total.T))
+    # Hamiltonian superoperator (column-major)
+    L_H = (-1j) * (np.kron(I, H_total) - np.kron(H_total.T, I))
 
-    # Dissipator superoperator
+    # Dissipator superoperator (column-major)
     L_D = np.zeros((dim * dim, dim * dim), dtype=np.complex128)
     for item in lindblad_ops:
         if isinstance(item, tuple):
@@ -130,9 +136,9 @@ def build_trotter_step_classical(
             L_op = np.asarray(item, dtype=np.complex128)
         LdL = L_op.conj().T @ L_op
         L_D += (
-            np.kron(L_op, L_op.conj())
-            - 0.5 * np.kron(LdL, I)
-            - 0.5 * np.kron(I, LdL.T)
+            np.kron(L_op.conj(), L_op)
+            - 0.5 * np.kron(I, LdL)
+            - 0.5 * np.kron(LdL.T, I)
         )
 
     # Precompute matrix exponentials

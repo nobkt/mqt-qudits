@@ -103,24 +103,46 @@ def _validate_result(
     result: dict[str, Any],
     params: GKSLPhysicalParameters,
     n_steps: int,
+    allow_leakage: bool = False,
 ) -> dict[str, Any]:
-    """Validate a simulation result and return metrics."""
+    """Validate a simulation result and return metrics.
+
+    When allow_leakage is True (for qubit noisy shots with forbidden-state
+    leakage), trace < 1 is expected and tolerated. The trace deficit measures
+    the leakage into forbidden states, which is a physical property of the
+    qubit encoding, not a numerical error.
+    """
     max_trace_error = 0.0
     max_particle_error = 0.0
 
     for pop, trace_val in zip(result["populations"], result["trace"]):
-        max_trace_error = max(max_trace_error, abs(float(trace_val) - 1.0))
+        tv = float(trace_val)
+        if allow_leakage:
+            # For leakage scenarios: trace ≤ 1 is expected.
+            # Only flag if trace > 1 + tol (unphysical gain).
+            if tv > 1.0 + 1e-8:
+                max_trace_error = max(max_trace_error, tv - 1.0)
+            # Particle conservation scaled by actual trace
+            expected_N = tv * float(params.N_molecules)
+        else:
+            max_trace_error = max(max_trace_error, abs(tv - 1.0))
+            expected_N = float(params.N_molecules)
 
         pop_float = _to_float_dict(pop)
-        validate_particle_conservation(
-            pop_float, N_molecules=float(params.N_molecules), tolerance=1e-6
-        )
         particle_total = pop_float["N_S0"] + pop_float["N_T1"] + pop_float["N_S1"]
         max_particle_error = max(
-            max_particle_error, abs(particle_total - float(params.N_molecules))
+            max_particle_error, abs(particle_total - expected_N)
         )
+        if not allow_leakage:
+            validate_particle_conservation(
+                pop_float, N_molecules=float(params.N_molecules), tolerance=1e-6
+            )
 
-    density_validation = validate_density_matrix(result["rho_final"], step=n_steps)
+    # For leakage scenarios, use relaxed trace tolerance
+    dm_tolerance = {"trace": 0.5} if allow_leakage else None
+    density_validation = validate_density_matrix(
+        result["rho_final"], step=n_steps, tolerance=dm_tolerance
+    )
 
     return {
         "final_density_validation": {
@@ -168,6 +190,15 @@ def _build_scenario_report(
             k: float(v) if v is not None else None
             for k, v in result["noise_params"].items()
         }
+    # Qubit-specific fields
+    if "forbidden_count" in result:
+        report["forbidden_count"] = int(result["forbidden_count"])
+    if "forbidden_state_population" in result:
+        report["forbidden_state_population"] = [
+            float(v) for v in result["forbidden_state_population"]
+        ]
+    if "dim_qubit_space" in result:
+        report["dim_qubit_space"] = int(result["dim_qubit_space"])
 
     return report
 
@@ -234,7 +265,9 @@ def _run_single_scenario(
         raise ValueError(msg)
 
     rho_final = result["rho_final"]
-    validation = _validate_result(result, params, n_steps)
+    # Allow leakage for noisy qubit scenarios (trace < 1 due to forbidden states)
+    allow_leakage = scenario == "qubit_noisy_shot"
+    validation = _validate_result(result, params, n_steps, allow_leakage=allow_leakage)
     report = _build_scenario_report(scenario, result, validation)
 
     return report, rho_final
@@ -243,7 +276,11 @@ def _run_single_scenario(
 def _compute_fidelities(
     rho_map: dict[str, np.ndarray],
 ) -> list[dict[str, Any]]:
-    """Compute pairwise fidelities for scenarios with matching Hilbert space dims."""
+    """Compute pairwise fidelities for scenarios with matching Hilbert space dims.
+
+    Density matrices are normalized (trace → 1) before fidelity computation
+    to handle cases where trace < 1 due to forbidden-state leakage.
+    """
     fidelities: list[dict[str, Any]] = []
     names = list(rho_map.keys())
     for i, name_a in enumerate(names):
@@ -254,7 +291,12 @@ def _compute_fidelities(
                 continue
             error_msg = None
             try:
-                f_val = quantum_fidelity(rho_a, rho_b)
+                # Normalize to handle leakage (trace < 1)
+                tr_a = float(np.real(np.trace(rho_a)))
+                tr_b = float(np.real(np.trace(rho_b)))
+                rho_a_norm = rho_a / tr_a if tr_a > 1e-10 else rho_a
+                rho_b_norm = rho_b / tr_b if tr_b > 1e-10 else rho_b
+                f_val = quantum_fidelity(rho_a_norm, rho_b_norm)
             except Exception as exc:  # noqa: BLE001
                 f_val = None
                 error_msg = f"{type(exc).__name__}: {exc}"
@@ -448,6 +490,10 @@ def _build_markdown_report(
         if "counts_top10" in sr:
             top = ", ".join(f"{k}:{v}" for k, v in sr["counts_top10"].items())
             md.append(f"| counts_top10 | {top} |")
+        if "forbidden_count" in sr:
+            md.append(f"| forbidden_count | {sr['forbidden_count']} |")
+        if "dim_qubit_space" in sr:
+            md.append(f"| dim_qubit_space | {sr['dim_qubit_space']} |")
 
         # Population at initial, mid, and final times
         pops = sr["populations"]

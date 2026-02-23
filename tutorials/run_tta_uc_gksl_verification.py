@@ -163,10 +163,11 @@ def _validate_result(
         # Add normalized entropy/purity for fair cross-scenario comparison.
         # The raw entropy/purity from a sub-normalized density matrix are not
         # comparable with those from trace-1 matrices.
+        # Only compute when trace is large enough for numerical stability.
         tr = float(density_validation["trace"])
         raw_entropy = float(density_validation["entropy"])
         raw_purity = float(density_validation["purity"])
-        if tr > 1e-10:
+        if tr > 0.01:
             validation["final_density_validation"]["normalized_entropy"] = (
                 raw_entropy + tr * float(np.log(tr))
             ) / tr

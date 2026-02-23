@@ -96,7 +96,7 @@ def quantum_fidelity(rho: np.ndarray, sigma: np.ndarray) -> float:
     m = (m + m.conj().T) / 2
     evals_m = np.linalg.eigvalsh(m)
     evals_m = np.maximum(evals_m, 0.0)
-    return float(np.real(np.sum(np.sqrt(evals_m))) ** 2)
+    return float(min(np.real(np.sum(np.sqrt(evals_m))) ** 2, 1.0))
 
 
 def _validate_result(

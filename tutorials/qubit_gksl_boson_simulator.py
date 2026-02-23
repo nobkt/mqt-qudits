@@ -249,7 +249,7 @@ class QubitGKSLBosonSimulator:
         populations = [compute_populations_from_density_matrix(rho_el, self.params)]
         entropies = [compute_von_neumann_entropy(rho_el)]
         purities = [compute_purity(rho_el)]
-        traces = [float(np.real(np.trace(rho)))]
+        traces = [float(np.real(np.trace(rho_el)))]
 
         for step in range(n_steps):
             rho = self._trotter_step(rho)
@@ -257,7 +257,7 @@ class QubitGKSLBosonSimulator:
             rho_el = self._extract_electronic_rho(rho)
 
             times.append((step + 1) * dt)
-            traces.append(float(np.real(np.trace(rho))))
+            traces.append(float(np.real(np.trace(rho_el))))
             populations.append(
                 compute_populations_from_density_matrix(rho_el, self.params)
             )

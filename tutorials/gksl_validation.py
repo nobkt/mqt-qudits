@@ -20,6 +20,7 @@ def validate_density_matrix(
     rho: np.ndarray,
     step: int = 0,
     tolerance: dict[str, float] | None = None,
+    allow_subnormalized: bool = False,
 ) -> dict:
     """Validate physical properties of a density matrix.
 
@@ -28,6 +29,11 @@ def validate_density_matrix(
         step: Time-step index (for error messages).
         tolerance: Override default tolerances for 'trace', 'hermiticity',
                    'positivity', and 'entropy'.
+        allow_subnormalized: If True, accept trace in [0, 1+eps] instead
+                             of |trace - 1| < eps. Use for density matrices
+                             projected from a larger space where leakage
+                             reduces the trace (e.g. qubit encoding with
+                             forbidden-state leakage).
 
     Returns:
         Dict with keys: valid, trace, hermiticity_error, min_eigenvalue,
@@ -49,8 +55,14 @@ def validate_density_matrix(
     errors: list[str] = []
 
     trace_val = float(np.real(np.trace(rho)))
-    if abs(trace_val - 1.0) > tol["trace"]:
-        errors.append(f"Step {step}: Trace = {trace_val} (expected 1.0)")
+    if allow_subnormalized:
+        if trace_val > 1.0 + tol["trace"]:
+            errors.append(f"Step {step}: Trace = {trace_val} (exceeds 1.0)")
+        if trace_val < 0.0:
+            errors.append(f"Step {step}: Trace = {trace_val} (negative)")
+    else:
+        if abs(trace_val - 1.0) > tol["trace"]:
+            errors.append(f"Step {step}: Trace = {trace_val} (expected 1.0)")
 
     herm_err = float(np.linalg.norm(rho - rho.conj().T, "fro"))
     if herm_err > tol["hermiticity"]:

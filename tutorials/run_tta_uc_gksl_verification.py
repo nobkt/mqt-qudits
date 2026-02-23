@@ -142,10 +142,8 @@ def _validate_result(
                 pop_float, N_molecules=float(params.N_molecules), tolerance=1e-6
             )
 
-    # For leakage scenarios, use relaxed trace tolerance
-    dm_tolerance = {"trace": 0.5} if allow_leakage else None
     density_validation = validate_density_matrix(
-        result["rho_final"], step=n_steps, tolerance=dm_tolerance
+        result["rho_final"], step=n_steps, allow_subnormalized=allow_leakage
     )
 
     validation: dict[str, Any] = {
@@ -162,6 +160,19 @@ def _validate_result(
     }
     if allow_leakage:
         validation["max_trace_deficit"] = max_trace_deficit
+        # Add normalized entropy/purity for fair cross-scenario comparison.
+        # The raw entropy/purity from a sub-normalized density matrix are not
+        # comparable with those from trace-1 matrices.
+        tr = float(density_validation["trace"])
+        raw_entropy = float(density_validation["entropy"])
+        raw_purity = float(density_validation["purity"])
+        if tr > 1e-10:
+            validation["final_density_validation"]["normalized_entropy"] = (
+                raw_entropy + tr * float(np.log(tr))
+            ) / tr
+            validation["final_density_validation"]["normalized_purity"] = (
+                raw_purity / (tr * tr)
+            )
 
     return validation
 
@@ -492,8 +503,12 @@ def _build_markdown_report(
             f"| final_min_eigenvalue | {v['min_eigenvalue']:.3e} |",
             f"| final_entropy | {v['entropy']:.12f} |",
             f"| final_purity | {v['purity']:.12f} |",
-            f"| density_validation | {status} |",
         ])
+        if "normalized_entropy" in v:
+            md.append(f"| normalized_entropy | {v['normalized_entropy']:.12f} |")
+        if "normalized_purity" in v:
+            md.append(f"| normalized_purity | {v['normalized_purity']:.12f} |")
+        md.append(f"| density_validation | {status} |")
         if "n_shots" in sr:
             md.append(f"| n_shots | {sr['n_shots']} |")
         if "noise_params" in sr:

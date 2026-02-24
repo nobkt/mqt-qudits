@@ -1,0 +1,181 @@
+{
+  "timestamp": "20260224T024456Z",
+  "iteration": 12,
+  "purpose": "Noise channel mathematical verification + per-step fidelity tracking",
+  "tests": [
+    {
+      "test": "noise_channel_verification",
+      "n_shots": 5000,
+      "fidelity_analytical_vs_stochastic": 0.9961831935019023,
+      "trace_diff": 2.708944180085382e-14,
+      "frobenius_diff": 0.011925921712323888,
+      "fidelity_noiseless_vs_noisy": 0.7803438682410457,
+      "trace_analytical": 0.9999999999999991,
+      "trace_stochastic": 0.999999999999972,
+      "passed": true
+    },
+    {
+      "test": "per_step_fidelity_decay",
+      "config": {
+        "t_max": 10.0,
+        "n_steps": 10,
+        "n_shots": 1000,
+        "seed": 42,
+        "p_depol": 0.01,
+        "p_dephasing": 0.005
+      },
+      "step_data": [
+        {
+          "step": 0,
+          "time": 0.0,
+          "trace_qudit_noisy": 1.0,
+          "trace_qubit_noisy": 1.0,
+          "qubit_deficit": 0.0,
+          "delta_N_S0_qudit": 0.0,
+          "delta_N_T1_qudit": 0.0,
+          "delta_N_S0_qubit": 0.0,
+          "delta_N_T1_qubit": 0.0
+        },
+        {
+          "step": 1,
+          "time": 1.0,
+          "trace_qudit_noisy": 1.000000000000008,
+          "trace_qubit_noisy": 0.9109989936327226,
+          "qubit_deficit": 0.08900100636727737,
+          "delta_N_S0_qudit": 0.10967371103386125,
+          "delta_N_T1_qudit": 0.013286568556675205,
+          "delta_N_S0_qubit": 0.24983302701173726,
+          "delta_N_T1_qubit": 0.19012272174566336
+        },
+        {
+          "step": 2,
+          "time": 2.0,
+          "trace_qudit_noisy": 0.9999999999999936,
+          "trace_qubit_noisy": 0.8313008629557478,
+          "qubit_deficit": 0.1686991370442522,
+          "delta_N_S0_qudit": 0.18437512780522813,
+          "delta_N_T1_qudit": 0.05076982741109459,
+          "delta_N_S0_qubit": 0.4382294018942934,
+          "delta_N_T1_qubit": 0.37389453875258205
+        },
+        {
+          "step": 3,
+          "time": 3.0,
+          "trace_qudit_noisy": 0.9999999999999974,
+          "trace_qubit_noisy": 0.755887006740624,
+          "qubit_deficit": 0.24411299325937597,
+          "delta_N_S0_qudit": 0.24115534652758264,
+          "delta_N_T1_qudit": 0.11007205002376441,
+          "delta_N_S0_qubit": 0.649459672150436,
+          "delta_N_T1_qubit": 0.5418595265122033
+        },
+        {
+          "step": 4,
+          "time": 4.0,
+          "trace_qudit_noisy": 0.9999999999999998,
+          "trace_qubit_noisy": 0.6958146342818907,
+          "qubit_deficit": 0.3041853657181093,
+          "delta_N_S0_qudit": 0.2812423493772167,
+          "delta_N_T1_qudit": 0.18057625817582945,
+          "delta_N_S0_qubit": 0.7781011886859126,
+          "delta_N_T1_qubit": 0.6921066726692513
+        },
+        {
+          "step": 5,
+          "time": 5.0,
+          "trace_qudit_noisy": 1.0,
+          "trace_qubit_noisy": 0.6713820523080786,
+          "qubit_deficit": 0.32861794769192143,
+          "delta_N_S0_qudit": 0.3334568911966578,
+          "delta_N_T1_qudit": 0.2205276140571668,
+          "delta_N_S0_qubit": 0.8415891708491241,
+          "delta_N_T1_qubit": 0.7566074714941105
+        },
+        {
+          "step": 6,
+          "time": 6.0,
+          "trace_qudit_noisy": 1.0,
+          "trace_qubit_noisy": 0.6401685703290911,
+          "qubit_deficit": 0.35983142967090886,
+          "delta_N_S0_qudit": 0.3652835181823657,
+          "delta_N_T1_qudit": 0.2770476180485837,
+          "delta_N_S0_qubit": 0.9229007091802799,
+          "delta_N_T1_qubit": 0.8228040995145101
+        },
+        {
+          "step": 7,
+          "time": 7.0,
+          "trace_qudit_noisy": 1.0000000000000002,
+          "trace_qubit_noisy": 0.6057574758910356,
+          "qubit_deficit": 0.39424252410896443,
+          "delta_N_S0_qudit": 0.4003959338923091,
+          "delta_N_T1_qudit": 0.31292866827682353,
+          "delta_N_S0_qubit": 1.0166788580154709,
+          "delta_N_T1_qubit": 0.8974025626872577
+        },
+        {
+          "step": 8,
+          "time": 8.0,
+          "trace_qudit_noisy": 1.0,
+          "trace_qubit_noisy": 0.5756917848828578,
+          "qubit_deficit": 0.42430821511714223,
+          "delta_N_S0_qudit": 0.42940376284424,
+          "delta_N_T1_qudit": 0.3470539517676594,
+          "delta_N_S0_qubit": 1.0764227923806122,
+          "delta_N_T1_qubit": 0.9663734343672965
+        },
+        {
+          "step": 9,
+          "time": 9.0,
+          "trace_qudit_noisy": 0.9999999999999999,
+          "trace_qubit_noisy": 0.5503308409690555,
+          "qubit_deficit": 0.4496691590309445,
+          "delta_N_S0_qudit": 0.45860270972701467,
+          "delta_N_T1_qudit": 0.3543596103454112,
+          "delta_N_S0_qubit": 1.1372141914957732,
+          "delta_N_T1_qubit": 0.9896180961201625
+        },
+        {
+          "step": 10,
+          "time": 10.0,
+          "trace_qudit_noisy": 0.9999999999999998,
+          "trace_qubit_noisy": 0.5320887012468525,
+          "qubit_deficit": 0.4679112987531475,
+          "delta_N_S0_qudit": 0.48539431404389033,
+          "delta_N_T1_qudit": 0.336436001566067,
+          "delta_N_S0_qubit": 1.1950578803909488,
+          "delta_N_T1_qubit": 1.0042719271752285
+        }
+      ],
+      "fidelity_results": {
+        "qudit_dm_vs_qudit_noisy": 0.0896998975908877,
+        "qubit_dm_vs_qubit_noisy_raw": 0.06077028360738337,
+        "qubit_dm_vs_qubit_noisy_norm": 0.11421081470617188,
+        "qudit_noisy_vs_qubit_noisy_raw": 0.49424134892563515,
+        "qudit_noisy_vs_qubit_noisy_norm": 0.9288702198852774,
+        "trace_qudit_noisy_final": 0.9999999999999998,
+        "trace_qubit_noisy_final": 0.5320887012468525
+      }
+    },
+    {
+      "test": "error_budget",
+      "noise_gates_per_step": {
+        "pair_depol": 12,
+        "single_depol": 20,
+        "dephasing": 44,
+        "total": 76
+      },
+      "expected_errors_per_step": {
+        "pair_depol": 0.11851851851851851,
+        "single_depol": 0.17777777777777778,
+        "dephasing": 0.22,
+        "total": 0.5162962962962963
+      },
+      "cumulative_100_steps": 51.629629629629626,
+      "qubit_leakage": {
+        "leakage_paulis_fraction": 0.8,
+        "p_leakage_per_single_depol": 0.0075
+      }
+    }
+  ]
+}

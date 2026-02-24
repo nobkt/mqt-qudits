@@ -224,8 +224,7 @@ def test_noise_budget(params: GKSLPhysicalParameters) -> dict:
     pop_h_only = compute_populations_from_density_matrix(rho_h_only, params)
     pop_l_only = compute_populations_from_density_matrix(rho_l_only, params)
 
-    # Multiplicative composition check
-    f_product = f_h_only * f_l_only / 1.0  # approximate
+    # Multiplicative composition check: (1-infid_H)(1-infid_L)
     infid_h = 1.0 - f_h_only
     infid_l = 1.0 - f_l_only
     f_composed = (1.0 - infid_h) * (1.0 - infid_l)

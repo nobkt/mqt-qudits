@@ -713,7 +713,8 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
         avg_infid_st_ex = np.nanmean(rates_infid_st_ex)
         avg_tdist_st_ex = np.nanmean(rates_tdist_st_ex)
         print(f"  Average: {avg_infid_st_ex:10.2f} | {avg_tdist_st_ex:10.2f}")
-        print(f"  Ratio (Rate(1-F)/Rate(T)): {avg_infid_st_ex / avg_tdist_st_ex:.2f}")
+        ratio_rates = avg_infid_st_ex / avg_tdist_st_ex if abs(avg_tdist_st_ex) > 1e-15 else float("nan")
+        print(f"  Ratio (Rate(1-F)/Rate(T)): {ratio_rates:.2f}")
 
         print(f"\n  === Classical Trotter vs Exact ===")
         print(f"  {'dt_range':>15} | {'Rate(1-F)':>10} | {'Rate(T)':>10}")
@@ -1135,7 +1136,7 @@ def main() -> int:
         "",
         "### 1-F ≈ T² 関係の検証",
         "",
-        "Fuchs–van de Graaf 不等式: T² ≤ 1-F ≤ T。微小誤差では 1-F ≈ T²。",
+        "Fuchs–van de Graaf 不等式: T² ≤ 1-F ≤ 2T-T²。微小誤差では 1-F ≈ T²。",
         "",
         "Rate(1-F) ≈ 2 × Rate(T) ならば 1-F ∝ T² が成立。",
         "",

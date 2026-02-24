@@ -471,6 +471,9 @@ def test_error_budget(params: GKSLPhysicalParameters) -> dict:
     p_dephasing = 0.005
 
     # Expected errors per step
+    # (1 - 1/d^n) = probability that a random Weyl-Heisenberg operator is non-identity
+    # For pair (d^2 local dim): (d^4 - 1)/d^4 non-identity operators out of d^4 total
+    # For single (d local dim): (d^2 - 1)/d^2 non-identity operators out of d^2 total
     exp_pair_errors = total_pair_depol * p_depol * (1 - 1 / (d**4))
     exp_single_errors = total_single_depol * p_depol * (1 - 1 / (d**2))
     exp_dephase_events = total_dephasing * p_dephasing
@@ -490,14 +493,19 @@ def test_error_budget(params: GKSLPhysicalParameters) -> dict:
     print(f"  observed in the notebook (F ≈ 0.136 for qudit noisy)")
 
     # Qubit specific: leakage analysis
-    # For 2-qubit Pauli depolarization, 12/15 non-identity Paulis cause leakage
-    n_leakage_paulis = 12  # out of 15 non-identity 2-qubit Paulis
-    p_leakage_per_single_depol = p_depol * (1 - 1 / 16) * (n_leakage_paulis / 15)
+    # In 2-qubit encoding (|00>=S0, |01>=T1, |10>=S1, |11>=forbidden),
+    # there are 4^2=16 two-qubit Pauli operators, of which 15 are non-identity.
+    # Only 3 (I⊗Z, Z⊗I, Z⊗Z) preserve the physical subspace {|00>,|01>,|10>}.
+    # The remaining 12 out of 15 non-identity Paulis cause leakage to |11>.
+    n_paulis_total = 16  # 4^2 two-qubit Pauli operators
+    n_paulis_nonidentity = n_paulis_total - 1  # 15 non-identity operators
+    n_leakage_paulis = 12  # operators that map physical states to |11> (forbidden)
+    p_leakage_per_single_depol = p_depol * (1 - 1 / n_paulis_total) * (n_leakage_paulis / n_paulis_nonidentity)
     p_leakage_per_step = 1 - (1 - p_leakage_per_single_depol) ** total_single_depol
     # This is approximate; pair depol also contributes
 
     print(f"\n  === Qubit Leakage Analysis ===")
-    print(f"  Leakage-causing Paulis (per molecule): {n_leakage_paulis}/15 (80%)")
+    print(f"  Leakage-causing Paulis (per molecule): {n_leakage_paulis}/{n_paulis_nonidentity} (80%)")
     print(f"  p(leakage per single depol): {p_leakage_per_single_depol:.6f}")
     print(f"  p(any leakage per step, single only): ~{p_leakage_per_step:.4f}")
 

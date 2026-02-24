@@ -1,0 +1,273 @@
+{
+  "timestamp": "20260224T092620Z",
+  "iteration": 16,
+  "purpose": "Noise-Trotter tradeoff, noise budget decomposition, analytical bounds, improved qubit fidelity",
+  "tests": [
+    {
+      "test": "noise_trotter_tradeoff",
+      "t_max": 10.0,
+      "p_depol": 0.01,
+      "depol_pair_only": true,
+      "results": [
+        {
+          "n_steps": 5,
+          "dt": 2.0,
+          "total_noise_events": 60,
+          "F_noisy_vs_noiseless": 0.6060537790959737,
+          "F_noisy_vs_finest_ref": 0.6046973861438828,
+          "F_noiseless_vs_finest_ref": 0.9998598384436891,
+          "noiseless_N_S1": 0.06778570425292314,
+          "noisy_N_S1": 0.38542030387944076,
+          "noisy_trace": 0.9999999999999991,
+          "elapsed": 13.400619745254517
+        },
+        {
+          "n_steps": 10,
+          "dt": 1.0,
+          "total_noise_events": 120,
+          "F_noisy_vs_noiseless": 0.3759091766418555,
+          "F_noisy_vs_finest_ref": 0.375186471242335,
+          "F_noiseless_vs_finest_ref": 0.9999681645521332,
+          "noiseless_N_S1": 0.0690384887931332,
+          "noisy_N_S1": 0.6183874262225235,
+          "noisy_trace": 0.9999999999999993,
+          "elapsed": 12.676846981048584
+        },
+        {
+          "n_steps": 20,
+          "dt": 0.5,
+          "total_noise_events": 240,
+          "F_noisy_vs_noiseless": 0.1624184426507964,
+          "F_noisy_vs_finest_ref": 0.16214995960428272,
+          "F_noiseless_vs_finest_ref": 0.9999937365357675,
+          "noiseless_N_S1": 0.06944491391090586,
+          "noisy_N_S1": 0.9111942372734328,
+          "noisy_trace": 0.9999999999999994,
+          "elapsed": 13.306804656982422
+        },
+        {
+          "n_steps": 50,
+          "dt": 0.2,
+          "total_noise_events": 600,
+          "F_noisy_vs_noiseless": 0.04241388679715516,
+          "F_noisy_vs_finest_ref": 0.04237516810099165,
+          "F_noiseless_vs_finest_ref": 0.9999997495196696,
+          "noiseless_N_S1": 0.06961909541764102,
+          "noisy_N_S1": 1.218750345639779,
+          "noisy_trace": 0.9999999999999863,
+          "elapsed": 13.528280019760132
+        },
+        {
+          "n_steps": 100,
+          "dt": 0.1,
+          "total_noise_events": 1200,
+          "F_noisy_vs_noiseless": 0.03197676317963001,
+          "F_noisy_vs_finest_ref": 0.03197676317963001,
+          "F_noiseless_vs_finest_ref": 1.0,
+          "noiseless_N_S1": 0.06966554523456533,
+          "noisy_N_S1": 1.3053008883310766,
+          "noisy_trace": 0.9999999999999856,
+          "elapsed": 14.656328201293945
+        }
+      ]
+    },
+    {
+      "test": "noise_budget",
+      "dt": 1.0,
+      "p_depol": 0.01,
+      "depol_pair_only": true,
+      "F_full_noise": 0.8995556123458197,
+      "F_hamiltonian_noise_only": 0.9484736441376481,
+      "F_lindblad_noise_only": 0.9485788903695849,
+      "N_S1_noiseless": 4.499559548682428e-07,
+      "N_S1_full_noise": 0.07757390559939642,
+      "N_S1_hamiltonian_only": 0.03965214789644387,
+      "N_S1_lindblad_only": 0.039220951343673115,
+      "noise_events_hamiltonian": 6,
+      "noise_events_lindblad": 6,
+      "noise_events_total": 12
+    },
+    {
+      "test": "analytical_noise_bound",
+      "t_max": 10.0,
+      "p_depol": 0.01,
+      "depol_pair_only": true,
+      "F_1step": 0.8995556123458197,
+      "epsilon_measured": 0.10044438765418029,
+      "epsilon_theoretical": 0.10160331812081547,
+      "infidelity_per_event": 0.008888888888888889,
+      "events_per_step": 12,
+      "step_comparison": [
+        {
+          "n_steps": 5,
+          "dt": 2.0,
+          "F_predicted": 0.5890336252218211,
+          "F_actual": 0.6060537790959737,
+          "delta": 0.017020153874152566
+        },
+        {
+          "n_steps": 10,
+          "dt": 1.0,
+          "F_predicted": 0.3469606116419608,
+          "F_actual": 0.3759091766418555,
+          "delta": 0.028948564999894733
+        },
+        {
+          "n_steps": 20,
+          "dt": 0.5,
+          "F_predicted": 0.12038166603096354,
+          "F_actual": 0.1624184426507964,
+          "delta": 0.04203677661983288
+        },
+        {
+          "n_steps": 50,
+          "dt": 0.2,
+          "F_predicted": 0.0050280648881264696,
+          "F_actual": 0.04241388679715516,
+          "delta": 0.03738582190902869
+        }
+      ]
+    },
+    {
+      "test": "qubit_improved_fidelity",
+      "t_max": 10.0,
+      "n_steps": 10,
+      "p_depol": 0.01,
+      "depol_pair_only": true,
+      "step_data": [
+        {
+          "step": 0,
+          "time": 0.0,
+          "F_qudit": 1.0,
+          "F_qubit_raw": 1.0,
+          "F_qubit_norm": 1.0,
+          "trace_qubit": 1.0,
+          "forbidden_pop": 0.0,
+          "qudit_noisy_N_S1": 0.0,
+          "qubit_noisy_N_S1_raw": 0.0,
+          "qubit_noisy_N_S1_conditional": 0.0
+        },
+        {
+          "step": 1,
+          "time": 1.0,
+          "F_qudit": 0.8995556123458197,
+          "F_qubit_raw": 0.8939063222074516,
+          "F_qubit_norm": 0.9414576692293423,
+          "trace_qubit": 0.9494917955363542,
+          "forbidden_pop": 0.05050820446364579,
+          "qudit_noisy_N_S1": 0.07757390559939642,
+          "qubit_noisy_N_S1_raw": 0.04271047878599516,
+          "qubit_noisy_N_S1_conditional": 0.04498246218322363
+        },
+        {
+          "step": 2,
+          "time": 2.0,
+          "F_qudit": 0.8098471873544973,
+          "F_qubit_raw": 0.7994268233594091,
+          "F_qubit_norm": 0.8850888545149515,
+          "trace_qubit": 0.9032164788675051,
+          "forbidden_pop": 0.09678352113249489,
+          "qudit_noisy_N_S1": 0.1505634740393349,
+          "qubit_noisy_N_S1_raw": 0.08120711222235107,
+          "qubit_noisy_N_S1_conditional": 0.08990880273151385
+        },
+        {
+          "step": 3,
+          "time": 3.0,
+          "F_qudit": 0.7296844211620198,
+          "F_qubit_raw": 0.7152425654031696,
+          "F_qubit_norm": 0.8309178879585025,
+          "trace_qubit": 0.860786098437651,
+          "forbidden_pop": 0.13921390156234903,
+          "qudit_noisy_N_S1": 0.21932943060473514,
+          "qubit_noisy_N_S1_raw": 0.11602583572623681,
+          "qubit_noisy_N_S1_conditional": 0.13479055474621013
+        },
+        {
+          "step": 4,
+          "time": 4.0,
+          "F_qudit": 0.6581529725324514,
+          "F_qubit_raw": 0.6402688001474587,
+          "F_qubit_norm": 0.7790574638486581,
+          "trace_qubit": 0.8218505175367224,
+          "forbidden_pop": 0.17814948246327755,
+          "qudit_noisy_N_S1": 0.28436246311673047,
+          "qubit_noisy_N_S1_raw": 0.1477873529446954,
+          "qubit_noisy_N_S1_conditional": 0.17982266822395943
+        },
+        {
+          "step": 5,
+          "time": 5.0,
+          "F_qudit": 0.5945491618485952,
+          "F_qubit_raw": 0.5736068964490678,
+          "F_qubit_norm": 0.7296928963768158,
+          "trace_qubit": 0.7860935655079104,
+          "forbidden_pop": 0.21390643449208957,
+          "qudit_noisy_N_S1": 0.34619846671297017,
+          "qubit_noisy_N_S1_raw": 0.17712574659885455,
+          "qubit_noisy_N_S1_conditional": 0.2253240000564184
+        },
+        {
+          "step": 6,
+          "time": 6.0,
+          "F_qudit": 0.538290641259116,
+          "F_qubit_raw": 0.5144835524353466,
+          "F_qubit_norm": 0.6830368371033863,
+          "trace_qubit": 0.7532295930893815,
+          "forbidden_pop": 0.24677040691061847,
+          "qudit_noisy_N_S1": 0.40531648670748477,
+          "qubit_noisy_N_S1_raw": 0.20459707729069435,
+          "qubit_noisy_N_S1_conditional": 0.2716264458643169
+        },
+        {
+          "step": 7,
+          "time": 7.0,
+          "F_qudit": 0.4888412104428951,
+          "F_qubit_raw": 0.46220033975237496,
+          "F_qubit_norm": 0.6392808957708032,
+          "trace_qubit": 0.7230003884789135,
+          "forbidden_pop": 0.27699961152108654,
+          "qudit_noisy_N_S1": 0.46205167626967664,
+          "qubit_noisy_N_S1_raw": 0.23060097702620708,
+          "qubit_noisy_N_S1_conditional": 0.3189500043165366
+        },
+        {
+          "step": 8,
+          "time": 8.0,
+          "F_qudit": 0.44566563185995955,
+          "F_qubit_raw": 0.41610224467128765,
+          "F_qubit_norm": 0.5985597971815871,
+          "trace_qubit": 0.6951724154510808,
+          "forbidden_pop": 0.30482758454891923,
+          "qudit_noisy_N_S1": 0.5165442740378697,
+          "qubit_noisy_N_S1_raw": 0.25533630909851446,
+          "qubit_noisy_N_S1_conditional": 0.3672992532835654
+        },
+        {
+          "step": 9,
+          "time": 9.0,
+          "F_qudit": 0.4082117511505657,
+          "F_qubit_raw": 0.37556232806853784,
+          "F_qubit_norm": 0.5609306279443291,
+          "trace_qubit": 0.6695343390735948,
+          "forbidden_pop": 0.33046566092640517,
+          "qudit_noisy_N_S1": 0.5687327129645646,
+          "qubit_noisy_N_S1_raw": 0.2787987858294675,
+          "qubit_noisy_N_S1_conditional": 0.41640700044635365
+        },
+        {
+          "step": 10,
+          "time": 10.0,
+          "F_qudit": 0.3759091766418555,
+          "F_qubit_raw": 0.3399771309841283,
+          "F_qubit_norm": 0.5263661090863432,
+          "trace_qubit": 0.6458948083207996,
+          "forbidden_pop": 0.3541051916792004,
+          "qudit_noisy_N_S1": 0.6183874262225235,
+          "qubit_noisy_N_S1_raw": 0.30081690335349776,
+          "qubit_noisy_N_S1_conditional": 0.46573667953077835
+        }
+      ]
+    }
+  ]
+}

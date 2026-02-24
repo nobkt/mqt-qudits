@@ -322,7 +322,7 @@ def test_error_budget_comparison(params: GKSLPhysicalParameters) -> dict:
     p_depol = 0.01
 
     # All-gates mode: noise on every gate
-    all_pair_depol = 2 * n_neighbors + 2 * n_neighbors  # Hamiltonian(2×3) + TTA(6)
+    all_pair_depol = 2 * n_neighbors + 2 * n_neighbors  # Hamiltonian(2×n_neighbors) + TTA(2×n_neighbors)
     all_single_depol = 5 * N  # 20 single-site Lindblad channels
     all_total = all_pair_depol + all_single_depol  # 32 depol (excluding dephasing)
 

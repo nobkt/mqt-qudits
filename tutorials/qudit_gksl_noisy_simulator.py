@@ -31,6 +31,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gksl_physical_parameters import GKSLPhysicalParameters
 from qudit_gksl_simulator import QuditGKSLSimulator
+from stinespring_utils import apply_stinespring_to_density_matrix
 
 
 def _apply_local_depolarization_single(
@@ -212,29 +213,34 @@ class QuditGKSLNoisySimulator(QuditGKSLSimulator):
             rho = _apply_local_dephasing_single(rho, site_b, d, N, self.p_dephasing)
         return rho
 
-    def _trotter_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
+    def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
         """2nd-order Trotter step with hardware noise.
 
         Same structure as base class but applies local noise after each
         gate-like operation:
-          1. Half Hamiltonian + transfer gate noise
+          1. Half Hamiltonian + transfer gate noise (depol + dephasing)
           2. Lindblad channels + per-channel gate noise
-          3. Half Hamiltonian + transfer gate noise
+          3. Half Hamiltonian + transfer gate noise (depol + dephasing)
+
+        Uses precomputed unitaries from ``_precompute_unitaries``.
+        Noise placement matches ``QuditGKSLNoisyShotSimulator``.
         """
         d = self.params.d
         N = self.params.N_molecules
 
         # --- Half Hamiltonian ---
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
-        # Transfer Hamiltonian uses 2-qudit gates for each NN pair
+        rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         for i, j in self.params.neighbors:
             rho = _apply_local_depolarization_pair(
                 rho, i, j, d, N, self.p_depol
             )
+            if self.p_dephasing > 0.0:
+                rho = _apply_local_dephasing_single(rho, i, d, N, self.p_dephasing)
+                rho = _apply_local_dephasing_single(rho, j, d, N, self.p_dephasing)
 
         # --- All Lindblad channels ---
-        for k, (L_op, _gamma) in enumerate(self.lindblad_ops):
-            rho = self._apply_lindblad_stinespring(rho, L_op, dt)
+        for k, U_stine in enumerate(self._U_stines):
+            rho = apply_stinespring_to_density_matrix(rho, U_stine)
             sites = self._lindblad_sites[k]
             if len(sites) == 1:
                 rho = self._apply_gate_noise_single(rho, sites[0])
@@ -242,11 +248,14 @@ class QuditGKSLNoisySimulator(QuditGKSLSimulator):
                 rho = self._apply_gate_noise_pair(rho, sites[0], sites[1])
 
         # --- Half Hamiltonian ---
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
+        rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         for i, j in self.params.neighbors:
             rho = _apply_local_depolarization_pair(
                 rho, i, j, d, N, self.p_depol
             )
+            if self.p_dephasing > 0.0:
+                rho = _apply_local_dephasing_single(rho, i, d, N, self.p_dephasing)
+                rho = _apply_local_dephasing_single(rho, j, d, N, self.p_dephasing)
 
         return rho
 

@@ -27,6 +27,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gksl_physical_parameters import GKSLPhysicalParameters
 from qubit_gksl_simulator import QubitGKSLSimulator
+from stinespring_utils import apply_stinespring_to_density_matrix
 
 
 def _apply_local_depolarization_single_qubit(
@@ -182,8 +183,34 @@ def _apply_thermal_relaxation_qubit(
     return result.reshape(dim, dim)
 
 
+def _apply_local_dephasing_single_qubit(
+    rho: np.ndarray, site: int, N: int, p: float
+) -> np.ndarray:
+    """Apply dephasing channel on a single molecule in 4^N qubit space.
+
+    E_deph[rho] = (1-p) rho + p * sum_k (|k><k|_site ⊗ I_rest) rho (|k><k|_site ⊗ I_rest)
+
+    This decoheres the off-diagonal elements between different local states
+    at the specified site while leaving diagonal elements and other sites intact.
+    """
+    if p <= 0.0:
+        return rho
+    d = 4
+    dim = d**N
+    rho_tensor = rho.reshape([d] * (2 * N))
+
+    dephased = np.zeros_like(rho_tensor)
+    for k in range(d):
+        idx = [slice(None)] * (2 * N)
+        idx[site] = k
+        idx[N + site] = k
+        dephased[tuple(idx)] = rho_tensor[tuple(idx)]
+
+    return ((1 - p) * rho_tensor + p * dephased).reshape(dim, dim)
+
+
 class QubitGKSLNoisySimulator(QubitGKSLSimulator):
-    """Qubit GKSL simulator with d=4 Pauli depolarization and thermal relaxation.
+    """Qubit GKSL simulator with d=4 Pauli depolarization, dephasing and thermal relaxation.
 
     Inherits the Stinespring + 2nd-order Trotter approach from QubitGKSLSimulator
     (running in 4^N = 256 dim qubit space) and adds per-gate local noise channels
@@ -193,9 +220,12 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
     errors can drive the state into the |11> forbidden subspace, which is a
     fundamental property of qubit encoding that is absent in native qutrit encoding.
 
+    Noise placement matches ``QubitGKSLNoisyShotSimulator``.
+
     Parameters:
         params: GKSLPhysicalParameters (with_boson=False)
         p_depol: depolarization probability per 2-qubit gate (default 0.01 = 1%)
+        p_dephasing: dephasing probability per gate (default 0.0)
         T1: energy relaxation time in natural units (default None = no relaxation)
         T2: dephasing time in natural units (default None = no relaxation)
         t_gate: 2-qubit gate time in natural units (default 300.0 fs)
@@ -205,6 +235,7 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
         self,
         params: GKSLPhysicalParameters,
         p_depol: float = 0.01,
+        p_dephasing: float = 0.0,
         T1: float | None = None,
         T2: float | None = None,
         t_gate: float = 300.0,
@@ -213,7 +244,11 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
         if p_depol < 0.0 or p_depol > 1.0:
             msg = f"p_depol must be in [0, 1], got {p_depol}"
             raise ValueError(msg)
+        if p_dephasing < 0.0 or p_dephasing > 1.0:
+            msg = f"p_dephasing must be in [0, 1], got {p_dephasing}"
+            raise ValueError(msg)
         self.p_depol = p_depol
+        self.p_dephasing = p_dephasing
         self.T1 = T1
         self.T2 = T2
         self.t_gate = t_gate
@@ -251,44 +286,64 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
 
         return float(compute_forbidden_state_population(rho_qubit, self._mapping))
 
-    def _trotter_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
+    def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
         """2nd-order Trotter step with d=4 qubit hardware noise.
 
         Gate noise is applied after each gate operation using d=4 Pauli
         depolarization in the 256-dim qubit space:
-          1. Half Hamiltonian + NN pair depolarization
-          2. Lindblad channels + per-channel depolarization
-          3. Half Hamiltonian + NN pair depolarization
+          1. Half Hamiltonian + NN pair depolarization + dephasing
+          2. Lindblad channels + per-channel depolarization + dephasing
+          3. Half Hamiltonian + NN pair depolarization + dephasing
           4. Thermal relaxation on all molecules
+
+        Uses precomputed unitaries from ``_precompute_unitaries``.
+        Noise placement matches ``QubitGKSLNoisyShotSimulator``.
         """
         N = self.params.N_molecules
 
         # --- Half Hamiltonian ---
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
+        rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         for i, j in self.params.neighbors:
             rho = _apply_local_depolarization_pair_qubit(
                 rho, i, j, N, self.p_depol
             )
+            if self.p_dephasing > 0.0:
+                rho = _apply_local_dephasing_single_qubit(rho, i, N, self.p_dephasing)
+                rho = _apply_local_dephasing_single_qubit(rho, j, N, self.p_dephasing)
 
         # --- All Lindblad channels ---
-        for k, (L_op, _gamma) in enumerate(self.lindblad_ops):
-            rho = self._apply_lindblad_stinespring(rho, L_op, dt)
+        for k, U_stine in enumerate(self._U_stines):
+            rho = apply_stinespring_to_density_matrix(rho, U_stine)
             sites = self._lindblad_sites[k]
             if len(sites) == 1:
                 rho = _apply_local_depolarization_single_qubit(
                     rho, sites[0], N, self.p_depol
                 )
+                if self.p_dephasing > 0.0:
+                    rho = _apply_local_dephasing_single_qubit(
+                        rho, sites[0], N, self.p_dephasing
+                    )
             else:
                 rho = _apply_local_depolarization_pair_qubit(
                     rho, sites[0], sites[1], N, self.p_depol
                 )
+                if self.p_dephasing > 0.0:
+                    rho = _apply_local_dephasing_single_qubit(
+                        rho, sites[0], N, self.p_dephasing
+                    )
+                    rho = _apply_local_dephasing_single_qubit(
+                        rho, sites[1], N, self.p_dephasing
+                    )
 
         # --- Half Hamiltonian ---
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
+        rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         for i, j in self.params.neighbors:
             rho = _apply_local_depolarization_pair_qubit(
                 rho, i, j, N, self.p_depol
             )
+            if self.p_dephasing > 0.0:
+                rho = _apply_local_dephasing_single_qubit(rho, i, N, self.p_dephasing)
+                rho = _apply_local_dephasing_single_qubit(rho, j, N, self.p_dephasing)
 
         # --- Thermal relaxation (all molecules, accumulated gate time) ---
         if self.p_reset > 0.0:
@@ -314,6 +369,7 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
         result["method"] = "qubit_gksl_noisy"
         result["noise_params"] = {
             "p_depol": self.p_depol,
+            "p_dephasing": self.p_dephasing,
             "T1": self.T1,
             "T2": self.T2,
             "t_gate": self.t_gate,

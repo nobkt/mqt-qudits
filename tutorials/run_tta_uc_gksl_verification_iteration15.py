@@ -618,7 +618,7 @@ def main() -> int:
         final_t2 = t2["step_data"][-1]
         print(f"  Test 2: F(exact, trotter) at t=10 = {final_t2['fidelity']:.10f}")
     if t3["step_data"]:
-        final_t3 = [s for s in t3["step_data"] if s["step"] == n_steps]
+        final_t3 = [s for s in t3["step_data"] if s["step"] == t3["n_steps"]]
         if final_t3:
             print(f"  Test 3: F_qudit={final_t3[0]['F_qudit']:.6f}, "
                   f"F_qubit={final_t3[0]['F_qubit']:.6f}, "

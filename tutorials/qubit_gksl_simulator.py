@@ -1,4 +1,4 @@
-"""Qubit GKSL simulator using Stinespring dilation + 2nd-order Trotter decomposition.
+"""Qubit GKSL simulator using Stinespring dilation + Trotter decomposition.
 
 Scenario 3: Qubit-based GKSL-Lindblad (no boson).
 
@@ -10,6 +10,17 @@ represents what a qubit quantum computer would compute, including forbidden-stat
 The physical subspace is the 81-dim qutrit subspace embedded in the 256-dim qubit
 space. In the noiseless case, the operators are embedded to preserve this subspace,
 so results match the native qutrit simulation up to floating-point precision.
+
+Convergence note
+----------------
+The Hamiltonian–Dissipator splitting uses Strang (symmetric) splitting, which
+is 2nd-order for the H-D decomposition.  However, the individual Lindblad
+channels are applied via Stinespring dilation, which is a 1st-order
+approximation of each exact Lindblad channel exp(L_{D_α} dt).  Lindblad
+channels are applied in *symmetric (palindromic) order* to eliminate the
+Lie-Trotter product commutator error, but the Stinespring approximation
+itself remains 1st-order.  As a result, the effective convergence in trace
+distance is **O(dt)** (1st-order), not O(dt²).
 """
 
 from __future__ import annotations
@@ -132,7 +143,7 @@ def compute_forbidden_state_population(
 
 
 class QubitGKSLSimulator:
-    """Qubit GKSL simulator using Stinespring dilation + 2nd order Trotter.
+    """Qubit GKSL simulator using Stinespring dilation + Trotter splitting.
 
     Simulates in the 4^N = 256 dimensional qubit Hilbert space with 2-qubit
     encoding per molecule (|00>=S0, |01>=T1, |10>=S1, |11>=forbidden).
@@ -145,6 +156,12 @@ class QubitGKSLSimulator:
     embedded operators, so results match the native qutrit simulation up
     to floating-point precision. The computational overhead (256 vs 81 dim)
     demonstrates the cost of qubit encoding.
+
+    The Hamiltonian–Dissipator Strang splitting is 2nd-order, but the
+    Stinespring dilation is a 1st-order approximation of each Lindblad
+    channel.  Lindblad channels are applied in symmetric (palindromic)
+    order to eliminate the Lie-Trotter product commutator error.
+    Effective convergence in trace distance is O(dt) (1st-order).
     """
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
@@ -220,23 +237,41 @@ class QubitGKSLSimulator:
     # ------------------------------------------------------------------
 
     def _precompute_unitaries(self, dt: float) -> None:
-        """Pre-compute time-step-dependent unitaries (called once per simulation)."""
+        """Pre-compute time-step-dependent unitaries (called once per simulation).
+
+        Stores both half-dt Stinespring unitaries (for symmetric product in the
+        base _trotter_step) and full-dt Stinespring unitaries (for subclasses
+        like the noisy simulators that override _trotter_step).
+        """
         self._U_H_half = expm(-1j * self.H_total * dt / 2)
+        self._U_stines_half = [
+            stinespring_unitary_from_lindblad(L_op, dt / 2)
+            for L_op, _gamma in self.lindblad_ops
+        ]
+        # Full-dt Stinespring unitaries for noisy subclasses
         self._U_stines = [
             stinespring_unitary_from_lindblad(L_op, dt)
             for L_op, _gamma in self.lindblad_ops
         ]
 
     def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
-        """2nd-order symmetric Trotter step in 256-dim qubit space.
+        """Symmetric Trotter step with palindromic Lindblad channels in 256-dim qubit space.
 
-        exp(L dt) ~ exp(L_H dt/2) prod_k exp(L_k dt) exp(L_H dt/2)
+        exp(L dt) ≈ exp(L_H dt/2)
+                     · prod_{α=1..n} E_α(dt/2)
+                     · prod_{α=n..1} E_α(dt/2)
+                     · exp(L_H dt/2)
+
+        Effective convergence is O(dt) in trace distance (see module docstring).
         """
         # Half Hamiltonian
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
-        # All Lindblad channels
-        for U_stine in self._U_stines:
-            rho = apply_stinespring_to_density_matrix(rho, U_stine)
+        # Forward half-step for all Lindblad channels
+        for U_stine_half in self._U_stines_half:
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
+        # Reverse half-step for all Lindblad channels (palindromic)
+        for U_stine_half in reversed(self._U_stines_half):
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
         # Half Hamiltonian
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         return rho

@@ -22,6 +22,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
+from scipy.sparse.linalg import expm_multiply
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "."))
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -29,6 +30,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from classical_gksl_simulator import ClassicalGKSLSimulator
 from gksl_math_utils import (
     compute_populations_from_density_matrix,
+    unvectorize_density_matrix,
+    vectorize_density_matrix,
 )
 from gksl_physical_parameters import GKSLPhysicalParameters
 from qubit_gksl_noisy_simulator import QubitGKSLNoisySimulator
@@ -521,8 +524,11 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
         f_vs_finest = quantum_fidelity(rho_finest, rho_st)
         infid_trotter = 1.0 - f_vs_finest
 
-        # Stinespring approximation error (total - Trotter)
-        # This is approximate since errors don't decompose exactly
+        # Stinespring approximation error estimate (total - Trotter).
+        # This decomposition is approximate: infidelities are not strictly
+        # additive when both error sources are comparable or correlated.
+        # When infid_trotter << infid_total, the estimate is reliable;
+        # when they are of similar magnitude, treat as indicative only.
         infid_stine = infid_total - infid_trotter
 
         # Density matrix diagnostics
@@ -609,8 +615,6 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
     sim_st_detail._precompute_unitaries(dt_detail)
     rho_st_detail = sim_st_detail.prepare_initial_state("edge_triplet")
 
-    r_exact_detail = sim_exact.simulate(t_max=t_max, n_steps=10)
-
     print(
         f"  {'Step':>4} | {'F_vs_exact':>12} | {'Infid':>10} | {'Tr_ST':>10} | "
         f"{'min_eig_ST':>10} | {'N_S1_ST':>10} | {'N_S1_exact':>10}"
@@ -622,10 +626,6 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
         if s > 0:
             rho_st_detail = sim_st_detail._trotter_step(rho_st_detail)
 
-        rho_exact_s = r_exact_detail["rho_final"] if s == 10 else None
-        # For intermediate steps, reconstruct from the exact simulation data
-        from gksl_math_utils import unvectorize_density_matrix, vectorize_density_matrix
-        from scipy.sparse.linalg import expm_multiply
         if s == 0:
             rho_exact_step = sim_exact.prepare_initial_state("edge_triplet")
         else:

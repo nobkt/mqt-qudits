@@ -152,6 +152,8 @@ class QuditGKSLNoisySimulator(QuditGKSLSimulator):
         params: GKSLPhysicalParameters (with_boson=False)
         p_depol: depolarization probability per 2-qudit gate (default 0.01 = 1%)
         p_dephasing: dephasing probability per 2-qudit gate (default 0.0)
+        depol_pair_only: if True, apply noise only after pair (2+ qudit)
+            interactions, skipping single-site Lindblad channels (default False)
     """
 
     def __init__(
@@ -159,6 +161,7 @@ class QuditGKSLNoisySimulator(QuditGKSLSimulator):
         params: GKSLPhysicalParameters,
         p_depol: float = 0.01,
         p_dephasing: float = 0.0,
+        depol_pair_only: bool = False,
     ) -> None:
         super().__init__(params)
         if p_depol < 0.0 or p_depol > 1.0:
@@ -169,6 +172,7 @@ class QuditGKSLNoisySimulator(QuditGKSLSimulator):
             raise ValueError(msg)
         self.p_depol = p_depol
         self.p_dephasing = p_dephasing
+        self.depol_pair_only = depol_pair_only
 
         # Pre-compute which molecules each Lindblad operator acts on
         self._lindblad_sites = self._compute_lindblad_sites()
@@ -243,7 +247,8 @@ class QuditGKSLNoisySimulator(QuditGKSLSimulator):
             rho = apply_stinespring_to_density_matrix(rho, U_stine)
             sites = self._lindblad_sites[k]
             if len(sites) == 1:
-                rho = self._apply_gate_noise_single(rho, sites[0])
+                if not self.depol_pair_only:
+                    rho = self._apply_gate_noise_single(rho, sites[0])
             else:
                 rho = self._apply_gate_noise_pair(rho, sites[0], sites[1])
 
@@ -275,5 +280,6 @@ class QuditGKSLNoisySimulator(QuditGKSLSimulator):
         result["noise_params"] = {
             "p_depol": self.p_depol,
             "p_dephasing": self.p_dephasing,
+            "depol_pair_only": self.depol_pair_only,
         }
         return result

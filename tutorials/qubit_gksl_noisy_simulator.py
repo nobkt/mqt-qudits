@@ -229,6 +229,8 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
         T1: energy relaxation time in natural units (default None = no relaxation)
         T2: dephasing time in natural units (default None = no relaxation)
         t_gate: 2-qubit gate time in natural units (default 300.0 fs)
+        depol_pair_only: if True, apply noise only after pair (2+ qubit)
+            interactions, skipping single-site Lindblad channels (default False)
     """
 
     def __init__(
@@ -239,6 +241,7 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
         T1: float | None = None,
         T2: float | None = None,
         t_gate: float = 300.0,
+        depol_pair_only: bool = False,
     ) -> None:
         super().__init__(params)
         if p_depol < 0.0 or p_depol > 1.0:
@@ -252,6 +255,7 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
         self.T1 = T1
         self.T2 = T2
         self.t_gate = t_gate
+        self.depol_pair_only = depol_pair_only
 
         # Compute thermal relaxation probability per gate
         if T1 is not None and T1 > 0:
@@ -316,13 +320,14 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
             rho = apply_stinespring_to_density_matrix(rho, U_stine)
             sites = self._lindblad_sites[k]
             if len(sites) == 1:
-                rho = _apply_local_depolarization_single_qubit(
-                    rho, sites[0], N, self.p_depol
-                )
-                if self.p_dephasing > 0.0:
-                    rho = _apply_local_dephasing_single_qubit(
-                        rho, sites[0], N, self.p_dephasing
+                if not self.depol_pair_only:
+                    rho = _apply_local_depolarization_single_qubit(
+                        rho, sites[0], N, self.p_depol
                     )
+                    if self.p_dephasing > 0.0:
+                        rho = _apply_local_dephasing_single_qubit(
+                            rho, sites[0], N, self.p_dephasing
+                        )
             else:
                 rho = _apply_local_depolarization_pair_qubit(
                     rho, sites[0], sites[1], N, self.p_depol
@@ -374,5 +379,6 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
             "T2": self.T2,
             "t_gate": self.t_gate,
             "p_reset": self.p_reset,
+            "depol_pair_only": self.depol_pair_only,
         }
         return result

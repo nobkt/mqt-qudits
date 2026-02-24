@@ -590,6 +590,8 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
         p_dephasing: dephasing probability per gate (default 0.0)
         T1: energy relaxation time (default None = no relaxation)
         t_gate: 2-qubit gate time (default 300.0)
+        depol_pair_only: if True, apply noise only after pair (2+ qubit)
+            interactions, skipping single-site Lindblad channels (default False)
     """
 
     def __init__(
@@ -599,6 +601,7 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
         p_dephasing: float = 0.0,
         T1: float | None = None,
         t_gate: float = 300.0,
+        depol_pair_only: bool = False,
     ) -> None:
         super().__init__(params)
         if p_depol < 0.0 or p_depol > 1.0:
@@ -611,6 +614,7 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
         self.p_dephasing = p_dephasing
         self.T1 = T1
         self.t_gate = t_gate
+        self.depol_pair_only = depol_pair_only
 
         if T1 is not None and T1 > 0:
             self.p_reset = 1.0 - np.exp(-t_gate / T1)
@@ -656,13 +660,14 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
             psi = self._apply_stinespring_with_measurement(psi, U_stine, rng)
             sites = self._lindblad_sites[k]
             if len(sites) == 1:
-                psi = _apply_stochastic_qubit_depolarization_single(
-                    psi, sites[0], N, self.p_depol, rng
-                )
-                if self.p_dephasing > 0.0:
-                    psi = _apply_stochastic_qubit_dephasing_single(
-                        psi, sites[0], N, self.p_dephasing, rng
+                if not self.depol_pair_only:
+                    psi = _apply_stochastic_qubit_depolarization_single(
+                        psi, sites[0], N, self.p_depol, rng
                     )
+                    if self.p_dephasing > 0.0:
+                        psi = _apply_stochastic_qubit_dephasing_single(
+                            psi, sites[0], N, self.p_dephasing, rng
+                        )
             else:
                 psi = _apply_stochastic_qubit_depolarization_pair(
                     psi, sites[0], sites[1], N, self.p_depol, rng
@@ -721,5 +726,6 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
             "T1": self.T1,
             "t_gate": self.t_gate,
             "p_reset": self.p_reset,
+            "depol_pair_only": self.depol_pair_only,
         }
         return result

@@ -5,7 +5,7 @@ Diagnostic tests motivated by iteration 15 analysis (code confirmed correct):
   A. Noise-Trotter tradeoff: vary n_steps for noisy sim to find optimal point
   B. Noise budget decomposition: separate Hamiltonian-gate vs Lindblad-channel noise
   C. Analytical noise bound comparison
-  D. Improved qubit fidelity tracking with normalised metrics
+  D. Improved qubit fidelity tracking with normalized metrics
 
 Results are written to developing/verification_results/ as JSON and Markdown.
 """
@@ -356,14 +356,14 @@ def test_analytical_noise_bound(params: GKSLPhysicalParameters) -> dict:
 # Test D: Improved qubit fidelity tracking
 # =========================================================================
 def test_qubit_improved_fidelity(params: GKSLPhysicalParameters) -> dict:
-    """Improved qubit fidelity tracking with both raw and normalised metrics.
+    """Improved qubit fidelity tracking with both raw and normalized metrics.
 
     Runs DM noisy qubit and qudit simulators for 10 steps with detailed
     per-step reporting of:
       - F_raw: raw fidelity (affected by trace mismatch)
-      - F_norm: normalised fidelity (physical subspace structure)
+      - F_norm: normalized fidelity (physical subspace structure)
       - Trace, forbidden population
-      - Conditional N_S1 (normalised by trace)
+      - Conditional N_S1 (normalized by trace)
     """
     print("\n" + "=" * 70)
     print("Test D: Improved Qubit Fidelity Tracking (pair-only, p_depol=0.01)")

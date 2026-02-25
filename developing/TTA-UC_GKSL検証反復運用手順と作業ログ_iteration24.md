@@ -40,7 +40,7 @@ Iteration 23 の検証結果の詳細分析に基づき、分析の精度をさ�
 ### ステップ 1: 分析レポート作成 ✅
 - `developing/検証結果分析_20260225_iteration24.md` を作成
 - 改善点3件を数値的根拠とともに記載
-- 誤差ベクトル角度の推定値を計算（θ ≈ 127°〜132°）
+- 誤差ベクトル角度の推定値を計算（θ ≈ 119°〜131°）
 
 ### ステップ 2: 検証スクリプト作成 ✅
 - `tutorials/run_tta_uc_gksl_verification_iteration24.py` を作成
@@ -81,8 +81,8 @@ python run_tta_uc_gksl_verification_iteration24.py
 - c₀_palindromic ≈ 1.041e-06（平均値 1.035e-06 と < 0.6% の差）
 
 ### 誤差ベクトル角度
-- θ ≈ 128°〜132°（全 dt で安定）
-- cos(θ) ≈ -0.62〜-0.67
+- θ ≈ 119°〜131°（大きい dt で小さく、小さい dt で安定）
+- cos(θ) ≈ -0.49〜-0.66
 
 ## quantum_dynamics_gksl_comparison.ipynb の改修検討
 

@@ -670,16 +670,17 @@ def _symmetric_classical_product_trotter_simulate(
 def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
     """Compare ST against exact GKSL, CT, CPT, and SCPT.
 
-    MODIFIED from iteration 24:
-    - Added Frobenius distance computation for key pairs
-    - Part 6f (new): Composite model fitting T(ST,ex)/dt = p0 + p1*dt
-    - Part 6g (new): Frobenius-based error vector angle estimation
-    - Part 6h (new): Analytical Rate(T) prediction and comparison
-    - Parts 6a-6e retained from iteration 24
+    MODIFIED from iteration 25 (iteration 26):
+    - Part 6f REBUILT: Frobenius-based composite model (replaces trace-distance model)
+    - Part 6h REBUILT: Frobenius-based Rate(d_F) prediction
+    - Part 6i (new): T/d_F ratio analysis
+    - Part 6j (new): Frobenius convergence rates
+    - Parts 6a-6e, 6g retained from iteration 25
+    - Fixed: variable existence check (dir() -> dict.get())
     """
     print("\n" + "=" * 70)
     print("Test E: Exact Liouvillian Comparison (ST vs Exact vs CT vs CPT vs SCPT)")
-    print("       [iter 24: extended dt range + higher-order analysis]")
+    print("       [iter 26: Frobenius-based composite model + T/d_F analysis]")
     print("       [NOTE: ST uses symmetric Lindblad product ordering]")
     print("=" * 70)
 

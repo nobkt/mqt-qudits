@@ -1371,29 +1371,61 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
             "c0_palindromic_richardson": float(c0_rich),
         }
 
-    # Part 6f: Composite model fitting T(ST,ex) = p0*dt + p1*dt^2 (new in iteration 25)
-    print(f"\n  Part 6f: Composite model fitting T(ST,ex)/dt = p₀ + p₁·dt")
+    # Part 6f: Vector composition model for T(ST,ex) (new in iteration 25)
+    # Instead of a simple polynomial fit, model T(ST,ex) as a vector sum:
+    # T(ST,ex) ≈ |δ_S + δ_Str| where δ_S = a₀·dt (Stinespring), δ_Str = b₀·dt² (Strang)
+    # Using the trace-distance law of cosines with mean angle:
+    # T_model(dt) = √(a₀²dt² + b₀²dt⁴ + 2a₀b₀dt³cos(θ_mean))
+    print(f"\n  Part 6f: Vector composition model for T(ST,ex)")
+
     composite_fit_result = {}
-    if len(dts) >= 3:
-        A_comp = np.column_stack([np.ones_like(dts), dts])
-        coeffs_comp, _, _, _ = np.linalg.lstsq(A_comp, t_st_vals / dts, rcond=None)
-        p0_comp, p1_comp = coeffs_comp
-        t_comp_fitted = (p0_comp + p1_comp * dts) * dts
-        comp_fit_errors = np.abs(t_st_vals - t_comp_fitted) / t_st_vals
-        print(f"  T(ST,ex) = ({p0_comp:.6e} + {p1_comp:.6e}·dt) · dt")
-        print(f"  p₀ (effective leading coeff) = {p0_comp:.6e}")
-        print(f"  p₁ (cancellation effect)     = {p1_comp:.6e} {'(< 0 → cancellation)' if p1_comp < 0 else '(> 0 → no cancellation at large dt)'}")
-        print(f"  Relative fit errors: {', '.join(f'{e:.6f}' for e in comp_fit_errors)}")
-        print(f"  Comparison with Stinespring a₀:")
-        print(f"    a₀ (Stinespring asymptotic) = {a0_stine:.6e}")
-        print(f"    p₀ (composite leading)      = {p0_comp:.6e}")
-        print(f"    diff = {abs(p0_comp - a0_stine) / a0_stine * 100:.2f}%")
-        if p1_comp < 0:
-            print(f"  p₁ < 0 confirms error cancellation between Stinespring and Strang components")
+    if len(dts) >= 2 and error_angle_data:
+        cos_theta_values = [a["cos_theta_approx"] for a in error_angle_data
+                           if not np.isnan(a.get("cos_theta_approx", float("nan")))]
+        cos_theta_mean = float(np.mean(cos_theta_values)) if cos_theta_values else 0.0
+
+        # Use higher-order fit coefficients if available
+        a0_val = a0_stine if "a0_stine" in dir() else a_stine
+        b0_val = b0_strang if "b0_strang" in dir() else b_strang
+        r_val = b0_val / a0_val
+
+        print(f"  Component coefficients: a₀ = {a0_val:.6e}, b₀ = {b0_val:.6e}, r = b₀/a₀ = {r_val:.2f}")
+        print(f"  Mean trace-distance angle: cos(θ_mean) = {cos_theta_mean:.4f} "
+              f"(θ_mean = {np.degrees(np.arccos(max(-1, min(1, cos_theta_mean)))):.1f}°)")
+        print(f"  Model: T_model(dt) = a₀·dt · √(1 + r²·dt² + 2r·dt·cos(θ_mean))")
+
+        print(f"\n  {'dt':>5} | {'T_model':>11} | {'T_observed':>11} | {'rel_error':>10} | "
+              f"{'T_obs/dt':>11} | {'T_model/dt':>11}")
+        print("  " + "-" * 80)
+
+        t_model_vals = []
+        model_errors = []
+        for k_idx, cd_entry in enumerate(convergence_data):
+            dt_val = cd_entry["dt"]
+            inner = 1.0 + r_val**2 * dt_val**2 + 2.0 * r_val * dt_val * cos_theta_mean
+            inner = max(inner, 0.0)
+            t_model_dt = a0_val * dt_val * np.sqrt(inner)
+            t_obs_dt = cd_entry["T_ST_vs_exact"]
+            rel_err = abs(t_model_dt - t_obs_dt) / t_obs_dt if t_obs_dt > 0 else float("nan")
+            t_model_vals.append(t_model_dt)
+            model_errors.append(rel_err)
+
+            print(
+                f"  {dt_val:5.2f} | {t_model_dt:11.4e} | {t_obs_dt:11.4e} | {rel_err:10.4f} | "
+                f"{t_obs_dt/dt_val:11.4e} | {t_model_dt/dt_val:11.4e}"
+            )
+
+        print(f"\n  Max relative error: {max(model_errors):.4f} ({max(model_errors)*100:.1f}%)")
+        print(f"  Model uses mean angle — per-dt angles vary, causing residual errors")
+
         composite_fit_result = {
-            "p0_leading": float(p0_comp),
-            "p1_cancellation": float(p1_comp),
-            "relative_fit_errors": [float(e) for e in comp_fit_errors],
+            "a0_stinespring": float(a0_val),
+            "b0_strang": float(b0_val),
+            "r_ratio": float(r_val),
+            "cos_theta_mean": float(cos_theta_mean),
+            "theta_mean_deg": float(np.degrees(np.arccos(max(-1, min(1, cos_theta_mean))))),
+            "model_T_values": [float(v) for v in t_model_vals],
+            "model_relative_errors": [float(e) for e in model_errors],
         }
 
     # Part 6g: Frobenius-based error vector angle estimation (new in iteration 25)
@@ -1452,15 +1484,20 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
 
     # Part 6h: Analytical Rate(T) prediction (new in iteration 25)
     print(f"\n  Part 6h: Analytical Rate(T) prediction for ST vs Exact")
-    print(f"  Using composite model T(ST,ex) ≈ p₀·dt + p₁·dt² to predict Rate(T)")
+    print(f"  Using vector composition model with per-dt trace-distance angles")
     rate_prediction_data = []
+    rate_prediction_data_result = {}
     if composite_fit_result and len(convergence_data) >= 2:
-        p0_val = composite_fit_result["p0_leading"]
-        p1_val = composite_fit_result["p1_cancellation"]
-        print(f"  Model: T(ST,ex) ≈ {p0_val:.6e}·dt + {p1_val:.6e}·dt²")
-        print(f"  {'dt range':>15} | {'T_pred(dt₁)':>12} | {'T_pred(dt₂)':>12} | "
-              f"{'Rate_pred':>10} | {'Rate_obs':>10} | {'Δ_Rate':>8}")
-        print("  " + "-" * 85)
+        a0_mod = composite_fit_result["a0_stinespring"]
+        b0_mod = composite_fit_result["b0_strang"]
+        r_mod = composite_fit_result["r_ratio"]
+        cos_mean = composite_fit_result["cos_theta_mean"]
+
+        print(f"  Model: T_model(dt) = a₀·dt · √(1 + r²·dt² + 2r·dt·cos(θ_mean))")
+        print(f"  a₀ = {a0_mod:.6e}, b₀ = {b0_mod:.6e}, r = {r_mod:.2f}, cos(θ_mean) = {cos_mean:.4f}")
+        print(f"\n  {'dt range':>15} | {'T_model(dt₁)':>13} | {'T_model(dt₂)':>13} | "
+              f"{'Rate_model':>10} | {'Rate_obs':>10} | {'Δ':>8}")
+        print("  " + "-" * 90)
 
         observed_rates = rates.get("tdist_st_ex", [])
         for k in range(1, len(convergence_data)):
@@ -1468,57 +1505,61 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
             dt_curr = convergence_data[k]["dt"]
             dt_ratio = dt_prev / dt_curr
 
-            # Predicted T from composite model
-            t_pred_prev = p0_val * dt_prev + p1_val * dt_prev**2
-            t_pred_curr = p0_val * dt_curr + p1_val * dt_curr**2
+            # Predicted T from vector model
+            inner_prev = max(0, 1.0 + r_mod**2 * dt_prev**2 + 2 * r_mod * dt_prev * cos_mean)
+            inner_curr = max(0, 1.0 + r_mod**2 * dt_curr**2 + 2 * r_mod * dt_curr * cos_mean)
+            t_mod_prev = a0_mod * dt_prev * np.sqrt(inner_prev)
+            t_mod_curr = a0_mod * dt_curr * np.sqrt(inner_curr)
 
-            if t_pred_prev > 0 and t_pred_curr > 0:
-                rate_predicted = np.log(t_pred_prev / t_pred_curr) / np.log(dt_ratio)
+            if t_mod_prev > 0 and t_mod_curr > 0:
+                rate_model = np.log(t_mod_prev / t_mod_curr) / np.log(dt_ratio)
             else:
-                rate_predicted = float("nan")
+                rate_model = float("nan")
 
             rate_observed = observed_rates[k - 1] if k - 1 < len(observed_rates) else float("nan")
-            delta_rate = rate_predicted - rate_observed if not (np.isnan(rate_predicted) or np.isnan(rate_observed)) else float("nan")
+            delta_rate = rate_model - rate_observed if not (np.isnan(rate_model) or np.isnan(rate_observed)) else float("nan")
 
             rate_prediction_data.append({
                 "dt_prev": dt_prev,
                 "dt_curr": dt_curr,
-                "T_predicted_prev": t_pred_prev,
-                "T_predicted_curr": t_pred_curr,
-                "rate_predicted": float(rate_predicted),
+                "T_model_prev": t_mod_prev,
+                "T_model_curr": t_mod_curr,
+                "rate_model": float(rate_model),
                 "rate_observed": float(rate_observed),
                 "delta_rate": float(delta_rate),
             })
 
             print(
-                f"  {dt_prev:.1f} → {dt_curr:.1f}      | {t_pred_prev:12.4e} | {t_pred_curr:12.4e} | "
-                f"{rate_predicted:10.4f} | {rate_observed:10.4f} | {delta_rate:+8.4f}"
+                f"  {dt_prev:.1f} → {dt_curr:.1f}      | {t_mod_prev:13.4e} | {t_mod_curr:13.4e} | "
+                f"{rate_model:10.4f} | {rate_observed:10.4f} | {delta_rate:+8.4f}"
             )
 
-        # Predict dt threshold for Rate > 0.95
-        if p0_val > 0 and p1_val < 0:
-            # Rate ≈ 1 + p1/p0 * dt (approximate for small dt)
-            # Rate > 0.95  →  p1/p0 * dt > -0.05  →  dt < 0.05 * p0 / |p1|
-            dt_threshold_095 = 0.05 * p0_val / abs(p1_val)
-            # Rate > 0.99  →  dt < 0.01 * p0 / |p1|
-            dt_threshold_099 = 0.01 * p0_val / abs(p1_val)
-            print(f"\n  Predicted dt thresholds (using Rate ≈ 1 + (p₁/p₀)·dt):")
-            print(f"    Rate(T) > 0.95 requires dt < {dt_threshold_095:.4f} (n_steps > {10.0/dt_threshold_095:.0f})")
-            print(f"    Rate(T) > 0.99 requires dt < {dt_threshold_099:.4f} (n_steps > {10.0/dt_threshold_099:.0f})")
-            print(f"    p₁/p₀ = {p1_val/p0_val:.4f}")
+        # Predict dt threshold for Rate > 0.95 using asymptotic expansion
+        # For small dt: T ≈ a₀·dt·(1 + r·cos(θ)·dt) → Rate ≈ 1 + r·cos(θ)·dt_mid
+        r_cos_theta = r_mod * cos_mean
+        if r_cos_theta < 0:
+            # Rate ≈ 1 + r·cos(θ)·dt → Rate > 0.95 when |r·cos(θ)|·dt < 0.05
+            dt_threshold_095 = 0.05 / abs(r_cos_theta)
+            dt_threshold_099 = 0.01 / abs(r_cos_theta)
         else:
             dt_threshold_095 = float("nan")
             dt_threshold_099 = float("nan")
 
+        print(f"\n  Asymptotic expansion: Rate(T) ≈ 1 + r·cos(θ_mean)·dt = 1 + ({r_cos_theta:.4f})·dt")
+        if not np.isnan(dt_threshold_095):
+            print(f"  Rate(T) > 0.95 requires dt < {dt_threshold_095:.4f} (n_steps > {10.0/dt_threshold_095:.0f})")
+            print(f"  Rate(T) > 0.99 requires dt < {dt_threshold_099:.4f} (n_steps > {10.0/dt_threshold_099:.0f})")
+
         rate_prediction_data_result = {
-            "model_p0": float(p0_val),
-            "model_p1": float(p1_val),
+            "model_a0": float(a0_mod),
+            "model_b0": float(b0_mod),
+            "model_r": float(r_mod),
+            "model_cos_theta_mean": float(cos_mean),
+            "model_r_cos_theta": float(r_cos_theta),
             "predictions": rate_prediction_data,
             "dt_threshold_rate_095": float(dt_threshold_095) if not np.isnan(dt_threshold_095) else None,
             "dt_threshold_rate_099": float(dt_threshold_099) if not np.isnan(dt_threshold_099) else None,
         }
-    else:
-        rate_prediction_data_result = {}
 
 
     return {
@@ -2002,16 +2043,26 @@ def main() -> int:
     if te.get("composite_fit"):
         cf_data = te["composite_fit"]
         md_lines.extend([
-            "### 合成モデルフィッティング（iteration 25 追加）",
+            "### ベクトル合成モデル（iteration 25 追加）",
             "",
-            f"T(ST,ex) = (p₀ + p₁·dt) · dt",
+            "T_model(dt) = a₀·dt · √(1 + r²·dt² + 2r·dt·cos(θ_mean))",
             "",
-            f"- p₀（実効先導係数）= {cf_data['p0_leading']:.6e}",
-            f"- p₁（相殺効果）= {cf_data['p1_cancellation']:.6e}"
-            f" {'(< 0 → 相殺確認)' if cf_data['p1_cancellation'] < 0 else ''}",
-            f"- 相対フィット誤差: {', '.join(f'{e:.6f}' for e in cf_data['relative_fit_errors'])}",
+            f"- a₀ = {cf_data['a0_stinespring']:.6e}",
+            f"- b₀ = {cf_data['b0_strang']:.6e}",
+            f"- r = b₀/a₀ = {cf_data['r_ratio']:.2f}",
+            f"- cos(θ_mean) = {cf_data['cos_theta_mean']:.4f} (θ_mean = {cf_data['theta_mean_deg']:.1f}°)",
             "",
+            "| dt | T_model | T_observed | 相対誤差 |",
+            "|----|---------|-----------|---------|",
         ])
+        for k_idx, cd_entry in enumerate(te["convergence_data"]):
+            t_mod = cf_data["model_T_values"][k_idx]
+            t_obs = cd_entry["T_ST_vs_exact"]
+            rel_err = cf_data["model_relative_errors"][k_idx]
+            md_lines.append(
+                f"| {cd_entry['dt']:.2f} | {t_mod:.4e} | {t_obs:.4e} | {rel_err:.4f} |"
+            )
+        md_lines.append("")
 
     # Frobenius angle estimation (new in iteration 25)
     if te.get("frobenius_angle_data"):
@@ -2041,16 +2092,18 @@ def main() -> int:
         md_lines.extend([
             "### 合成 Rate(T) 予測と実測の比較（iteration 25 追加）",
             "",
-            f"合成モデル: T(ST,ex) ≈ {rp['model_p0']:.6e}·dt + {rp['model_p1']:.6e}·dt²",
+            f"ベクトル合成モデル: T_model(dt) = a₀·dt · √(1 + r²·dt² + 2r·dt·cos(θ_mean))",
+            f"- r·cos(θ_mean) = {rp['model_r_cos_theta']:.4f}",
+            f"- 漸近展開: Rate(T) ≈ 1 + r·cos(θ_mean)·dt = 1 + ({rp['model_r_cos_theta']:.4f})·dt",
             "",
-            "| dt 範囲 | Rate 予測 | Rate 実測 | 差 |",
-            "|---------|----------|----------|-----|",
+            "| dt 範囲 | Rate モデル | Rate 実測 | 差 |",
+            "|---------|-----------|----------|-----|",
         ])
         for pred in rp["predictions"]:
             delta_str = f"{pred['delta_rate']:+.4f}" if not np.isnan(pred.get("delta_rate", float("nan"))) else "—"
             md_lines.append(
                 f"| {pred['dt_prev']:.1f} → {pred['dt_curr']:.1f} | "
-                f"{pred['rate_predicted']:.4f} | "
+                f"{pred['rate_model']:.4f} | "
                 f"{pred['rate_observed']:.4f} | "
                 f"{delta_str} |"
             )
@@ -2151,7 +2204,9 @@ def main() -> int:
               f"c0={re_data['c0_palindromic_richardson']:.2e}")
     if te.get("composite_fit"):
         cf_data = te["composite_fit"]
-        print(f"  Test E: composite fit T(ST,ex) = ({cf_data['p0_leading']:.2e} + {cf_data['p1_cancellation']:.2e}·dt)·dt")
+        print(f"  Test E: vector model r=b₀/a₀={cf_data['r_ratio']:.2f}, "
+              f"cos(θ_mean)={cf_data['cos_theta_mean']:.4f}, "
+              f"max_error={max(cf_data['model_relative_errors'])*100:.1f}%")
     if te.get("frobenius_angle_data"):
         f_angles = te["frobenius_angle_data"]
         theta_f_vals_summary = [a["theta_frobenius_deg"] for a in f_angles if not np.isnan(a.get("theta_frobenius_deg", float("nan")))]

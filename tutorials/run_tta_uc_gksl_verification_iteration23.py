@@ -1157,7 +1157,7 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
     if len(dts) >= 2:
         A_mat = np.column_stack([np.ones_like(dts), dts])
         b_vec = t_st_vals / dts
-        coeffs, residuals, _, _ = np.linalg.lstsq(A_mat, b_vec, rcond=None)
+        coeffs, _, _, _ = np.linalg.lstsq(A_mat, b_vec, rcond=None)
         a_fit, b_fit = coeffs
         t_fitted = a_fit * dts + b_fit * dts**2
         fit_errors = np.abs(t_st_vals - t_fitted) / t_st_vals

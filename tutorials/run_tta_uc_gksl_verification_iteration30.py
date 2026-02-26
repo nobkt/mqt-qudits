@@ -7,7 +7,7 @@ Changes from iteration 29:
     * Part 6f IMPROVED: 3-parameter Stinespring coefficient model
       - Old: a_F(dt) = a_F0 + a_F1*dt  (linear, cannot capture non-monotonicity)
       - New: a_F(dt) = a_F0 + a_F1*dt + a_F2*dt²  (quadratic, captures peak at dt~0.8)
-      - a_F(dt) = d_F(ST,SCPT)/dt peaks at dt~1.0, then decreases both ways
+      - a_F(dt) = d_F(ST,SCPT)/dt peaks near dt~1.0 (observed), model predicts dt~0.8
       - Component fit error: 0.113% -> 0.0005% (226x improvement)
       - Leave-one-out cross-validation: max pred error 0.008% (not overfitting)
     * Part 6f IMPROVED: M7 model variant (Stine-3param + Strang-dt² + cos(dt²))
@@ -1520,7 +1520,14 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
         print(f"    a_F0 = {a_F0_3p:.6e}, a_F1 = {a_F1_3p:.6e}, a_F2 = {a_F2_3p:.6e}")
         if a_F2_3p < 0 and a_F1_3p > 0:
             peak_dt = -a_F1_3p / (2 * a_F2_3p)
-            print(f"    Predicted peak: dt = {peak_dt:.4f} (non-monotonic a_F(dt) confirmed)")
+            dt_min, dt_max = float(min(dts)), float(max(dts))
+            if dt_min <= peak_dt <= dt_max:
+                print(f"    Predicted peak: dt = {peak_dt:.4f} (within data range [{dt_min:.2f}, {dt_max:.2f}])")
+            else:
+                print(f"    Predicted peak: dt = {peak_dt:.4f} (outside data range [{dt_min:.2f}, {dt_max:.2f}])")
+        elif a_F2_3p != 0:
+            peak_dt = -a_F1_3p / (2 * a_F2_3p) if a_F2_3p != 0 else float("nan")
+            print(f"    Model extremum at dt = {peak_dt:.4f} (a_F1={a_F1_3p:.2e}, a_F2={a_F2_3p:.2e})")
         if frob_stine_3p_errors:
             print(f"    Relative errors: {', '.join(f'{e:.6f}' for e in frob_stine_3p_errors)}")
             print(f"    Max: {max(frob_stine_3p_errors)*100:.6f}%")
@@ -1572,10 +1579,14 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
             if valid_3p:
                 print(f"  LOO max: 2p-dt={max(loo_2p_errs)*100:.4f}%, "
                       f"2p-dt²={max(loo_dt2_errs)*100:.4f}%, 3p={max(valid_3p)*100:.4f}%")
-                if max(valid_3p) < 0.02:
-                    print(f"  → 3-param LOO max < 0.02%: NOT overfitting ✓")
+                # LOO overfitting criterion: LOO max prediction error should not exceed
+                # the 2-param model's in-sample max error (~0.1%). A threshold of 0.02%
+                # is ~5x below this, providing a conservative margin.
+                loo_overfit_threshold = 0.02  # 0.02% relative error
+                if max(valid_3p) < loo_overfit_threshold:
+                    print(f"  → 3-param LOO max < {loo_overfit_threshold}%: NOT overfitting ✓")
                 else:
-                    print(f"  → 3-param LOO max >= 0.02%: possible overfitting ⚠")
+                    print(f"  → 3-param LOO max >= {loo_overfit_threshold}%: possible overfitting ⚠")
 
         # --- Frobenius Richardson extrapolation (NEW in iteration 27) ---
         a_F_rich = a_F
@@ -3094,7 +3105,16 @@ def main() -> int:
         max_delta_cos = max(abs(p.get("delta_rate_cos_dt2", float("nan")))
                            for p in rp["predictions"]
                            if not np.isnan(p.get("delta_rate_cos_dt2", float("nan"))))
-        print(f"  Test E: Rate(d_F) max|Δ|: M1={max_delta_simple:.4f}, M2={max_delta_ho:.4f}, M3={max_delta_cos:.4f}")
+        max_delta_m5_vals = [abs(p.get("delta_rate_m5", float("nan")))
+                             for p in rp["predictions"]
+                             if not np.isnan(p.get("delta_rate_m5", float("nan")))]
+        max_delta_m7_vals = [abs(p.get("delta_rate_m7", float("nan")))
+                             for p in rp["predictions"]
+                             if not np.isnan(p.get("delta_rate_m7", float("nan")))]
+        max_delta_m5 = max(max_delta_m5_vals) if max_delta_m5_vals else float("nan")
+        max_delta_m7 = max(max_delta_m7_vals) if max_delta_m7_vals else float("nan")
+        print(f"  Test E: Rate(d_F) max|Δ|: M1={max_delta_simple:.4f}, M2={max_delta_ho:.4f}, "
+              f"M3={max_delta_cos:.4f}, M5={max_delta_m5:.4f}, M7={max_delta_m7:.4f}")
         if rp.get("dt_threshold_rate_dF_095") is not None:
             print(f"  Test E: Rate(d_F) > 0.95 requires dt < {rp['dt_threshold_rate_dF_095']:.4f}")
     if te.get("tdF_ratio_data"):

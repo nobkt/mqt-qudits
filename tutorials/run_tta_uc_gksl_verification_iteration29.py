@@ -1879,7 +1879,7 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
         print(f"               b_F0={b_F0_mod:.6e}, b_F1={b_F1_mod:.6e}")
         print(f"  cos(dt²) model: c0={cos_c0:.8f}, c1={cos_c1:.8f}")
         print(f"\n  {'dt range':>15} | {'Rate_s':>7} | {'Rate_M2':>7} | {'Rate_M3':>7} | {'Rate_M5':>7} | {'Rate_obs':>8} | "
-              f"{'\u0394_s':>8} | {'\u0394_M2':>8} | {'\u0394_M3':>8} | {'\u0394_M5':>8} | {'Rate_T':>7}")
+              f"{'Δ_s':>8} | {'Δ_M2':>8} | {'Δ_M3':>8} | {'Δ_M5':>8} | {'Rate_T':>7}")
         print("  " + "-" * 140)
 
         observed_rates_T = rates.get("tdist_st_ex", [])

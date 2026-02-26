@@ -1941,7 +1941,6 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
                 rate_model_m5 = np.log(dF_m5_prev / dF_m5_curr) / np.log(dt_ratio)
             else:
                 rate_model_m5 = float("nan")
-            delta_rate_m5 = rate_model_m5 - rate_obs_dF if not (np.isnan(rate_model_m5) or np.isnan(rate_obs_dF)) else float("nan")
 
             # Observed Rate(d_F)
             dF_obs_prev = convergence_data[k - 1]["frob_ST_vs_exact"]
@@ -1954,6 +1953,7 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
             delta_rate_simple = rate_model_simple - rate_obs_dF if not (np.isnan(rate_model_simple) or np.isnan(rate_obs_dF)) else float("nan")
             delta_rate_ho = rate_model_ho - rate_obs_dF if not (np.isnan(rate_model_ho) or np.isnan(rate_obs_dF)) else float("nan")
             delta_rate_cos = rate_model_cos - rate_obs_dF if not (np.isnan(rate_model_cos) or np.isnan(rate_obs_dF)) else float("nan")
+            delta_rate_m5 = rate_model_m5 - rate_obs_dF if not (np.isnan(rate_model_m5) or np.isnan(rate_obs_dF)) else float("nan")
 
             # Observed Rate(T) for comparison
             rate_observed_T = observed_rates_T[k - 1] if k - 1 < len(observed_rates_T) else float("nan")
@@ -2165,7 +2165,7 @@ def main() -> int:
     )
 
     print("=" * 70)
-    print("TTA-UC GKSL Iteration 28: cos(θ_F)(dt) Modeling")
+    print("TTA-UC GKSL Iteration 29: Strang dt² Coefficient Model Correction")
     print(f"Timestamp: {timestamp}")
     print("NOTE: ST simulator uses symmetric Lindblad product ordering")
     print("=" * 70)
@@ -2173,14 +2173,14 @@ def main() -> int:
     results: dict = {
         "timestamp": timestamp,
         "iteration": 29,
-        "purpose": "cos(θ_F)(dt) modeling. "
-                   "Iteration 27 HO composite model had max error 0.23% but was worse than "
-                   "simple model at small dt (0.10% vs 0.006% at dt=0.1). Root cause: "
-                   "(1) HO coefficient fitting errors don't cancel as well as simple-mean errors, "
-                   "(2) constant cos(θ_F) mean approximation. This iteration adds: "
-                   "(1) cos(θ_F)(dt) = c0 + c1*dt² modeling (dt² physically motivated), "
-                   "(2) 6-model variant comparison (M1-M6 including Strang-dt² models), "
-                   "(3) Error source decomposition (coefficient vs cos approximation).",
+        "purpose": "Strang dt² coefficient model correction. "
+                   "Iteration 28 cos(θ_F)(dt²) modeling reduced composite error to 0.15% "
+                   "but coefficient fitting dominated remaining error. Analysis revealed "
+                   "Strang symmetric splitting eliminates odd-order corrections, so "
+                   "b_F(dt) = b_F0 + b_F2*dt² (not b_F0 + b_F1*dt). This iteration adds: "
+                   "(1) Strang coefficient model corrected: dt → dt² (symmetric splitting), "
+                   "(2) 6-model variant comparison (M1-M6 including M5 recommended), "
+                   "(3) M5/M6 Rate(d_F) prediction, error decomposition.",
         "simulator_note": "ST uses symmetric (palindromic) Lindblad product ordering. "
                           "SCPT uses the same palindromic ordering with exact channel exponentials.",
         "tests": [],
@@ -2217,15 +2217,15 @@ def main() -> int:
     # Write Markdown report
     # ===================================================================
     md_lines = [
-        "# TTA-UC GKSL Iteration 28: cos(θ_F)(dt) モデリング",
+        "# TTA-UC GKSL Iteration 29: Strang dt² 係数モデル補正",
         "",
         f"- 実行時刻(UTC): {timestamp}",
-        "- iteration 27 からの主要修正:",
-        "  - Part 6f 改善: cos(θ_F)(dt) = c₀ + c₁·dt² モデリング追加",
+        "- iteration 28 からの主要修正:",
+        "  - Part 6f 改善: Strang 係数モデルを dt → dt² に修正（対称分割の偶数次補正）",
         "  - Part 6f 改善: 6 モデルバリアント体系比較（M1-M6, Strang dt² モデル含む）",
         "  - Part 6f 改善: 誤差分解診断（係数誤差 vs cos 近似誤差）",
         "  - Part 6h 改善: M5/M6 Rate(d_F) 予測追加",
-        "  - その他のパート: iteration 27 と同一",
+        "  - その他のパート: iteration 28 と同一",
         "",
     ]
 
@@ -2591,7 +2591,7 @@ def main() -> int:
             "",
         ])
 
-    # Frobenius composite model (IMPROVED in iteration 28)
+    # Frobenius composite model (IMPROVED in iteration 29)
     if te.get("composite_fit"):
         cf_data = te["composite_fit"]
         md_lines.extend([
@@ -2660,7 +2660,7 @@ def main() -> int:
                 "パラメトリックモデルの誤差源は係数フィッティングと角度モデリングのみ。",
                 "",
             ])
-        # 4-Model comparison table (EXPANDED in iteration 28)
+        # 6-Model comparison table (EXPANDED in iteration 29)
         md_lines.extend([
             "#### 6 モデルバリアント比較（iteration 29 拡張）",
             "",

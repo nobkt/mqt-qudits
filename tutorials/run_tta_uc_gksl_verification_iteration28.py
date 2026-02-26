@@ -1498,7 +1498,9 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
         c1_cos_dt2 = 0.0
         cos_dt2_fit_errors = []
         if len(dts) >= 3:
-            # Fit cos(θ_F) = c0 + c1*dt² (physically motivated: leading correction is O(dt²))
+            # Fit cos(θ_F) = c0 + c1*dt² (dt² is physically motivated because the
+            # Stinespring error has O(dt) + O(dt²) structure, so the angle between
+            # error vectors gets O(dt²) corrections from the ratio of subleading terms)
             A_cos_mat = np.column_stack([np.ones_like(dts), dts**2])
             coeffs_cos, _, _, _ = np.linalg.lstsq(A_cos_mat, cos_theta_F_arr, rcond=None)
             c0_cos_dt2, c1_cos_dt2 = float(coeffs_cos[0]), float(coeffs_cos[1])
@@ -1521,10 +1523,10 @@ def test_exact_liouvillian_comparison(params: GKSLPhysicalParameters) -> dict:
             c0_cos_dt, c1_cos_dt = float(coeffs_cos_dt[0]), float(coeffs_cos_dt[1])
             cos_dt_fitted = c0_cos_dt + c1_cos_dt * dts
             cos_dt_fit_errors = [float(abs(cos_dt_fitted[k] - cos_theta_F_arr[k])) for k in range(len(dts))]
-        if cos_dt_fit_errors:
+        if cos_dt_fit_errors and cos_dt2_fit_errors:
             print(f"\n  Comparison with dt-linear model: cos(θ_F)(dt) = {c0_cos_dt:.10f} + {c1_cos_dt:.10f}·dt")
             print(f"  dt-linear max error: {max(cos_dt_fit_errors):.2e}")
-            if max(cos_dt2_fit_errors) > 0:
+            if max(cos_dt2_fit_errors) > 0 and max(cos_dt_fit_errors) > 0:
                 print(f"  → dt² model is {max(cos_dt_fit_errors)/max(cos_dt2_fit_errors):.0f}x more accurate than dt model")
 
         # --- 4-model variant comparison (NEW in iteration 28) ---

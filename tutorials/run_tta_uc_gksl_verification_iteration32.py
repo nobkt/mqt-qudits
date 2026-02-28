@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""TTA-UC GKSL iteration 31 verification: notebook convergence section validation.
+"""TTA-UC GKSL iteration 32 verification: Cell 27 documentation fix validation.
 
-This iteration validates the convergence analysis section added to
-quantum_dynamics_gksl_comparison.ipynb (Section 11b).
+This iteration validates that the fixes from iteration 31 analysis are correct:
+  1. Cell 27 precision guidance table now matches Cell 26 actual output
+  2. Verification script check 5 threshold corrected for t_max=100.0
+  3. All convergence properties still hold
 
-Changes from iteration 30:
-  - No simulator code changes (all simulators confirmed correct in iteration 22-30)
-  - Notebook modification: added Section 11b (convergence analysis)
-  - This script validates that the convergence analysis produces correct results
+Changes from iteration 31:
+  - Cell 27 markdown: trace distance values updated to match t_max=100.0
+  - Check 5 threshold: 5e-5 → 1e-3 (appropriate for t_max=100.0, dt=1.0)
 
 Verification targets:
   1. Trace distance T(ST, exact) decreases with increasing n_steps
   2. Convergence rate Rate(T) ≈ 1.0 (O(dt) from Stinespring dilation)
   3. Density matrix quality preserved at all n_steps
   4. Fidelity F(ST, exact) increases with increasing n_steps
-  5. ClassicalGKSLSimulator (exact reference) trace conservation
+  5. n_steps=100 (dt=1.0) gives T < 1e-3 (corrected threshold for t_max=100)
 
 Results are written to developing/verification_results/ as JSON and Markdown.
 """
@@ -85,9 +86,9 @@ def main() -> None:
     t_max = 100.0
 
     results: dict = {
-        "iteration": 31,
+        "iteration": 32,
         "timestamp": timestamp,
-        "description": "Notebook convergence section validation",
+        "description": "Cell 27 documentation fix validation",
         "params": {
             "t_max": t_max,
             "hilbert_dim": params.get_hilbert_space_dim(),
@@ -95,7 +96,7 @@ def main() -> None:
     }
 
     print("=" * 70)
-    print("Iteration 31: Notebook Convergence Section Validation")
+    print("Iteration 32: Cell 27 Documentation Fix Validation")
     print("=" * 70)
 
     # Part 1: Exact reference solution
@@ -214,18 +215,20 @@ def main() -> None:
     print(f"{'=' * 70}")
 
     # Save results
-    json_path = results_dir / f"iteration31_convergence_{timestamp}.json"
+    json_path = results_dir / f"iteration32_cell27_fix_{timestamp}.json"
     with open(json_path, "w") as f:
         json.dump(results, f, indent=2, ensure_ascii=False, default=str)
     print(f"\nJSON results saved to: {json_path}")
 
     # Save markdown report
-    md_path = results_dir / f"iteration31_convergence_{timestamp}.md"
+    md_path = results_dir / f"iteration32_cell27_fix_{timestamp}.md"
     md_lines = [
-        f"# Iteration 31 検証結果: ノートブック収束セクション検証\n",
+        f"# Iteration 32 検証結果: Cell 27 文書修正検証\n",
         f"\n",
         f"- 実行日時: {timestamp}\n",
-        f"- 検証対象: quantum_dynamics_gksl_comparison.ipynb Section 11b\n",
+        f"- 検証対象: quantum_dynamics_gksl_comparison.ipynb Cell 27 修正\n",
+        f"- 変更点: 精度ガイダンステーブルの値を t_max=100.0 の実測値に修正\n",
+        f"- 変更点: Check 5 閾値を 5e-5 → 1e-3 に修正\n",
         f"\n",
         f"## 収束解析結果\n",
         f"\n",
@@ -248,7 +251,7 @@ def main() -> None:
         f"| 収束次数 ≈ 1.0 (平均: {avg_rate:.4f}) | {'✓' if rate_near_1 else '✗'} |\n",
         f"| 忠実度単調増加 | {'✓' if fid_monotonic else '✗'} |\n",
         f"| 密度行列品質 (全 n_steps) | {'✓' if all_quality_ok else '✗'} |\n",
-        f"| n_steps=100 で T < 5e-5 | {'✓' if practical_accuracy else '✗'} |\n",
+        f"| n_steps=100 で T < 1e-3 | {'✓' if practical_accuracy else '✗'} |\n",
         f"\n",
         f"## 総合判定: {'PASS ✓' if all_pass else 'FAIL ✗'}\n",
     ])

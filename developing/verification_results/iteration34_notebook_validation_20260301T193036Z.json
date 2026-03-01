@@ -1,0 +1,159 @@
+{
+  "iteration": 34,
+  "timestamp": "20260301T193036Z",
+  "description": "Cell 27 notebook content validation (reads actual ipynb file)",
+  "params": {
+    "t_max": 100.0,
+    "hilbert_dim": 81
+  },
+  "exact_reference": {
+    "elapsed_time": 47.568267583847046,
+    "quality": {
+      "trace": 1.0000000000000029,
+      "trace_error": 2.886579864025407e-15,
+      "hermiticity_error": 5.377642775528102e-17,
+      "min_eigenvalue": -4.6281653752911256e-17
+    }
+  },
+  "convergence_data": [
+    {
+      "n_steps": 10,
+      "dt": 10.0,
+      "trace_distance": 0.012943050077835723,
+      "fidelity": 0.9996658506958722,
+      "elapsed_time": 13.476677894592285,
+      "quality": {
+        "trace": 1.0000000000000056,
+        "trace_error": 5.551115123125783e-15,
+        "hermiticity_error": 5.003707553108402e-17,
+        "min_eigenvalue": -5.700310859142473e-17
+      },
+      "max_trace_deviation": 5.551115123125783e-15
+    },
+    {
+      "n_steps": 20,
+      "dt": 5.0,
+      "trace_distance": 0.004081287182141041,
+      "fidelity": 0.9999697777833588,
+      "elapsed_time": 13.1116042137146,
+      "quality": {
+        "trace": 1.000000000000004,
+        "trace_error": 3.9968028886505635e-15,
+        "hermiticity_error": 7.248705839258447e-17,
+        "min_eigenvalue": -9.409099433345211e-17
+      },
+      "max_trace_deviation": 5.773159728050814e-15,
+      "rate_T": 1.6650814984870101
+    },
+    {
+      "n_steps": 50,
+      "dt": 2.0,
+      "trace_distance": 0.0014925134209425746,
+      "fidelity": 0.9999963109812946,
+      "elapsed_time": 13.852006912231445,
+      "quality": {
+        "trace": 0.9999999999999989,
+        "trace_error": 1.1102230246251565e-15,
+        "hermiticity_error": 8.773895613944257e-17,
+        "min_eigenvalue": -1.5661888258518255e-16
+      },
+      "max_trace_deviation": 3.552713678800501e-15,
+      "rate_T": 1.0978511852037414
+    },
+    {
+      "n_steps": 100,
+      "dt": 1.0,
+      "trace_distance": 0.0007319237588612887,
+      "fidelity": 0.9999991584013882,
+      "elapsed_time": 14.894551992416382,
+      "quality": {
+        "trace": 1.0000000000000198,
+        "trace_error": 1.9761969838327786e-14,
+        "hermiticity_error": 1.0408702250310904e-16,
+        "min_eigenvalue": -1.1028580774040021e-16
+      },
+      "max_trace_deviation": 2.020605904817785e-14,
+      "rate_T": 1.0279786219880158
+    },
+    {
+      "n_steps": 200,
+      "dt": 0.5,
+      "trace_distance": 0.00036269132500693505,
+      "fidelity": 0.999999814800317,
+      "elapsed_time": 16.498064279556274,
+      "quality": {
+        "trace": 1.000000000000011,
+        "trace_error": 1.1102230246251565e-14,
+        "hermiticity_error": 4.440892098500626e-16,
+        "min_eigenvalue": -2.4890745965282725e-16
+      },
+      "max_trace_deviation": 1.199040866595169e-14,
+      "rate_T": 1.0129511386384962
+    }
+  ],
+  "checks": {
+    "trace_distance_monotonic_decrease": true,
+    "convergence_rate_near_1": true,
+    "average_rate": 1.2009656110793159,
+    "fidelity_monotonic_increase": true,
+    "density_matrix_quality_all_ok": true,
+    "n100_trace_distance": 0.0007319237588612887,
+    "n100_practical_accuracy": true,
+    "cell27_notebook_validation": {
+      "notebook_path": "/tmp_mnt/home/A23321P/work/myQudit/mqt-qudits/tutorials/quantum_dynamics_gksl_comparison.ipynb",
+      "parsed_n_steps": [
+        10,
+        20,
+        50,
+        100,
+        200
+      ],
+      "expected_n_steps": [
+        10,
+        20,
+        50,
+        100,
+        200
+      ],
+      "missing_n_steps": [],
+      "all_n_steps_present": true,
+      "comparison": {
+        "n_steps_10": {
+          "notebook_value": 0.013,
+          "actual_value": 0.012943050077835723,
+          "ratio": 0.9956192367565941,
+          "within_tolerance": true
+        },
+        "n_steps_20": {
+          "notebook_value": 0.004,
+          "actual_value": 0.004081287182141041,
+          "ratio": 1.0203217955352604,
+          "within_tolerance": true
+        },
+        "n_steps_50": {
+          "notebook_value": 0.0015,
+          "actual_value": 0.0014925134209425746,
+          "ratio": 0.9950089472950497,
+          "within_tolerance": true
+        },
+        "n_steps_100": {
+          "notebook_value": 0.0007,
+          "actual_value": 0.0007319237588612887,
+          "ratio": 1.045605369801841,
+          "within_tolerance": true
+        },
+        "n_steps_200": {
+          "notebook_value": 0.0004,
+          "actual_value": 0.00036269132500693505,
+          "ratio": 0.9067283125173375,
+          "within_tolerance": true
+        }
+      },
+      "all_values_match": true,
+      "incorrect_2e5_absent": true,
+      "tmax_mentioned": true,
+      "all_consistent": true
+    }
+  },
+  "all_checks_passed": true
+}

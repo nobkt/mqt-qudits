@@ -101,9 +101,10 @@ def check_cell27_table_consistency(convergence_data: list[dict]) -> dict:
         if ns in cell27_expected:
             expected = cell27_expected[ns]
             actual = d["trace_distance"]
-            # Allow 50% relative tolerance for "~" approximate values
+            # Allow ±30% relative tolerance for "~" approximate values in Cell 27.
+            # Actual ratios observed: 0.91–1.05, so 0.7–1.3 provides adequate margin.
             ratio = actual / expected
-            ok = 0.5 < ratio < 2.0
+            ok = 0.7 < ratio < 1.3
             results[f"n_steps_{ns}"] = {
                 "cell27_value": expected,
                 "actual_value": actual,

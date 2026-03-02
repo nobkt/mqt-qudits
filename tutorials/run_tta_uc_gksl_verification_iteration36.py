@@ -336,10 +336,10 @@ def main() -> None:
         total = pop["N_S0"] + pop["N_T1"] + pop["N_S1"]
         max_pnum_err_qd = max(max_pnum_err_qd, abs(total - 4.0))
 
-    pnum_ok = max_pnum_err_cl < 1e-12 and max_pnum_err_qd < 1e-12
+    pnum_ok = bool(max_pnum_err_cl < 1e-12 and max_pnum_err_qd < 1e-12)
     checks["check10_particle_conservation"] = {
-        "classical_max_error": max_pnum_err_cl,
-        "qudit_max_error": max_pnum_err_qd,
+        "classical_max_error": float(max_pnum_err_cl),
+        "qudit_max_error": float(max_pnum_err_qd),
         "ok": pnum_ok,
     }
     print(f"  Classical max |N_total - 4|: {max_pnum_err_cl:.2e}")
@@ -359,9 +359,9 @@ def main() -> None:
         pop_qd = result_qudit_100["populations"][t_idx]
         t = result_exact_pn["times"][t_idx]
 
-        delta_S0 = abs(pop_cl["N_S0"] - pop_qd["N_S0"])
-        delta_T1 = abs(pop_cl["N_T1"] - pop_qd["N_T1"])
-        delta_S1 = abs(pop_cl["N_S1"] - pop_qd["N_S1"])
+        delta_S0 = float(abs(pop_cl["N_S0"] - pop_qd["N_S0"]))
+        delta_T1 = float(abs(pop_cl["N_T1"] - pop_qd["N_T1"]))
+        delta_S1 = float(abs(pop_cl["N_S1"] - pop_qd["N_S1"]))
         max_delta = max(delta_S0, delta_T1, delta_S1)
         max_pop_diff = max(max_pop_diff, max_delta)
 
@@ -375,9 +375,9 @@ def main() -> None:
         print(f"  t={t:6.1f}: max|ΔN|={max_delta:.4e}")
 
     # For n_steps=100 (dt=1), max pop diff should be O(dt) ~ O(1e-3)
-    interp_ok = max_pop_diff < 5e-3
+    interp_ok = bool(max_pop_diff < 5e-3)
     checks["check11_intermediate_populations"] = {
-        "max_population_difference": max_pop_diff,
+        "max_population_difference": float(max_pop_diff),
         "data": interp_data,
         "ok": interp_ok,
     }
@@ -425,7 +425,7 @@ def main() -> None:
 
     # Last rate (smallest dt) should be close to 1.0
     last_rate_2mol = rates2[-1] if rates2 else float("nan")
-    conv2_ok = abs(last_rate_2mol - 1.0) < 0.01
+    conv2_ok = bool(abs(last_rate_2mol - 1.0) < 0.01)
     checks["check12_2mol_convergence"] = {
         "convergence_data": conv2_data,
         "last_rate": last_rate_2mol,
@@ -455,7 +455,7 @@ def main() -> None:
     td_u = trace_distance(rho_exact_u, result_st_u["rho_final"])
 
     # Unitary evolution should be exact (machine precision)
-    unitary_ok = td_u < 1e-12
+    unitary_ok = bool(td_u < 1e-12)
     checks["check13_unitary_only"] = {
         "trace_distance": td_u,
         "ok": unitary_ok,
@@ -481,10 +481,10 @@ def main() -> None:
         print(f"    λ_{i}: exact={evals_exact[i]:.10f}, stine={evals_st[i]:.10f}, diff={top5_diffs[i]:.6e}")
 
     # Max eigenvalue diff should be consistent with trace distance at n_steps=100
-    eval_ok = max_eval_diff < 2e-3
+    eval_ok = bool(max_eval_diff < 2e-3)
     checks["check14_eigenvalue_spectrum"] = {
-        "max_eigenvalue_difference": max_eval_diff,
-        "top5_differences": top5_diffs,
+        "max_eigenvalue_difference": float(max_eval_diff),
+        "top5_differences": [float(d) for d in top5_diffs],
         "ok": eval_ok,
     }
     print(f"  Max eigenvalue difference: {max_eval_diff:.6e}")

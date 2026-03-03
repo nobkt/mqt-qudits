@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import os
 import sys
-from collections.abc import Callable
 
 import numpy as np
 from scipy.linalg import expm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from gksl_math_utils import unvectorize_density_matrix, vectorize_density_matrix
 
 
 def stinespring_unitary_from_lindblad(L: np.ndarray, dt: float) -> np.ndarray:
@@ -104,52 +102,3 @@ def build_gksl_superoperator(
     return L_H + L_D
 
 
-def build_trotter_step_classical(
-    H_0: np.ndarray,
-    H_transfer: np.ndarray,
-    lindblad_ops: list,
-    dt: float,
-) -> Callable[[np.ndarray], np.ndarray]:
-    """Build a 2nd-order symmetric Trotter step function using superoperators.
-
-    Uses column-major (Fortran-order) vectorization, consistent with
-    vectorize_density_matrix / unvectorize_density_matrix.
-
-    exp(L dt) ≈ exp(L_H dt/2) exp(L_D dt) exp(L_H dt/2)
-
-    Returns a function trotter_step(rho) -> rho'.
-    lindblad_ops: list of (L_alpha, gamma_alpha) tuples or plain arrays.
-    """
-    dim = H_0.shape[0]
-    I = np.eye(dim, dtype=np.complex128)
-    H_total = np.asarray(H_0, dtype=np.complex128) + np.asarray(H_transfer, dtype=np.complex128)
-
-    # Hamiltonian superoperator (column-major)
-    L_H = (-1j) * (np.kron(I, H_total) - np.kron(H_total.T, I))
-
-    # Dissipator superoperator (column-major)
-    L_D = np.zeros((dim * dim, dim * dim), dtype=np.complex128)
-    for item in lindblad_ops:
-        if isinstance(item, tuple):
-            L_op = np.asarray(item[0], dtype=np.complex128)
-        else:
-            L_op = np.asarray(item, dtype=np.complex128)
-        LdL = L_op.conj().T @ L_op
-        L_D += (
-            np.kron(L_op.conj(), L_op)
-            - 0.5 * np.kron(I, LdL)
-            - 0.5 * np.kron(LdL.T, I)
-        )
-
-    # Precompute matrix exponentials
-    U_H_half = expm(L_H * (dt / 2.0))
-    U_D = expm(L_D * dt)
-
-    def trotter_step(rho: np.ndarray) -> np.ndarray:
-        vec = vectorize_density_matrix(rho)
-        vec = U_H_half @ vec
-        vec = U_D @ vec
-        vec = U_H_half @ vec
-        return unvectorize_density_matrix(vec, dim)
-
-    return trotter_step

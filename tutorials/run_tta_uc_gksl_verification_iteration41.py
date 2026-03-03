@@ -3,7 +3,7 @@
 
 This iteration verifies the fixes from iteration 41:
 
-  - Notebook Cell 25/39 verified to contain "40回" (updated in iteration 40)
+  - Notebook Cell 25/39 verified to contain "40回" (updated in this iteration)
   - Boson simulator palindromic Trotter convergence verification
   - Dead code `_U_stines` attribute removal from non-boson simulators
 

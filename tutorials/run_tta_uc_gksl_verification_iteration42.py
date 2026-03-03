@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """TTA-UC GKSL iteration 42 verification: Iteration count update (41回).
 
-This iteration verifies the update from iteration 42:
+This iteration verifies the updates from iteration 41:
 
-  - Notebook Cell 25/39 verified to contain "41回" (updated in this iteration)
+  - Notebook Cell 25/39 verified to contain "41回" (updated from "40回")
 
 All iteration-41 checks (1–32) are re-run for regression testing.
-Check 33 verifies the iteration count update from "40回" to "41回".
+Check 33 (new) verifies Stinespring error coefficient T/dt stability.
 
 Results are written to developing/verification_results/ as JSON and Markdown.
 """

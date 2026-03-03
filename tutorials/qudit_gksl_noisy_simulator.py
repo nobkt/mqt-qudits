@@ -218,15 +218,16 @@ class QuditGKSLNoisySimulator(QuditGKSLSimulator):
         return rho
 
     def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
-        """2nd-order Trotter step with hardware noise.
+        """Symmetric Trotter step with palindromic Lindblad ordering and hardware noise.
 
-        Same structure as base class but applies local noise after each
-        gate-like operation:
+        Same palindromic structure as base class but applies local noise after
+        each gate-like operation:
           1. Half Hamiltonian + transfer gate noise (depol + dephasing)
-          2. Lindblad channels + per-channel gate noise
-          3. Half Hamiltonian + transfer gate noise (depol + dephasing)
+          2. Forward half-step Lindblad channels + per-channel gate noise
+          3. Reverse half-step Lindblad channels + per-channel gate noise (palindromic)
+          4. Half Hamiltonian + transfer gate noise (depol + dephasing)
 
-        Uses precomputed unitaries from ``_precompute_unitaries``.
+        Uses precomputed half-step unitaries from ``_precompute_unitaries``.
         Noise placement matches ``QuditGKSLNoisyShotSimulator``.
         """
         d = self.params.d
@@ -242,10 +243,22 @@ class QuditGKSLNoisySimulator(QuditGKSLSimulator):
                 rho = _apply_local_dephasing_single(rho, i, d, N, self.p_dephasing)
                 rho = _apply_local_dephasing_single(rho, j, d, N, self.p_dephasing)
 
-        # --- All Lindblad channels ---
-        for k, U_stine in enumerate(self._U_stines):
-            rho = apply_stinespring_to_density_matrix(rho, U_stine)
+        # --- Forward half-step Lindblad channels ---
+        for k, U_stine_half in enumerate(self._U_stines_half):
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
             sites = self._lindblad_sites[k]
+            if len(sites) == 1:
+                if not self.depol_pair_only:
+                    rho = self._apply_gate_noise_single(rho, sites[0])
+            else:
+                rho = self._apply_gate_noise_pair(rho, sites[0], sites[1])
+
+        # --- Reverse half-step Lindblad channels (palindromic) ---
+        n_channels = len(self._U_stines_half)
+        for k_rev in range(n_channels - 1, -1, -1):
+            U_stine_half = self._U_stines_half[k_rev]
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
+            sites = self._lindblad_sites[k_rev]
             if len(sites) == 1:
                 if not self.depol_pair_only:
                     rho = self._apply_gate_noise_single(rho, sites[0])

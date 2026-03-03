@@ -370,9 +370,9 @@ class QubitGKSLSimulator:
 
         # Gate count estimate for a real qubit circuit:
         # ~n_sys_qubits Rz gates (H0) + 3 * ~10 gates (H_transfer pairs)
-        # + n_lindblad * ~6 gates per Stinespring channel
+        # + n_lindblad * 2 * ~6 gates per Stinespring channel (palindromic: forward + reverse)
         gates_per_step = (
-            self.n_sys_qubits + len(self.params.neighbors) * 10 + self.n_ancilla * 6
+            self.n_sys_qubits + len(self.params.neighbors) * 10 + self.n_ancilla * 6 * 2
         )
 
         return {

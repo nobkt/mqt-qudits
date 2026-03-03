@@ -10,8 +10,10 @@ Two classes are provided:
   - QuditGKSLNoisyShotSimulator: shot-based with per-gate stochastic noise
 
 The quantum trajectory method is mathematically equivalent to the density matrix
-approach in the limit of infinite shots:
+approach (QuditGKSLSimulator) in the limit of infinite shots:
   rho = lim_{N->inf} (1/N) sum_k |psi_k><psi_k|
+
+Both use the same palindromic half-step Trotter structure for Lindblad channels.
 """
 
 from __future__ import annotations
@@ -97,8 +99,17 @@ class QuditGKSLShotSimulator:
         self.n_ancilla_qubits = len(self.lindblad_ops)
 
     def _precompute_unitaries(self, dt: float) -> None:
-        """Pre-compute time-step-dependent unitaries (shared across all shots)."""
+        """Pre-compute time-step-dependent unitaries (shared across all shots).
+
+        Stores both half-dt Stinespring unitaries (for palindromic ordering in
+        the base _trotter_step_trajectory) and full-dt Stinespring unitaries
+        (for noisy subclasses that override _trotter_step_trajectory).
+        """
         self._U_H_half = expm(-1j * self.H_total * dt / 2)
+        self._U_stines_half = [
+            stinespring_unitary_from_lindblad(L_op, dt / 2)
+            for L_op, _gamma in self.lindblad_ops
+        ]
         self._U_stines = [
             stinespring_unitary_from_lindblad(L_op, dt)
             for L_op, _gamma in self.lindblad_ops
@@ -162,15 +173,24 @@ class QuditGKSLShotSimulator:
     def _trotter_step_trajectory(
         self, psi: np.ndarray, rng: np.random.Generator
     ) -> np.ndarray:
-        """Apply one 2nd-order Trotter step to a pure state trajectory.
+        """Symmetric Trotter step with palindromic Lindblad ordering for trajectory.
 
-        exp(L dt) ~ U_H(dt/2) * prod_alpha[Stinespring_alpha(dt)] * U_H(dt/2)
+        exp(L dt) ≈ exp(L_H dt/2)
+                     · prod_{α=1..n} E_α(dt/2)
+                     · prod_{α=n..1} E_α(dt/2)
+                     · exp(L_H dt/2)
+
+        Matches QuditGKSLSimulator._trotter_step structure so that the
+        infinite-shot limit equals the density matrix result exactly.
         """
         # Half Hamiltonian
         psi = self._U_H_half @ psi
-        # All Lindblad channels via Stinespring with ancilla measurement
-        for U_stine in self._U_stines:
-            psi = self._apply_stinespring_with_measurement(psi, U_stine, rng)
+        # Forward half-step for all Lindblad channels
+        for U_stine_half in self._U_stines_half:
+            psi = self._apply_stinespring_with_measurement(psi, U_stine_half, rng)
+        # Reverse half-step for all Lindblad channels (palindromic)
+        for U_stine_half in reversed(self._U_stines_half):
+            psi = self._apply_stinespring_with_measurement(psi, U_stine_half, rng)
         # Half Hamiltonian
         psi = self._U_H_half @ psi
         return psi
@@ -263,8 +283,8 @@ class QuditGKSLShotSimulator:
 
         elapsed = time_module.time() - start
 
-        # 4 VirtRz (H_0 diagonal) + 3 CustomTwo (NN transfer) + 26 Stinespring channels
-        gates_per_step = 4 + 3 + 26
+        # 4 VirtRz (H_0 diagonal) + 3 CustomTwo (NN transfer) + 26×2 Stinespring (palindromic)
+        gates_per_step = 4 + 3 + 26 * 2
 
         return {
             "times": times,
@@ -481,7 +501,7 @@ class QuditGKSLNoisyShotSimulator(QuditGKSLShotSimulator):
     def _trotter_step_trajectory(
         self, psi: np.ndarray, rng: np.random.Generator
     ) -> np.ndarray:
-        """2nd-order Trotter step with stochastic hardware noise."""
+        """Symmetric Trotter step with palindromic Lindblad ordering and noise."""
         d = self.params.d
         N = self.params.N_molecules
 
@@ -499,10 +519,37 @@ class QuditGKSLNoisyShotSimulator(QuditGKSLShotSimulator):
                     psi, j, d, N, self.p_dephasing, rng
                 )
 
-        # --- All Lindblad channels + per-channel noise ---
-        for k, U_stine in enumerate(self._U_stines):
-            psi = self._apply_stinespring_with_measurement(psi, U_stine, rng)
+        # --- Forward half-step Lindblad channels + per-channel noise ---
+        for k, U_stine_half in enumerate(self._U_stines_half):
+            psi = self._apply_stinespring_with_measurement(psi, U_stine_half, rng)
             sites = self._lindblad_sites[k]
+            if len(sites) == 1:
+                if not self.depol_pair_only:
+                    psi = _apply_stochastic_depolarization_single(
+                        psi, sites[0], d, N, self.p_depol, rng
+                    )
+                    if self.p_dephasing > 0.0:
+                        psi = _apply_stochastic_dephasing_single(
+                            psi, sites[0], d, N, self.p_dephasing, rng
+                        )
+            else:
+                psi = _apply_stochastic_depolarization_pair(
+                    psi, sites[0], sites[1], d, N, self.p_depol, rng
+                )
+                if self.p_dephasing > 0.0:
+                    psi = _apply_stochastic_dephasing_single(
+                        psi, sites[0], d, N, self.p_dephasing, rng
+                    )
+                    psi = _apply_stochastic_dephasing_single(
+                        psi, sites[1], d, N, self.p_dephasing, rng
+                    )
+
+        # --- Reverse half-step Lindblad channels + per-channel noise (palindromic) ---
+        n_channels = len(self._U_stines_half)
+        for k_rev in range(n_channels - 1, -1, -1):
+            U_stine_half = self._U_stines_half[k_rev]
+            psi = self._apply_stinespring_with_measurement(psi, U_stine_half, rng)
+            sites = self._lindblad_sites[k_rev]
             if len(sites) == 1:
                 if not self.depol_pair_only:
                     psi = _apply_stochastic_depolarization_single(

@@ -196,8 +196,8 @@ class QuditGKSLSimulator:
         # Qutrit advantages: no encoding overhead, native 3-level operations
         # 4 VirtRz gates (H_0 diagonal for 4 molecules)
         # 3 CustomTwo gates (H_transfer for 3 nearest-neighbour pairs)
-        # 26 Stinespring CustomTwo gates (one per Lindblad channel)
-        gates_per_step = 4 + 3 + 26  # 33 gates (much fewer than qubit ~194)
+        # 26×2 Stinespring CustomTwo gates (palindromic: forward + reverse)
+        gates_per_step = 4 + 3 + 26 * 2  # 59 gates
 
         return {
             "times": times,

@@ -291,16 +291,17 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
         return float(compute_forbidden_state_population(rho_qubit, self._mapping))
 
     def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
-        """2nd-order Trotter step with d=4 qubit hardware noise.
+        """Symmetric Trotter step with palindromic Lindblad ordering and d=4 qubit hardware noise.
 
         Gate noise is applied after each gate operation using d=4 Pauli
         depolarization in the 256-dim qubit space:
           1. Half Hamiltonian + NN pair depolarization + dephasing
-          2. Lindblad channels + per-channel depolarization + dephasing
-          3. Half Hamiltonian + NN pair depolarization + dephasing
-          4. Thermal relaxation on all molecules
+          2. Forward half-step Lindblad channels + per-channel depolarization + dephasing
+          3. Reverse half-step Lindblad channels + per-channel depolarization + dephasing (palindromic)
+          4. Half Hamiltonian + NN pair depolarization + dephasing
+          5. Thermal relaxation on all molecules
 
-        Uses precomputed unitaries from ``_precompute_unitaries``.
+        Uses precomputed half-step unitaries from ``_precompute_unitaries``.
         Noise placement matches ``QubitGKSLNoisyShotSimulator``.
         """
         N = self.params.N_molecules
@@ -315,10 +316,37 @@ class QubitGKSLNoisySimulator(QubitGKSLSimulator):
                 rho = _apply_local_dephasing_single_qubit(rho, i, N, self.p_dephasing)
                 rho = _apply_local_dephasing_single_qubit(rho, j, N, self.p_dephasing)
 
-        # --- All Lindblad channels ---
-        for k, U_stine in enumerate(self._U_stines):
-            rho = apply_stinespring_to_density_matrix(rho, U_stine)
+        # --- Forward half-step Lindblad channels ---
+        for k, U_stine_half in enumerate(self._U_stines_half):
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
             sites = self._lindblad_sites[k]
+            if len(sites) == 1:
+                if not self.depol_pair_only:
+                    rho = _apply_local_depolarization_single_qubit(
+                        rho, sites[0], N, self.p_depol
+                    )
+                    if self.p_dephasing > 0.0:
+                        rho = _apply_local_dephasing_single_qubit(
+                            rho, sites[0], N, self.p_dephasing
+                        )
+            else:
+                rho = _apply_local_depolarization_pair_qubit(
+                    rho, sites[0], sites[1], N, self.p_depol
+                )
+                if self.p_dephasing > 0.0:
+                    rho = _apply_local_dephasing_single_qubit(
+                        rho, sites[0], N, self.p_dephasing
+                    )
+                    rho = _apply_local_dephasing_single_qubit(
+                        rho, sites[1], N, self.p_dephasing
+                    )
+
+        # --- Reverse half-step Lindblad channels (palindromic) ---
+        n_channels = len(self._U_stines_half)
+        for k_rev in range(n_channels - 1, -1, -1):
+            U_stine_half = self._U_stines_half[k_rev]
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
+            sites = self._lindblad_sites[k_rev]
             if len(sites) == 1:
                 if not self.depol_pair_only:
                     rho = _apply_local_depolarization_single_qubit(

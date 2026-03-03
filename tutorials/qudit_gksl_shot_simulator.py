@@ -101,17 +101,12 @@ class QuditGKSLShotSimulator:
     def _precompute_unitaries(self, dt: float) -> None:
         """Pre-compute time-step-dependent unitaries (shared across all shots).
 
-        Stores both half-dt Stinespring unitaries (for palindromic ordering in
-        the base _trotter_step_trajectory) and full-dt Stinespring unitaries
-        (for noisy subclasses that override _trotter_step_trajectory).
+        Stores half-dt Stinespring unitaries for the palindromic ordering in
+        _trotter_step_trajectory.
         """
         self._U_H_half = expm(-1j * self.H_total * dt / 2)
         self._U_stines_half = [
             stinespring_unitary_from_lindblad(L_op, dt / 2)
-            for L_op, _gamma in self.lindblad_ops
-        ]
-        self._U_stines = [
-            stinespring_unitary_from_lindblad(L_op, dt)
             for L_op, _gamma in self.lindblad_ops
         ]
 

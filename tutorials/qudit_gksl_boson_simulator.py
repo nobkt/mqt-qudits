@@ -72,21 +72,32 @@ class QuditGKSLBosonSimulator:
     def _precompute_unitaries(self, dt: float) -> None:
         """Pre-compute time-step-dependent unitaries (called once per simulation)."""
         self._U_H_half = expm(-1j * self.H_total * dt / 2)
-        self._U_stines = [
-            stinespring_unitary_from_lindblad(L_op, dt)
+        self._U_stines_half = [
+            stinespring_unitary_from_lindblad(L_op, dt / 2)
             for L_op, _gamma in self.lindblad_ops
         ]
 
     def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
-        """2nd-order symmetric Trotter step in extended space.
+        """Symmetric Trotter step with palindromic Lindblad channel ordering.
 
-        exp(L dt) ~ exp(L_H dt/2) prod_alpha exp(L_D_alpha dt) exp(L_H dt/2)
+        exp(L dt) ≈ exp(L_H dt/2)
+                     · prod_{α=1..n} E_α(dt/2)
+                     · prod_{α=n..1} E_α(dt/2)
+                     · exp(L_H dt/2)
+
+        The Hamiltonian–Dissipator Strang splitting is 2nd-order O(dt³)/step.
+        The palindromic Lindblad product eliminates the Lie-Trotter commutator
+        error (also 2nd-order).  The remaining dominant error is the Stinespring
+        approximation: O(dt²)/step, giving **O(dt) global convergence**.
         """
         # Half Hamiltonian
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
-        # All Lindblad channels via Stinespring
-        for U_stine in self._U_stines:
-            rho = apply_stinespring_to_density_matrix(rho, U_stine)
+        # Forward half-step for all Lindblad channels
+        for U_stine_half in self._U_stines_half:
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
+        # Reverse half-step for all Lindblad channels (palindromic)
+        for U_stine_half in reversed(self._U_stines_half):
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
         # Half Hamiltonian
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         return rho

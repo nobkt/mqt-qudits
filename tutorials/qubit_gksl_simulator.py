@@ -239,18 +239,12 @@ class QubitGKSLSimulator:
     def _precompute_unitaries(self, dt: float) -> None:
         """Pre-compute time-step-dependent unitaries (called once per simulation).
 
-        Stores both half-dt Stinespring unitaries (for symmetric product in the
-        base _trotter_step) and full-dt Stinespring unitaries (for subclasses
-        like the noisy simulators that override _trotter_step).
+        Stores half-dt Stinespring unitaries for the symmetric palindromic
+        product used in _trotter_step.
         """
         self._U_H_half = expm(-1j * self.H_total * dt / 2)
         self._U_stines_half = [
             stinespring_unitary_from_lindblad(L_op, dt / 2)
-            for L_op, _gamma in self.lindblad_ops
-        ]
-        # Full-dt Stinespring unitaries for noisy subclasses
-        self._U_stines = [
-            stinespring_unitary_from_lindblad(L_op, dt)
             for L_op, _gamma in self.lindblad_ops
         ]
 

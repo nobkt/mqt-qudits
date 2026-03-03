@@ -62,15 +62,15 @@ class QuditGKSLSimulator:
         if params.with_boson:
             raise ValueError("QuditGKSLSimulator is for non-boson model only")
         self.params = params
-        self.n_system_qudits = params.N_molecules  # 4
-        # 26 ancilla qubits: 2*3 TTA + 4*4 single-site + 4 ISC channels
-        self.n_ancilla_qubits = 26
+        self.n_system_qudits = params.N_molecules
 
         # Build operators in native qutrit space
         self.H_0 = build_onsite_hamiltonian(params)
         self.H_transfer = build_transfer_hamiltonian(params)
         self.H_total = self.H_0 + self.H_transfer
         self.lindblad_ops = build_lindblad_operators(params)
+
+        self.n_ancilla_qubits = len(self.lindblad_ops)
 
         # System dimension (qutrit space)
         self.dim = params.d ** params.N_molecules  # 81
@@ -194,10 +194,11 @@ class QuditGKSLSimulator:
 
         # Gate count estimate for qudit circuit
         # Qutrit advantages: no encoding overhead, native 3-level operations
-        # 4 VirtRz gates (H_0 diagonal for 4 molecules)
-        # 3 CustomTwo gates (H_transfer for 3 nearest-neighbour pairs)
-        # 26×2 Stinespring CustomTwo gates (palindromic: forward + reverse)
-        gates_per_step = 4 + 3 + 26 * 2  # 59 gates
+        # N VirtRz gates (H_0 diagonal for N molecules)
+        # (N-1) CustomTwo gates (H_transfer for nearest-neighbour pairs)
+        # n_lindblad×2 Stinespring CustomTwo gates (palindromic: forward + reverse)
+        n_lindblad = len(self.lindblad_ops)
+        gates_per_step = self.n_system_qudits + len(self.params.neighbors) + n_lindblad * 2
 
         return {
             "times": times,

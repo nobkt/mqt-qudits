@@ -283,8 +283,8 @@ class QuditGKSLShotSimulator:
 
         elapsed = time_module.time() - start
 
-        # 4 VirtRz (H_0 diagonal) + 3 CustomTwo (NN transfer) + 26×2 Stinespring (palindromic)
-        gates_per_step = 4 + 3 + 26 * 2
+        # N VirtRz (H_0 diagonal) + (N-1) CustomTwo (NN transfer) + n_lindblad×2 Stinespring (palindromic)
+        gates_per_step = self.n_system_qudits + len(self.params.neighbors) + self.n_ancilla_qubits * 2
 
         return {
             "times": times,

@@ -1,0 +1,285 @@
+{
+  "iteration": 36,
+  "timestamp": "20260303T003052Z",
+  "description": "Comprehensive deep verification (checks 1-14)",
+  "params": {
+    "t_max": 100.0,
+    "hilbert_dim": 81
+  },
+  "exact_reference": {
+    "elapsed_time": 56.546525716781616,
+    "quality": {
+      "trace": 1.0000000000000029,
+      "trace_error": 2.886579864025407e-15,
+      "hermiticity_error": 5.377642775528102e-17,
+      "min_eigenvalue": -4.6281653752911256e-17
+    }
+  },
+  "convergence_data": [
+    {
+      "n_steps": 10,
+      "dt": 10.0,
+      "trace_distance": 0.012943050077835723,
+      "fidelity": 0.9996658506958722,
+      "elapsed_time": 19.31754970550537,
+      "quality": {
+        "trace": 1.0000000000000056,
+        "trace_error": 5.551115123125783e-15,
+        "hermiticity_error": 5.003707553108402e-17,
+        "min_eigenvalue": -5.700310859142473e-17
+      }
+    },
+    {
+      "n_steps": 20,
+      "dt": 5.0,
+      "trace_distance": 0.004081287182141041,
+      "fidelity": 0.9999697777833588,
+      "elapsed_time": 23.099098205566406,
+      "quality": {
+        "trace": 1.000000000000004,
+        "trace_error": 3.9968028886505635e-15,
+        "hermiticity_error": 7.248705839258447e-17,
+        "min_eigenvalue": -9.409099433345211e-17
+      },
+      "rate_T": 1.6650814984870101
+    },
+    {
+      "n_steps": 50,
+      "dt": 2.0,
+      "trace_distance": 0.0014925134209425746,
+      "fidelity": 0.9999963109812946,
+      "elapsed_time": 13.540902137756348,
+      "quality": {
+        "trace": 0.9999999999999989,
+        "trace_error": 1.1102230246251565e-15,
+        "hermiticity_error": 8.773895613944257e-17,
+        "min_eigenvalue": -1.5661888258518255e-16
+      },
+      "rate_T": 1.0978511852037414
+    },
+    {
+      "n_steps": 100,
+      "dt": 1.0,
+      "trace_distance": 0.0007319237588612887,
+      "fidelity": 0.9999991584013882,
+      "elapsed_time": 14.783444881439209,
+      "quality": {
+        "trace": 1.0000000000000198,
+        "trace_error": 1.9761969838327786e-14,
+        "hermiticity_error": 1.0408702250310904e-16,
+        "min_eigenvalue": -1.1028580774040021e-16
+      },
+      "rate_T": 1.0279786219880158
+    },
+    {
+      "n_steps": 200,
+      "dt": 0.5,
+      "trace_distance": 0.00036269132500693505,
+      "fidelity": 0.999999814800317,
+      "elapsed_time": 16.76701021194458,
+      "quality": {
+        "trace": 1.000000000000011,
+        "trace_error": 1.1102230246251565e-14,
+        "hermiticity_error": 4.440892098500626e-16,
+        "min_eigenvalue": -2.4890745965282725e-16
+      },
+      "rate_T": 1.0129511386384962
+    }
+  ],
+  "checks": {
+    "check1_trace_distance_monotonic": true,
+    "check2_convergence_rate": true,
+    "check2_average_rate": 1.2009656110793159,
+    "check3_fidelity_monotonic": true,
+    "check4_density_matrix_quality": true,
+    "check5_n100_accuracy": true,
+    "check5_n100_trace_distance": 0.0007319237588612887,
+    "check6_cell27_validation": {
+      "all_present": true,
+      "all_match": true,
+      "no_incorrect_2e5": true,
+      "has_tmax": true,
+      "comparison": {
+        "n_steps_10": {
+          "notebook_value": 0.013,
+          "actual_value": 0.012943050077835723,
+          "ratio": 0.9956192367565941,
+          "within_tolerance": true
+        },
+        "n_steps_20": {
+          "notebook_value": 0.004,
+          "actual_value": 0.004081287182141041,
+          "ratio": 1.0203217955352604,
+          "within_tolerance": true
+        },
+        "n_steps_50": {
+          "notebook_value": 0.0015,
+          "actual_value": 0.0014925134209425746,
+          "ratio": 0.9950089472950497,
+          "within_tolerance": true
+        },
+        "n_steps_100": {
+          "notebook_value": 0.0007,
+          "actual_value": 0.0007319237588612887,
+          "ratio": 1.045605369801841,
+          "within_tolerance": true
+        },
+        "n_steps_200": {
+          "notebook_value": 0.00036,
+          "actual_value": 0.00036269132500693505,
+          "ratio": 1.0074759027970417,
+          "within_tolerance": true
+        }
+      },
+      "overall": true
+    },
+    "check7_cell25_iteration_count": true,
+    "check8_cell39_iteration_count": true,
+    "check9_cell27_n200_value": true,
+    "check10_particle_conservation": {
+      "classical_max_error": 2.220446049250313e-14,
+      "qudit_max_error": 8.171241461241152e-14,
+      "ok": true
+    },
+    "check11_intermediate_populations": {
+      "max_population_difference": 0.0015983815513526123,
+      "data": [
+        {
+          "time": 0.0,
+          "delta_N_S0": 0.0,
+          "delta_N_T1": 0.0,
+          "delta_N_S1": 0.0,
+          "max_delta": 0.0
+        },
+        {
+          "time": 10.0,
+          "delta_N_S0": 0.00012104403834811706,
+          "delta_N_T1": 0.00029480961001060457,
+          "delta_N_S1": 0.0001737655716408243,
+          "max_delta": 0.00029480961001060457
+        },
+        {
+          "time": 20.0,
+          "delta_N_S0": 0.000883126912371246,
+          "delta_N_T1": 0.0015492723447281254,
+          "delta_N_S1": 0.0006661454323886873,
+          "max_delta": 0.0015492723447281254
+        },
+        {
+          "time": 30.0,
+          "delta_N_S0": 0.000824433043317363,
+          "delta_N_T1": 0.0012271630207039141,
+          "delta_N_S1": 0.0004027299774286286,
+          "max_delta": 0.0012271630207039141
+        },
+        {
+          "time": 40.0,
+          "delta_N_S0": 0.000851112543923449,
+          "delta_N_T1": 0.0010627056998822049,
+          "delta_N_S1": 0.00021159315600660644,
+          "max_delta": 0.0010627056998822049
+        },
+        {
+          "time": 50.0,
+          "delta_N_S0": 0.001211517558921571,
+          "delta_N_T1": 0.0015983815513526123,
+          "delta_N_S1": 0.00038686399248200054,
+          "max_delta": 0.0015983815513526123
+        },
+        {
+          "time": 60.0,
+          "delta_N_S0": 0.001204405958872723,
+          "delta_N_T1": 0.0014174050364088586,
+          "delta_N_S1": 0.00021299907759125825,
+          "max_delta": 0.0014174050364088586
+        },
+        {
+          "time": 70.0,
+          "delta_N_S0": 0.0012395932640361096,
+          "delta_N_T1": 0.0013309945508774845,
+          "delta_N_S1": 9.140128689455462e-05,
+          "max_delta": 0.0013309945508774845
+        },
+        {
+          "time": 80.0,
+          "delta_N_S0": 0.001275351369588229,
+          "delta_N_T1": 0.0013136564457183475,
+          "delta_N_S1": 3.830507619007051e-05,
+          "max_delta": 0.0013136564457183475
+        },
+        {
+          "time": 90.0,
+          "delta_N_S0": 0.0012686046191308087,
+          "delta_N_T1": 0.0012269691397226445,
+          "delta_N_S1": 4.163547934848966e-05,
+          "max_delta": 0.0012686046191308087
+        },
+        {
+          "time": 100.0,
+          "delta_N_S0": 0.001266052067790735,
+          "delta_N_T1": 0.0011622534540593477,
+          "delta_N_S1": 0.00010379861367337817,
+          "max_delta": 0.001266052067790735
+        }
+      ],
+      "ok": true
+    },
+    "check12_2mol_convergence": {
+      "convergence_data": [
+        {
+          "n_steps": 10,
+          "dt": 10.0,
+          "trace_distance": 0.004890198102474144
+        },
+        {
+          "n_steps": 20,
+          "dt": 5.0,
+          "trace_distance": 0.002336855930328702,
+          "rate_T": 1.0653241169316912
+        },
+        {
+          "n_steps": 50,
+          "dt": 2.0,
+          "trace_distance": 0.0009163324425023505,
+          "rate_T": 1.0217089679884206
+        },
+        {
+          "n_steps": 100,
+          "dt": 1.0,
+          "trace_distance": 0.00045514964643080533,
+          "rate_T": 1.009530138505809
+        },
+        {
+          "n_steps": 200,
+          "dt": 0.5,
+          "trace_distance": 0.00022682558543654424,
+          "rate_T": 1.0047575776209474
+        },
+        {
+          "n_steps": 500,
+          "dt": 0.2,
+          "trace_distance": 9.055104759826465e-05,
+          "rate_T": 1.0021574927834032
+        }
+      ],
+      "last_rate": 1.0021574927834032,
+      "ok": true
+    },
+    "check13_unitary_only": {
+      "trace_distance": 1.3378187446733136e-14,
+      "ok": true
+    },
+    "check14_eigenvalue_spectrum": {
+      "max_eigenvalue_difference": 0.000641810995014036,
+      "top5_differences": [
+        0.000641810995014036,
+        0.00062424107273365,
+        4.1561079875240825e-05,
+        4.493776485264833e-05,
+        2.7907470707425053e-05
+      ],
+      "ok": true
+    }
+  },
+  "all_checks_passed": true
+}

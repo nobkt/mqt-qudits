@@ -3,10 +3,9 @@
 
 This iteration verifies the updates from iteration 43:
 
-  - Notebook Cell 25/39 verified to contain "43回" (updated from "42回")
+  - Notebook Cell 25/39 will be verified to contain "43回" (updated from "42回")
 
 All iteration-43 checks (1–34) are re-run for regression testing.
-
 
 Results are written to developing/verification_results/ as JSON and Markdown.
 """
@@ -1150,7 +1149,7 @@ def main() -> None:
         f"# Iteration 44 検証結果: Iteration count update (43回) + regression tests\n",
         f"\n",
         f"- 実行日時: {timestamp}\n",
-        f"- 検証対象: 全34チェック（既存33 + 新規1）\n",
+        f"- 検証対象: 全34チェック（iteration 43 からの回帰テスト）\n",
         f"\n",
         f"## 収束解析結果（4分子系）\n",
         f"\n",

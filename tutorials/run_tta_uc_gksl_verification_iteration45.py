@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """TTA-UC GKSL iteration 45 verification: Iteration count update (44回).
 
-This iteration verifies the updates from iteration 43:
+This iteration verifies the updates from iteration 44:
 
   - Notebook Cell 25/39 will be verified to contain "44回" (updated from "43回")
 
-All iteration-43 checks (1–34) are re-run for regression testing.
+All iteration-44 checks (1–34) are re-run for regression testing.
 
 Results are written to developing/verification_results/ as JSON and Markdown.
 """

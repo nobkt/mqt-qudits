@@ -1033,9 +1033,9 @@ def main() -> None:
     print(f"  Check 33 - Error coefficient stability: {coeff_stable}")
 
     # ===================================================================
-    # Part 29: NEW — Stinespring single-channel error O(dt²) (check 34)
+    # Part 30: NEW — Stinespring single-channel error O(dt²) (check 34)
     # ===================================================================
-    print("\n--- Part 29: Stinespring single-channel error O(dt²) (check 34) ---")
+    print("\n--- Part 30: Stinespring single-channel error O(dt²) (check 34) ---")
 
     from stinespring_utils import (
         apply_stinespring_to_density_matrix as apply_stine,
@@ -1076,6 +1076,8 @@ def main() -> None:
         print(f"  dt={dt_sc:.4f}: ||E(rho) - exp(D dt) rho|| = {err:.6e}")
 
     # Check O(dt²) convergence: error/dt² should approach a constant
+    # Only use dt ≤ 0.1 for rate check: larger dt values have significant
+    # higher-order corrections that distort the O(dt²) rate estimate.
     if len(stine_errors) >= 2:
         ratios_dt2 = [e["error"] / (e["dt"] ** 2) for e in stine_errors if e["dt"] <= 0.1]
         if len(ratios_dt2) >= 2:

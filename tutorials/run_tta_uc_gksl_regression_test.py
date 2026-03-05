@@ -1042,8 +1042,9 @@ def main() -> None:
         print(f"  dt={dt_sc:.4f}: ||E(rho) - exp(D dt) rho|| = {err:.6e}")
 
     # Check O(dt²) convergence: error/dt² should approach a constant
-    # Only use dt ≤ 0.1 for rate check: larger dt values have significant
-    # higher-order corrections that distort the O(dt²) rate estimate.
+    # Only use dt ≤ 0.1 for rate check: at larger dt values, O(dt³) and
+    # higher-order terms become significant relative to the leading O(dt²)
+    # term, distorting the ratio E/dt² away from the asymptotic constant.
     if len(stine_errors) >= 2:
         ratios_dt2 = [e["error"] / (e["dt"] ** 2) for e in stine_errors if e["dt"] <= 0.1]
         if len(ratios_dt2) >= 2:

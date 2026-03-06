@@ -810,11 +810,8 @@ def test_depolarizing_channel() -> dict[str, Any]:
 
     # --- C6: p=1 fully depolarizes the pair ---
     rho_p1 = apply_2qudit_depolarizing(rho_rand, (0, 1), 1.0, N_test, d_test)
-    # The pair subsystem should be I/d², rest should be Tr_{01}(ρ)
-    rho_pair_after = partial_trace_pair(rho_p1, (2,), N_test, d_test)
-    # Actually for p=1: ε(ρ) = Tr_{01}(ρ) ⊗ I_{01}/d²
-    # Trace out site 2 to get the pair part conditioned on each rest state
-    # Just check that partial trace over pair of the result equals partial trace of original
+    # For p=1: ε(ρ) = Tr_{01}(ρ) ⊗ I_{01}/d²
+    # Check that partial trace over pair of the result equals partial trace of original
     rho_rest_p1 = partial_trace_pair(rho_p1, (0, 1), N_test, d_test)
     rho_rest_orig = partial_trace_pair(rho_rand, (0, 1), N_test, d_test)
     error_p1_rest = float(np.max(np.abs(rho_rest_p1 - rho_rest_orig)))

@@ -2036,7 +2036,7 @@ comparison_data = {
     '手法': ['Classical Suzuki-Trotter', 'Qubit (Qiskit)', 'Qudit (MQT-Qudits)'],
     '量子リソース': [
         'N/A (古典計算)',
-        f'{2 * params.N_molecules} qubits',
+        f'{2 * params.N_molecules} qubits',  # 各分子に2 qubit（|00⟩=S0, |01⟩=T1, |10⟩=S1）
         f'{params.N_molecules} qutrits' if qudit_results else 'N/A'
     ],
     '状態空間次元': [

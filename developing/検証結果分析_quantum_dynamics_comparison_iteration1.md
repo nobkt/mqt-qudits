@@ -146,10 +146,30 @@ GKSL notebookの`_draw_qudit_circuit_mpl()`関数を完全にコピーし、comp
 - **Qudit vs 古典（ノイズなし）**: max_error ≈ 0.01（ショットノイズレベル）
 - **Qubit vs 古典（ノイズなし）**: max_error ≈ 0.01（変更なし）
 
-### 4.2 GKSL notebookとの整合性
+**修正後の検証結果**:
+- Qudit simulate() と古典シミュレータの誤差: **8.88e-16**（マシンイプシロン）
+- 放射減衰除去により、3手法が同一の物理（純ユニタリ発展）を計算することを確認
 
-- ユニタリ発展の結果は、GKSL notebookのSection 9（全散逸率=0のユニタリ比較）と整合する
-- ただし、GKSL notebookは`n_steps=100`（dt=1 fs）を使用しており、complete comparison notebookは`n_steps=20`（dt=5 fs）を使用しているため、Trotter分解誤差が異なる
+### 4.2 GKSL notebookとの整合性分析
+
+**重要な発見**: 2つのnotebookは**異なる物理モデル**を使用しており、数値結果の直接比較は適切ではない。
+
+| 項目 | complete_comparison | gksl_comparison |
+|------|-------------------|-----------------|
+| TTA模型 | **ハミルトニアン結合** (H_TTA = J[...+h.c.]) | **Lindblad散逸子** (L_TTA = √γ_TTA[...]) |
+| 全ハミルトニアン | H = H₀ + H_transfer + H_TTA | H = H₀ + H_transfer |
+| TTA過程の性質 | 可逆（ユニタリ） | 不可逆（散逸） |
+| S1生成の仕組み | コヒーレント振動: \|T1,T1⟩ ↔ \|S0,S1⟩+\|S1,S0⟩ | 不可逆遷移: \|T1,T1⟩ → \|S0,S1⟩+\|S1,S0⟩ |
+
+**検証**:
+- GKSL notebookのユニタリ極限（γ_TTA=0, 全散逸率=0）では、H_TTAがないため N_T1=2.0, N_S1=0.0のまま変化しない（三重項エネルギーが分子間を移動するのみ）
+- complete_comparison notebookでは、H_TTAにより N_T1=1.20, N_S1=0.40 と大きく変化する
+- この差異は**バグではなく、異なる物理モデルの結果**
+
+**設計上の整合性**:
+- 両notebookは補完的な役割を果たす
+- complete_comparison: 量子コンピューティングプラットフォーム（qubit vs qudit）の比較
+- gksl_comparison: 開放量子系における散逸過程の忠実なシミュレーション
 
 ---
 
@@ -157,7 +177,18 @@ GKSL notebookの`_draw_qudit_circuit_mpl()`関数を完全にコピーし、comp
 
 | 手順 | ステータス | 説明 |
 |------|-----------|------|
-| ① 検証スクリプト実行 | ✅ 完了 | 4回実行、全テストPASS |
+| ① 検証スクリプト実行 | ✅ 完了 | 5回実行（02:58, 03:33, 03:44, 04:27, 05:06）、全テストPASS |
 | ② 結果分析 | ✅ 完了 | 本レポートにて3つの問題を特定 |
-| ③ コード修正 | 🔄 進行中 | 放射減衰除去、比較表修正、回路可視化統一 |
-| ④ 修正後の検証 | ⬜ 未着手 | 修正後にノートブックを再実行して結果確認 |
+| ③ コード修正 | ✅ 完了 | 放射減衰除去、比較表修正、回路可視化統一 |
+| ④ 修正後の検証 | ✅ 完了 | Qudit vs 古典の誤差が8.88e-16（マシンイプシロン）に改善 |
+| ⑤ GKSL整合性分析 | ✅ 完了 | 異なる物理モデル（ハミルトニアンTTA vs Lindblad TTA）であることを確認 |
+
+### 修正ファイル一覧
+
+| ファイル | 修正内容 |
+|----------|----------|
+| `tutorials/mqt_qudits_four_molecule_sparse_implementation.py` | simulate()とsimulate_shot_based()から放射減衰を除去 |
+| `tutorials/quantum_dynamics_complete_comparison.ipynb` Cell 13 | Qubit回路可視化をGKSL notebook方式に統一 |
+| `tutorials/quantum_dynamics_complete_comparison.ipynb` Cell 20 | Qudit回路可視化を`_draw_qudit_circuit_mpl()`に変更 |
+| `tutorials/quantum_dynamics_complete_comparison.ipynb` Cell 26 | Qudit比較回路可視化を`_draw_qudit_subcircuits()`に変更 |
+| `tutorials/quantum_dynamics_complete_comparison.ipynb` Cell 35 | 量子リソース表示を修正（1694→8 qubits） |

@@ -2036,7 +2036,7 @@ comparison_data = {
     '手法': ['Classical Suzuki-Trotter', 'Qubit (Qiskit)', 'Qudit (MQT-Qudits)'],
     '量子リソース': [
         'N/A (古典計算)',
-        f'{qubit_results.get("total_gates", 0) // params.N_steps // 2} qubits',
+        f'{2 * params.N_molecules} qubits',
         f'{params.N_molecules} qutrits' if qudit_results else 'N/A'
     ],
     '状態空間次元': [
@@ -2047,7 +2047,7 @@ comparison_data = {
     '1ステップあたりゲート数': [
         'N/A',
         qubit_results.get('gates_per_step', 'N/A'),
-        f"{qudit_results.get('total_gates', 0) // params.N_steps if qudit_results and 'total_gates' in qudit_results else 'N/A'}"
+        qudit_results.get('gates_per_step', 'N/A') if qudit_results else 'N/A'
     ],
     '総ゲート数': [
         'N/A',

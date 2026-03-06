@@ -329,28 +329,39 @@ def run_classical_trotter(
 ) -> tuple[np.ndarray, list[np.ndarray]]:
     """
     Run classical Trotter simulation in the qutrit basis.
-    First-order Trotter: U_step = U_H0 · Π_{pairs} U_transfer · Π_{pairs} U_TTA
+    2nd-order symmetric Suzuki-Trotter decomposition (matching actual simulators):
+      U_step = U_H0(dt/2) · Π_pairs U_tr(dt/2) · Π_pairs U_TTA(dt/2)
+             · Π_pairs_rev U_TTA(dt/2) · Π_pairs_rev U_tr(dt/2) · U_H0(dt/2)
     """
     H0 = build_H0_classical()
-    U_H0 = scipy.linalg.expm(-1j * H0 * dt / HBAR)
+    U_H0_half = scipy.linalg.expm(-1j * H0 * (dt / 2) / HBAR)
 
-    U_transfers = {}
-    U_TTAs = {}
+    U_transfers_half = {}
+    U_TTAs_half = {}
     for i_mol, j_mol in NEIGHBORS:
         H_tr = build_H_transfer_pair(i_mol, j_mol)
-        U_transfers[(i_mol, j_mol)] = scipy.linalg.expm(-1j * H_tr * dt / HBAR)
+        U_transfers_half[(i_mol, j_mol)] = scipy.linalg.expm(-1j * H_tr * (dt / 2) / HBAR)
         H_tta = build_H_TTA_pair(i_mol, j_mol)
-        U_TTAs[(i_mol, j_mol)] = scipy.linalg.expm(-1j * H_tta * dt / HBAR)
+        U_TTAs_half[(i_mol, j_mol)] = scipy.linalg.expm(-1j * H_tta * (dt / 2) / HBAR)
 
     psi = psi0.copy()
     populations_history = [_extract_populations(psi)]
 
+    neighbors_rev = list(reversed(NEIGHBORS))
+
     for _ in range(n_steps):
-        psi = U_H0 @ psi
+        # Forward half: H0, H_transfer, H_TTA
+        psi = U_H0_half @ psi
         for pair in NEIGHBORS:
-            psi = U_transfers[pair] @ psi
+            psi = U_transfers_half[pair] @ psi
         for pair in NEIGHBORS:
-            psi = U_TTAs[pair] @ psi
+            psi = U_TTAs_half[pair] @ psi
+        # Backward half: H_TTA, H_transfer, H0 (reverse pair order)
+        for pair in neighbors_rev:
+            psi = U_TTAs_half[pair] @ psi
+        for pair in neighbors_rev:
+            psi = U_transfers_half[pair] @ psi
+        psi = U_H0_half @ psi
         populations_history.append(_extract_populations(psi))
 
     return psi, populations_history
@@ -429,9 +440,10 @@ def run_qubit_trotter(
 ) -> tuple[np.ndarray, list[np.ndarray]]:
     """
     Run qubit-encoded Trotter simulation using statevector evolution.
-    Builds the full Trotter step unitary from:
-      - Pauli-decomposed H0 (FIXED version)
-      - Exact H_transfer and H_TTA unitaries per pair
+    2nd-order symmetric Suzuki-Trotter decomposition (matching actual simulators).
+    Builds per-pair unitaries from:
+      - Pauli-decomposed H0 (FIXED version) with dt/2
+      - Exact H_transfer and H_TTA unitaries per pair with dt/2
     """
     n_qubits = 2 * N_MOLECULES
     dim_qubit = 2 ** n_qubits
@@ -439,31 +451,40 @@ def run_qubit_trotter(
     psi = _qutrit_to_qubit_state(psi0_qutrit)
     populations_history = [_qubit_to_qutrit_populations(psi)]
 
-    # Build H0 unitary via Pauli decomposition
-    U_H0_pauli = build_H0_qubit_unitary_pauli(dt)
+    # Build H0 unitary via Pauli decomposition (half-step)
+    U_H0_pauli_half = build_H0_qubit_unitary_pauli(dt / 2)
 
-    # Build H_transfer and H_TTA unitaries per pair
-    U_tr_pair = build_H_transfer_qubit_pair_unitary(dt)
-    U_tta_pair = build_H_TTA_qubit_pair_unitary(dt)
+    # Build H_transfer and H_TTA unitaries per pair (half-step)
+    U_tr_pair_half = build_H_transfer_qubit_pair_unitary(dt / 2)
+    U_tta_pair_half = build_H_TTA_qubit_pair_unitary(dt / 2)
 
     # Embed pair unitaries
-    U_transfers = {}
-    U_TTAs = {}
+    U_transfers_half = {}
+    U_TTAs_half = {}
     for i_mol, j_mol in NEIGHBORS:
         qubits = [2 * i_mol, 2 * i_mol + 1, 2 * j_mol, 2 * j_mol + 1]
-        U_transfers[(i_mol, j_mol)] = _embed_4qubit_unitary(
-            U_tr_pair, *qubits, n_qubits
+        U_transfers_half[(i_mol, j_mol)] = _embed_4qubit_unitary(
+            U_tr_pair_half, *qubits, n_qubits
         )
-        U_TTAs[(i_mol, j_mol)] = _embed_4qubit_unitary(
-            U_tta_pair, *qubits, n_qubits
+        U_TTAs_half[(i_mol, j_mol)] = _embed_4qubit_unitary(
+            U_tta_pair_half, *qubits, n_qubits
         )
 
+    neighbors_rev = list(reversed(NEIGHBORS))
+
     for _ in range(n_steps):
-        psi = U_H0_pauli @ psi
+        # Forward half: H0, H_transfer, H_TTA
+        psi = U_H0_pauli_half @ psi
         for pair in NEIGHBORS:
-            psi = U_transfers[pair] @ psi
+            psi = U_transfers_half[pair] @ psi
         for pair in NEIGHBORS:
-            psi = U_TTAs[pair] @ psi
+            psi = U_TTAs_half[pair] @ psi
+        # Backward half: H_TTA, H_transfer, H0 (reverse pair order)
+        for pair in neighbors_rev:
+            psi = U_TTAs_half[pair] @ psi
+        for pair in neighbors_rev:
+            psi = U_transfers_half[pair] @ psi
+        psi = U_H0_pauli_half @ psi
         populations_history.append(_qubit_to_qutrit_populations(psi))
 
     return psi, populations_history
@@ -832,28 +853,34 @@ def test_noise_accumulation() -> dict[str, Any]:
     """
     Test D: Compare effective noise accumulation between qubit and qudit.
     Count 2-qubit/2-qudit gates per Trotter step and compute effective noise.
+
+    Gate counts reflect 2nd-order symmetric Suzuki-Trotter decomposition:
+    each term (H0, H_transfer, H_TTA) is applied twice per step
+    (forward half + backward half), so total gates = 2 × per-half gates.
     """
     n_pairs = len(NEIGHBORS)
 
-    # --- Qubit approach ---
-    # H0: per molecule, ZZ decomposition uses 2 CNOT gates → 2 two-qubit gates per mol
+    # --- Qubit approach (2nd-order symmetric Trotter) ---
+    # Per half-step:
+    #   H0: per molecule, ZZ decomposition uses 2 CNOT gates → 2 CX per mol
+    #   H_transfer: each pair gets one 4-qubit unitary → ~6 CNOTs per pair
+    #   H_TTA: each pair gets one 4-qubit unitary → ~6 CNOTs per pair
+    # Full step = 2 half-steps:
     n_cnot_h0_per_mol = 2
-    n_2q_gates_h0 = N_MOLECULES * n_cnot_h0_per_mol
-    # H_transfer: each pair gets one 4-qubit unitary, which decomposes to ~6 CNOTs
-    # (exact count depends on decomposition, but the 4-qubit unitary acts on the
-    #  2-qubit subspace of active indices so ~3 CNOTs suffice; use 6 as upper bound)
-    n_2q_gates_transfer = n_pairs * 6
-    # H_TTA: each pair gets one 4-qubit unitary, ~6 CNOTs
-    n_2q_gates_tta = n_pairs * 6
+    n_2q_gates_h0 = 2 * N_MOLECULES * n_cnot_h0_per_mol  # 2 half-steps
+    n_2q_gates_transfer = 2 * n_pairs * 6  # 2 half-steps
+    n_2q_gates_tta = 2 * n_pairs * 6  # 2 half-steps
     n_2q_gates_qubit = n_2q_gates_h0 + n_2q_gates_transfer + n_2q_gates_tta
 
-    # --- Qudit approach ---
-    # H0 is diagonal → single-qudit virtual Rz gates → 0 two-qudit gates
-    n_2qd_gates_h0 = 0
-    # H_transfer: 1 two-qudit gate per pair
-    n_2qd_gates_transfer = n_pairs
-    # H_TTA: 1 two-qudit gate per pair
-    n_2qd_gates_tta = n_pairs
+    # --- Qudit approach (2nd-order symmetric Trotter) ---
+    # Per half-step:
+    #   H0 is diagonal → single-qudit virtual Rz gates → 0 two-qudit gates
+    #   H_transfer: 1 two-qudit gate per pair
+    #   H_TTA: 1 two-qudit gate per pair
+    # Full step = 2 half-steps:
+    n_2qd_gates_h0 = 0  # H0 diagonal, no 2-qudit gates even with 2 half-steps
+    n_2qd_gates_transfer = 2 * n_pairs  # 2 half-steps
+    n_2qd_gates_tta = 2 * n_pairs  # 2 half-steps
     n_2qd_gates_qudit = n_2qd_gates_h0 + n_2qd_gates_transfer + n_2qd_gates_tta
 
     # Effective per-step noise (probability of at least one error)

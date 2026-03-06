@@ -440,7 +440,9 @@ def run_qubit_trotter(
 ) -> tuple[np.ndarray, list[np.ndarray]]:
     """
     Run qubit-encoded Trotter simulation using statevector evolution.
-    2nd-order symmetric Suzuki-Trotter decomposition (matching actual simulators).
+    2nd-order symmetric Suzuki-Trotter decomposition (matching actual simulators):
+      U_step = U_H0(dt/2) · Π_pairs U_tr(dt/2) · Π_pairs U_TTA(dt/2)
+             · Π_pairs_rev U_TTA(dt/2) · Π_pairs_rev U_tr(dt/2) · U_H0(dt/2)
     Builds per-pair unitaries from:
       - Pauli-decomposed H0 (FIXED version) with dt/2
       - Exact H_transfer and H_TTA unitaries per pair with dt/2

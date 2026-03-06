@@ -182,66 +182,162 @@ class NoisyQuditMolecularDynamicsSimulator:
             'S1_per_mol': S1_per_mol
         }
     
-    def _apply_noise_to_statevector(self, statevector: np.ndarray, 
-                                    depol_prob: float) -> np.ndarray:
+    def _build_per_pair_unitaries(self, dt: float):
         """
-        Apply depolarizing noise to a statevector using density matrix formalism.
+        Build per-molecule and per-pair unitary matrices for the Trotter step.
         
-        This method converts the statevector to a density matrix, applies proper
-        quantum noise channels, then samples a new statevector from the noisy density matrix.
+        These are the same unitaries used by the classical simulator, built from
+        scipy.linalg.expm. They are used to interleave noise with gate applications.
         
-        Mathematical approach:
-        1. Convert |ψ⟩ → ρ = |ψ⟩⟨ψ|
-        2. Apply depolarizing: ρ' = (1-p)ρ + p·I/d
-        3. Sample new |ψ'⟩ from ρ' (via eigendecomposition)
+        Args:
+            dt: Time step (fs)
+            
+        Returns:
+            Tuple of (U_H0_half_list, U_transfer_half_list, U_TTA_half_list)
+            - U_H0_half_list: List of (dim×dim) unitaries for H0 per molecule
+            - U_transfer_half_list: List of ((dim×dim) unitary, (mol_i, mol_j)) for H_transfer
+            - U_TTA_half_list: List of ((dim×dim) unitary, (mol_i, mol_j)) for H_TTA
+        """
+        import scipy.linalg
+        from exact_hamiltonian_builders import build_H_transfer_unitary, build_H_TTA_unitary
+        
+        I3 = np.eye(3, dtype=complex)
+        
+        def build_single_molecule_operator(mol_idx, op):
+            operators = [I3] * self.N
+            operators[mol_idx] = op
+            result = operators[0]
+            for i in range(1, self.N):
+                result = np.kron(result, operators[i])
+            return result
+        
+        def build_two_molecule_operator(mol_i, mol_j, op_9x9):
+            if mol_i == 0 and mol_j == 1:
+                result = op_9x9
+                for k in range(2, self.N):
+                    result = np.kron(result, I3)
+            elif mol_i == 1 and mol_j == 2:
+                result = np.kron(I3, op_9x9)
+                for k in range(3, self.N):
+                    result = np.kron(result, I3)
+            elif mol_i == 2 and mol_j == 3:
+                result = np.kron(np.kron(I3, I3), op_9x9)
+            else:
+                raise ValueError(f"Unsupported molecule pair: ({mol_i}, {mol_j})")
+            return result
+        
+        # H0 per-molecule unitaries (dt/2)
+        U_H0_half_list = []
+        for mol_idx in range(self.N):
+            U_H0_mol = np.diag([
+                1.0,
+                np.exp(-1j * self.params.E_T * dt / (2 * self.params.hbar)),
+                np.exp(-1j * self.params.E_S * dt / (2 * self.params.hbar))
+            ])
+            U_mol_full = build_single_molecule_operator(mol_idx, U_H0_mol)
+            U_H0_half_list.append(U_mol_full)
+        
+        # H_transfer per-pair unitaries (dt/2)
+        U_transfer_half_list = []
+        for pair_idx, (mol_i, mol_j) in enumerate(self.params.neighbors):
+            V = self.params.V[pair_idx] if isinstance(self.params.V, (list, np.ndarray)) else self.params.V
+            U_9x9 = build_H_transfer_unitary(V, dt / 2, self.params.hbar, dim=3)
+            U_full = build_two_molecule_operator(mol_i, mol_j, U_9x9)
+            U_transfer_half_list.append((U_full, (mol_i, mol_j)))
+        
+        # H_TTA per-pair unitaries (dt/2)
+        U_TTA_half_list = []
+        for pair_idx, (mol_i, mol_j) in enumerate(self.params.neighbors):
+            J = self.params.J[pair_idx] if isinstance(self.params.J, (list, np.ndarray)) else self.params.J
+            U_9x9 = build_H_TTA_unitary(J, dt / 2, self.params.hbar, dim=3)
+            U_full = build_two_molecule_operator(mol_i, mol_j, U_9x9)
+            U_TTA_half_list.append((U_full, (mol_i, mol_j)))
+        
+        return U_H0_half_list, U_transfer_half_list, U_TTA_half_list
+    
+    def _apply_2qudit_depolarizing_dm(self, rho: np.ndarray, 
+                                       qudit_i: int, qudit_j: int,
+                                       depol_prob: float) -> np.ndarray:
+        """
+        Apply 2-qutrit depolarizing noise on qudit pair (i, j) to density matrix.
+        
+        Implements the exact quantum channel:
+            ε(ρ) = (1-p)ρ + p · Tr_{ij}(ρ) ⊗ I_{ij}/d²
+        
+        where d = 3 (qutrit dimension), d² = 9 (pair dimension),
+        Tr_{ij} is the partial trace over qudits i and j,
+        and I_{ij}/d² is the maximally mixed state on the pair.
         
         Parameters:
         -----------
-        statevector : np.ndarray
-            Current statevector (length: 3^N)
+        rho : np.ndarray
+            Density matrix (dim × dim) where dim = 3^N
+        qudit_i, qudit_j : int
+            Indices of the qudit pair to apply noise to
         depol_prob : float
-            Total depolarizing probability (for all qudits combined)
+            Depolarizing probability per gate (e.g., 0.01 = 1%)
         
         Returns:
         --------
-        noisy_statevector : np.ndarray
-            Sampled statevector from noisy density matrix (normalized)
+        rho_new : np.ndarray
+            Noisy density matrix after applying the depolarizing channel
         """
-        # Convert statevector to density matrix
-        rho = np.outer(statevector, statevector.conj())
+        if depol_prob <= 0:
+            return rho
         
-        # Apply depolarizing noise: ρ → (1-p)ρ + p·I/d
-        if depol_prob > 0:
-            # Use small depolarizing probability to avoid complete randomization
-            p_eff = min(depol_prob, self.MAX_DEPOL_PROB)
-            identity = np.eye(self.dim) / self.dim
-            rho = (1.0 - p_eff) * rho + p_eff * identity
+        d = 3  # qutrit dimension
+        N = self.N
+        D = self.dim  # 3^N = 81
         
-        # Ensure density matrix is Hermitian and trace 1
-        # Combined operation for numerical stability
-        trace_val = np.trace(rho)
-        if abs(trace_val) < 1e-15:
-            # Degenerate case: reset to maximally mixed state
-            rho = np.eye(self.dim) / self.dim
-        else:
-            rho = (rho + rho.conj().T) / (2.0 * trace_val)
+        # Reshape density matrix to tensor form [d]*2N
+        rho_r = rho.reshape([d] * (2 * N))
         
-        # Sample a new statevector from the density matrix
-        # Method: Use eigendecomposition and sample based on eigenvalues
-        eigenvalues, eigenvectors = np.linalg.eigh(rho)
+        # Step 1: Partial trace over qudits i and j using einsum
+        # Row indices: 0..N-1, Column indices: N..2N-1
+        # To trace qudit k: set column index N+k equal to row index k
+        row_chars = [chr(ord('a') + k) for k in range(N)]
+        col_chars = [chr(ord('a') + N + k) for k in range(N)]
         
-        # Eigenvalues should be real and non-negative (within numerical precision)
-        eigenvalues = np.maximum(eigenvalues.real, 0.0)
-        eigenvalues = eigenvalues / np.sum(eigenvalues)  # Renormalize
+        # For traced qudits, set column index = row index
+        trace_col_chars = list(col_chars)
+        trace_col_chars[qudit_i] = row_chars[qudit_i]
+        trace_col_chars[qudit_j] = row_chars[qudit_j]
         
-        # Sample an eigenstate based on eigenvalue probabilities
-        idx = np.random.choice(self.dim, p=eigenvalues)
-        noisy_state = eigenvectors[:, idx]
+        remaining_qudits = [k for k in range(N) if k != qudit_i and k != qudit_j]
         
-        # Ensure normalized
-        noisy_state = noisy_state / np.linalg.norm(noisy_state)
+        output_chars = []
+        for k in remaining_qudits:
+            output_chars.append(row_chars[k])
+        for k in remaining_qudits:
+            output_chars.append(col_chars[k])
         
-        return noisy_state
+        einsum_trace = ''.join(row_chars) + ''.join(trace_col_chars) + '->' + ''.join(output_chars)
+        rho_rest_r = np.einsum(einsum_trace, rho_r)
+        
+        # Step 2: Build mixed state: rho_rest ⊗ I_pair/d²
+        # Use einsum to construct the full tensor product
+        I_d = np.eye(d, dtype=complex) / d  # I/d for each qudit in pair
+        
+        # rho_rest indices
+        rest_row_chars = [row_chars[k] for k in remaining_qudits]
+        rest_col_chars = [col_chars[k] for k in remaining_qudits]
+        rest_input = ''.join(rest_row_chars) + ''.join(rest_col_chars)
+        
+        # I_d for qudit_i and qudit_j
+        Ii_input = row_chars[qudit_i] + col_chars[qudit_i]
+        Ij_input = row_chars[qudit_j] + col_chars[qudit_j]
+        
+        # Full output
+        full_output = ''.join(row_chars) + ''.join(col_chars)
+        
+        einsum_build = f'{rest_input},{Ii_input},{Ij_input}->{full_output}'
+        mixed_r = np.einsum(einsum_build, rho_rest_r, I_d, I_d)
+        mixed = mixed_r.reshape(D, D)
+        
+        # Step 3: Apply depolarizing channel
+        rho_new = (1 - depol_prob) * rho + depol_prob * mixed
+        
+        return rho_new
     
     def simulate_noisy(self, T_total: float, N_steps: int,
                       initial_state_type: str = 'edge_triplet',
@@ -249,6 +345,15 @@ class NoisyQuditMolecularDynamicsSimulator:
                       noise_params: Dict = None) -> Dict:
         """
         ノイズモデル付きシミュレーションを実行
+        
+        Uses density matrix formalism with per-gate 2-qudit depolarizing noise.
+        Each 2-qudit gate (CEx for H_transfer, CustomTwo for H_TTA) receives
+        independent depolarizing noise, matching the per-gate noise model
+        used in the qubit noisy simulator.
+        
+        The depolarizing channel for each 2-qudit gate is:
+            ε(ρ) = (1-p)ρ + p · Tr_{ij}(ρ) ⊗ I_{ij}/d²
+        where d=3 (qutrit), applied to the specific qudit pair.
         
         Parameters:
         -----------
@@ -292,7 +397,7 @@ class NoisyQuditMolecularDynamicsSimulator:
         print(f"  2量子ビットゲート脱分極エラー: {depol_2q*100:.3f}%")
         print(f"  ノイズ適用ゲート: {noise_model.basis_gates}")
         
-        # Build single Trotter step circuit
+        # Build single Trotter step circuit (for gate counting only)
         step_circuit = QuantumCircuit()
         reg = QuantumRegister("molecules", self.N, [3] * self.N)
         step_circuit.append(reg)
@@ -316,7 +421,7 @@ class NoisyQuditMolecularDynamicsSimulator:
         
         print(f"\n1トロッターステップあたりの基本ゲート数: {gates_per_step}")
         
-        # Initialize backend with noise
+        # Initialize backend
         backend = self.provider.get_backend("misim")
         
         # Results storage
@@ -331,19 +436,29 @@ class NoisyQuditMolecularDynamicsSimulator:
         
         print(f"\n初期状態: {initial_state_type}")
         
-        # FIXED: Use statevector-based approach with manual noise to avoid quadratic circuit growth
-        # Build single Trotter step unitary matrix directly from Hamiltonians (O(1) construction)
-        print("\nBuilding single Trotter step unitary matrix directly from Hamiltonians...")
-        step_unitary = self.time_evol.build_trotter_step_unitary_direct(dt)
-        print(f"Unitary matrix constructed: {step_unitary.shape}")
+        # Build per-pair unitaries for interleaved noise application
+        print("\nBuilding per-pair unitaries for density matrix simulation...")
+        U_H0_half_list, U_transfer_half_list, U_TTA_half_list = \
+            self._build_per_pair_unitaries(dt)
+        
+        # Count 2-qudit gates per step for reporting
+        n_2qudit_gates = 2 * (len(U_transfer_half_list) + len(U_TTA_half_list))
+        print(f"  2-qudit gates per Trotter step: {n_2qudit_gates}")
+        print(f"  Effective per-step noise: 1-(1-{depol_2q})^{n_2qudit_gates} = "
+              f"{1-(1-depol_2q)**n_2qudit_gates:.4f}")
         
         # Get initial statevector
         job = backend.run(init_circuit)
         result = job.result()
         current_state = result.get_state_vector().flatten()
         
-        # Calculate initial populations from statevector
-        probabilities = np.abs(current_state)**2
+        # Initialize density matrix
+        rho = np.outer(current_state, current_state.conj())
+        
+        # Calculate initial populations
+        probabilities = np.diag(rho).real
+        probabilities = np.maximum(probabilities, 0)
+        probabilities /= np.sum(probabilities)
         samples_0 = np.random.choice(self.dim, size=shots, p=probabilities)
         pop_0 = self.calculate_populations_from_samples(samples_0, shots)
         pop_per_mol_0 = self.calculate_per_molecule_populations_from_samples(samples_0, shots)
@@ -355,32 +470,56 @@ class NoisyQuditMolecularDynamicsSimulator:
         print(f"  N_T1 = {pop_0['N_T1']:.4f}")
         print(f"  N_S1 = {pop_0['N_S1']:.4f}")
         
-        # Run simulation for each time step using statevector evolution
-        print(f"\n時間発展を実行中（{N_steps}ステップ、各ステップ{shots}ショット）...")
+        # Run simulation using density matrix evolution with per-gate noise
+        print(f"\n時間発展を実行中（{N_steps}ステップ、密度行列シミュレーション）...")
+        print(f"  ノイズ: 各2-quditゲートに{depol_2q*100:.1f}%脱分極エラーを適用")
         
         for step in range(1, N_steps + 1):
-            # Apply single Trotter step unitary to current state (O(1) per step)
-            current_state = step_unitary @ current_state
+            # Forward half: H0 -> H_transfer -> H_TTA
             
-            # Apply noise manually to statevector using density matrix formalism
-            # Noise model: depolarizing with proper quantum channels
-            # 
-            # MODIFICATION: As per the requirement, noise is applied ONLY to 2-qudit gates.
-            # Therefore, we use depol_2q directly instead of averaging with depol_1q.
-            # This reflects the actual noise model where single-qudit gates are ideal.
-            if depol_2q > 0:
-                current_state = self._apply_noise_to_statevector(
-                    current_state, depol_2q
-                )
+            # H0 (single-qudit gates, no noise)
+            for U_H0 in U_H0_half_list:
+                rho = U_H0 @ rho @ U_H0.conj().T
             
-            # Ensure normalization (safety check - should already be normalized)
-            current_state = current_state / np.linalg.norm(current_state)
+            # H_transfer (2-qudit gates with noise)
+            for U_tr, pair in U_transfer_half_list:
+                rho = U_tr @ rho @ U_tr.conj().T
+                rho = self._apply_2qudit_depolarizing_dm(rho, pair[0], pair[1], depol_2q)
             
-            # Sample from statevector to get populations
-            probabilities = np.abs(current_state)**2
+            # H_TTA (2-qudit gates with noise)
+            for U_TTA, pair in U_TTA_half_list:
+                rho = U_TTA @ rho @ U_TTA.conj().T
+                rho = self._apply_2qudit_depolarizing_dm(rho, pair[0], pair[1], depol_2q)
+            
+            # Backward half: H_TTA -> H_transfer -> H0 (reverse order)
+            
+            # H_TTA (reverse)
+            for U_TTA, pair in reversed(U_TTA_half_list):
+                rho = U_TTA @ rho @ U_TTA.conj().T
+                rho = self._apply_2qudit_depolarizing_dm(rho, pair[0], pair[1], depol_2q)
+            
+            # H_transfer (reverse)
+            for U_tr, pair in reversed(U_transfer_half_list):
+                rho = U_tr @ rho @ U_tr.conj().T
+                rho = self._apply_2qudit_depolarizing_dm(rho, pair[0], pair[1], depol_2q)
+            
+            # H0 (reverse, single-qudit, no noise)
+            for U_H0 in reversed(U_H0_half_list):
+                rho = U_H0 @ rho @ U_H0.conj().T
+            
+            # Ensure Hermitian and normalized (numerical stability)
+            rho = (rho + rho.conj().T) / 2
+            trace_val = np.trace(rho).real
+            if trace_val > 0:
+                rho /= trace_val
+            
+            # Sample from diagonal probabilities
+            probabilities = np.diag(rho).real
+            probabilities = np.maximum(probabilities, 0)
+            probabilities /= np.sum(probabilities)
             samples = np.random.choice(self.dim, size=shots, p=probabilities)
             
-            # Calculate populations from samples
+            # Calculate populations
             pop = self.calculate_populations_from_samples(samples, shots)
             pop_per_mol = self.calculate_per_molecule_populations_from_samples(samples, shots)
             
@@ -390,8 +529,10 @@ class NoisyQuditMolecularDynamicsSimulator:
             per_molecule_populations_history.append(pop_per_mol)
             
             if step % max(1, N_steps // 10) == 0:
+                purity = np.trace(rho @ rho).real
                 print(f"  ステップ {step}/{N_steps}: t = {t:.2f} fs, "
-                      f"N_T1 = {pop['N_T1']:.4f}, N_S1 = {pop['N_S1']:.4f}")
+                      f"N_T1 = {pop['N_T1']:.4f}, N_S1 = {pop['N_S1']:.4f}, "
+                      f"purity = {purity:.4f}")
         
         elapsed = time.time() - start_time
         
@@ -402,8 +543,11 @@ class NoisyQuditMolecularDynamicsSimulator:
         print(f"  N_S0 = {populations_history[-1]['N_S0']:.4f}")
         print(f"  N_T1 = {populations_history[-1]['N_T1']:.4f}")
         print(f"  N_S1 = {populations_history[-1]['N_S1']:.4f}")
+        final_purity = np.trace(rho @ rho).real
+        print(f"  最終純度: {final_purity:.6f}")
         print(f"\n回路統計:")
         print(f"  1ステップあたりゲート数: {gates_per_step}")
+        print(f"  2-quditゲート数/ステップ: {n_2qudit_gates}")
         print(f"  総ゲート数: {gates_per_step * N_steps}")
         print(f"  実行時間: {elapsed:.2f}秒")
         
@@ -415,6 +559,7 @@ class NoisyQuditMolecularDynamicsSimulator:
             'method': f'Qudit (Noisy, depol_1q={depol_1q:.4f}, depol_2q={depol_2q:.4f})',
             'gates_per_step': gates_per_step,
             'total_gates': gates_per_step * N_steps,
+            'n_2qudit_gates_per_step': n_2qudit_gates,
             'shots': shots,
             'noise_params': noise_params
         }

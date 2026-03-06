@@ -61,9 +61,9 @@ class QubitMolecularDynamicsSimulatorUnitary:
         gamma = (E_T - E_S) / 4
         delta = -(E_T + E_S) / 4
         
-        theta_0 = -2 * beta * dt / hbar
-        theta_1 = -2 * gamma * dt / hbar
-        theta_zz = -2 * delta * dt / hbar
+        theta_0 = 2 * beta * dt / hbar
+        theta_1 = 2 * gamma * dt / hbar
+        theta_zz = 2 * delta * dt / hbar
         
         circuit.rz(theta_0, q0)
         circuit.rz(theta_1, q1)

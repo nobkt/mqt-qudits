@@ -1230,12 +1230,15 @@ class SuzukiTrotterMQTQuditSimulator:
                  initial_state_type: str = 'all_triplet',
                  track_dynamics: bool = True) -> Dict:
         """
-        完全なシミュレーションを実行
+        完全なシミュレーションを実行（純ユニタリ発展）
         
         実装方針（修正版 - O(N)複雑度）:
         1. 単一トロッターステップのユニタリ行列を直接構築（Hamiltonianから）
         2. 初期状態ベクトルに対して反復的にユニタリを適用
-        3. 各ステップで放射減衰を適用し、個体数を計算
+        3. 各ステップで個体数を計算
+        
+        注: 放射減衰（非ユニタリ）は適用しない。散逸過程はGKSL/Lindblad
+        シミュレータ（quantum_dynamics_gksl_comparison.ipynb）で扱う。
         
         Args:
             T_total: 総時間 (fs)
@@ -1282,11 +1285,6 @@ class SuzukiTrotterMQTQuditSimulator:
         for step in range(N_steps):
             # 単一トロッターステップのユニタリを現在の状態に適用
             current_state = step_unitary @ current_state
-            
-            # 放射減衰を適用
-            current_state = self.apply_radiative_decay_to_statevector(
-                current_state, dt * (step + 1)
-            )
             
             if track_dynamics:
                 t = (step + 1) * dt
@@ -1387,13 +1385,15 @@ class SuzukiTrotterMQTQuditSimulator:
                            track_dynamics: bool = True,
                            shots: int = 10000) -> Dict:
         """
-        完全なシミュレーションを実行（ショットベース）
+        完全なシミュレーションを実行（ショットベース、純ユニタリ発展）
         
         実装方針（修正版 - O(N)複雑度）:
         1. 単一トロッターステップのユニタリ行列を直接構築（Hamiltonianから）
         2. 初期状態ベクトルに対して反復的にユニタリを適用
-        3. 各ステップで放射減衰を適用
-        4. 状態ベクトルからサンプリングして個体数を計算
+        3. 状態ベクトルからサンプリングして個体数を計算
+        
+        注: 放射減衰（非ユニタリ）は適用しない。散逸過程はGKSL/Lindblad
+        シミュレータ（quantum_dynamics_gksl_comparison.ipynb）で扱う。
         
         Args:
             T_total: 総時間 (fs)
@@ -1471,11 +1471,6 @@ class SuzukiTrotterMQTQuditSimulator:
         for step in range(N_steps):
             # 単一トロッターステップのユニタリを現在の状態に適用
             current_state = step_unitary @ current_state
-            
-            # 放射減衰を適用
-            current_state = self.apply_radiative_decay_to_statevector(
-                current_state, dt * (step + 1)
-            )
             
             # 状態ベクトルからサンプリング
             probabilities = np.abs(current_state)**2

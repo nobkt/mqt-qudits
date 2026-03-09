@@ -1,0 +1,220 @@
+{
+  "timestamp": "20260309T052018Z",
+  "checks": [
+    {
+      "name": "N_steps = 100",
+      "passed": true,
+      "detail": "Found: self.N_steps = 100"
+    },
+    {
+      "name": "N_steps not 20",
+      "passed": true,
+      "detail": "Old value N_steps=20 should not be present"
+    },
+    {
+      "name": "Cell 6: matplotlib.use('Agg')",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 9: matplotlib.use('Agg')",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 6: has savefig",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 6: has display(Image())",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 6: has plt.close()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 6: no standalone plt.show()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 9: has savefig",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 9: has display(Image())",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 9: has plt.close()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 9: no standalone plt.show()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 29: has savefig",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 29: has display(Image())",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 29: has plt.close()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 29: no standalone plt.show()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 33: has savefig",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 33: has display(Image())",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 33: has plt.close()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 33: no standalone plt.show()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 34: has savefig",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 34: has display(Image())",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 34: has plt.close()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 34: no standalone plt.show()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 35: has savefig",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 35: has display(Image())",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 35: has plt.close()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 35: no standalone plt.show()",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 6: has markevery",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 6: markersize<=3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 29: has markevery",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 29: markersize<=3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 33: has markevery",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 33: markersize<=3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 34: has markevery",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 34: markersize<=3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Cell 13: no 分解後UnitaryGate版",
+      "passed": true,
+      "detail": "Decomposed UnitaryGate should not be visualized"
+    },
+    {
+      "name": "Cell 13: has UnitaryGate版",
+      "passed": true,
+      "detail": "UnitaryGate version should still be visualized"
+    },
+    {
+      "name": "Cell 13: has 基本ゲート分解版",
+      "passed": true,
+      "detail": "Basic gate version should still be visualized"
+    },
+    {
+      "name": "Cell 26: has CustomTwoゲート版",
+      "passed": true,
+      "detail": "CustomTwo gate version should be visualized"
+    },
+    {
+      "name": "Cell 26: no 基本ゲート分解版",
+      "passed": true,
+      "detail": "Decomposed basic gate version should not be visualized"
+    },
+    {
+      "name": "All code cells: outputs cleared",
+      "passed": true,
+      "detail": "All cells ready for re-execution"
+    }
+  ],
+  "summary": {
+    "total": 42,
+    "passed": 42,
+    "failed": 0
+  }
+}

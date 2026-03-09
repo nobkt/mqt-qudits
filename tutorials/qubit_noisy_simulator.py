@@ -453,7 +453,7 @@ class QubitMolecularDynamicsSimulatorNoisy:
             for U_H0 in reversed(U_H0_full_list):
                 rho = U_H0 @ rho @ U_H0.conj().T
 
-            # Enforce Hermiticity and normalisation (numerical stability)
+            # Enforce Hermiticity and normalization (numerical stability)
             rho = (rho + rho.conj().T) * 0.5
             tr = np.real(np.trace(rho))
             if tr > 0.0:

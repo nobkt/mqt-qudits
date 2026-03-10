@@ -1,0 +1,153 @@
+{
+  "timestamp": "20260310T065907Z",
+  "iteration": 6,
+  "checks": [
+    {
+      "name": "no_qiskit_aer_import",
+      "status": "PASS",
+      "detail": "qubit_noisy_simulator should NOT import Qiskit Aer"
+    },
+    {
+      "name": "no_transpile_import",
+      "status": "PASS",
+      "detail": "qubit_noisy_simulator should NOT use transpile"
+    },
+    {
+      "name": "density_matrix_method",
+      "status": "PASS",
+      "detail": "Should have density matrix depolarizing channel method"
+    },
+    {
+      "name": "pair_unitary_builder",
+      "status": "PASS",
+      "detail": "Should have per-pair unitary builder"
+    },
+    {
+      "name": "uses_build_qubit_unitary",
+      "status": "PASS",
+      "detail": "Should import 16x16 qubit unitary builders"
+    },
+    {
+      "name": "d_equals_4",
+      "status": "PASS",
+      "detail": "Local dimension should be d=4 (2 qubits per molecule)"
+    },
+    {
+      "name": "dim_256",
+      "status": "PASS",
+      "detail": "System dimension should be 4^N = 256"
+    },
+    {
+      "name": "pair_level_noise_in_simulate",
+      "status": "PASS",
+      "detail": "Simulate should use pair-level noise with density matrix evolution"
+    },
+    {
+      "name": "no_circuit_compose",
+      "status": "PASS",
+      "detail": "Should NOT compose circuits for time evolution"
+    },
+    {
+      "name": "gksl_cell34_depol_rate",
+      "status": "PASS",
+      "detail": "GKSL Cell 34 should use p_depol=0.001"
+    },
+    {
+      "name": "gksl_cell38_depol_rate",
+      "status": "PASS",
+      "detail": "GKSL Cell 38 should use p_depol=0.001"
+    },
+    {
+      "name": "complete_cell15_depol_rate",
+      "status": "PASS",
+      "detail": "Complete Cell 15 should use depol_2q=0.001"
+    },
+    {
+      "name": "complete_cell23_depol_rate",
+      "status": "PASS",
+      "detail": "Complete Cell 23 should use depol_2q=0.001"
+    },
+    {
+      "name": "gksl_cell33_doc",
+      "status": "PASS",
+      "detail": "GKSL Cell 33 markdown should reference p_depol=0.001"
+    },
+    {
+      "name": "gksl_cell37_doc",
+      "status": "PASS",
+      "detail": "GKSL Cell 37 markdown should reference p_depol=0.001"
+    },
+    {
+      "name": "gksl_cell39_doc",
+      "status": "PASS",
+      "detail": "GKSL Cell 39 should reference p_depol=0.001"
+    },
+    {
+      "name": "gksl_cell43_doc",
+      "status": "PASS",
+      "detail": "GKSL Cell 43 should reference p_depol=0.001"
+    },
+    {
+      "name": "complete_cell14_doc",
+      "status": "PASS",
+      "detail": "Complete Cell 14 should reference 0.1% noise rate"
+    },
+    {
+      "name": "complete_cell22_doc",
+      "status": "PASS",
+      "detail": "Complete Cell 22 should reference 0.1% noise rate"
+    },
+    {
+      "name": "complete_cell15_comment",
+      "status": "PASS",
+      "detail": "Complete Cell 15 comment should say 0.1%"
+    },
+    {
+      "name": "complete_cell23_comment",
+      "status": "PASS",
+      "detail": "Complete Cell 23 comment should say 0.1%"
+    },
+    {
+      "name": "gksl_cell34_p_dephasing_0",
+      "status": "PASS",
+      "detail": "GKSL Cell 34 should have p_dephasing=0.0"
+    },
+    {
+      "name": "gksl_cell34_depol_pair_only",
+      "status": "PASS",
+      "detail": "GKSL Cell 34 should have depol_pair_only=True"
+    },
+    {
+      "name": "gksl_cell38_p_dephasing_0",
+      "status": "PASS",
+      "detail": "GKSL Cell 38 should have p_dephasing=0.0"
+    },
+    {
+      "name": "gksl_cell38_depol_pair_only",
+      "status": "PASS",
+      "detail": "GKSL Cell 38 should have depol_pair_only=True"
+    },
+    {
+      "name": "qubit_no_gate_level_noise",
+      "status": "PASS",
+      "detail": "Qubit simulator should NOT use gate-level noise model"
+    },
+    {
+      "name": "qubit_partial_trace",
+      "status": "PASS",
+      "detail": "Qubit simulator should use partial trace for depolarizing channel"
+    },
+    {
+      "name": "qudit_partial_trace",
+      "status": "PASS",
+      "detail": "Qudit simulator should use partial trace for depolarizing channel"
+    },
+    {
+      "name": "qubit_pair_noise_structure",
+      "status": "PASS",
+      "detail": "Qubit should have separate transfer and TTA unitary lists"
+    }
+  ],
+  "passed": 29,
+  "failed": 0
+}

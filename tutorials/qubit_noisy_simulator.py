@@ -5,13 +5,28 @@ Qubit Molecular Dynamics Simulator with Noise Support.
 This module extends the exact Qubit simulator to support noise models
 using density matrix simulation with pair-level depolarizing noise.
 
-The noise model matches the qudit noisy simulator (mqt_qudits_noisy_simulator.py):
+Noise model:
 - Depolarizing noise applied at the 2-molecule pair-gate level
 - 12 noise events per 2nd-order symmetric Trotter step
 - H0 single-molecule gates receive no noise
 
+On real qubit hardware, each pair interaction (H_transfer, H_TTA) must be
+decomposed into multiple CX (CNOT) gates. Each CX gate independently
+experiences depolarizing noise. The effective depolarization per pair
+interaction is:
+
+    p_eff = 1 - (1 - p_phys)^N_CX
+
+where p_phys is the physical per-CX-gate error rate and N_CX is the number
+of CX gates needed per pair interaction.
+
+This is fundamentally different from the qudit (qutrit) case where each
+pair interaction is a single native 2-qutrit gate, so p_eff = p_phys.
+The higher effective noise rate for qubit encoding is a real physical
+disadvantage, not an artifact.
+
 Depolarizing channel for a pair of molecules (each d=4, 2 qubits):
-    ε(ρ) = (1-p)ρ + p · Tr_{ij}(ρ) ⊗ I_{16}/16
+    ε(ρ) = (1-p_eff)ρ + p_eff · Tr_{ij}(ρ) ⊗ I_{16}/16
 
 Note: Since d=4 includes the forbidden state |11⟩, the depolarizing channel
 inherently causes forbidden-state leakage. This is a physical property of
@@ -31,10 +46,62 @@ from exact_qubit_hamiltonians import (
 class QubitMolecularDynamicsSimulatorNoisy:
     """Qubit-based simulator with density matrix pair-level noise.
 
-    Uses the same noise granularity as the qudit noisy simulator:
-    depolarizing noise applied after each 2-molecule pair gate
+    Depolarizing noise is applied after each 2-molecule pair gate
     (H_transfer and H_TTA), with no noise on H0 single-molecule gates.
+
+    Unlike the qudit simulator where each pair interaction is a single
+    native 2-qutrit gate, the qubit encoding requires decomposing each
+    pair interaction into multiple CX (CNOT) gates. The effective
+    depolarization per pair interaction accounts for this gate overhead:
+
+        p_eff = 1 - (1 - p_phys)^cx_per_pair_gate
+
+    When cx_per_pair_gate=1, this reduces to p_eff = p_phys (same as qudit).
     """
+
+    @staticmethod
+    def estimate_cx_per_pair_gate(V=0.1, J=0.05, dt=1.0, hbar=0.6582119569):
+        """Estimate the number of CX gates per pair interaction via Qiskit transpilation.
+
+        This decomposes the 16x16 pair unitaries (H_transfer, H_TTA) into
+        basic gates using Qiskit's transpiler with optimization_level=3
+        (KAK decomposition), and counts the resulting CX gates.
+
+        Returns
+        -------
+        dict
+            Keys: 'cx_transfer', 'cx_tta', 'cx_avg' (average of the two)
+
+        Raises
+        ------
+        ImportError
+            If Qiskit is not installed.
+        """
+        try:
+            from qiskit import transpile
+            from qiskit import QuantumCircuit as QiskitCircuit
+            from qiskit.circuit.library import UnitaryGate
+        except ImportError as e:
+            msg = (
+                "Qiskit is required to estimate CX gate counts. "
+                "Install with: pip install qiskit"
+            )
+            raise ImportError(msg) from e
+
+        results = {}
+        for name, builder in [
+            ('cx_transfer', build_H_transfer_qubit_unitary),
+            ('cx_tta', build_H_TTA_qubit_unitary),
+        ]:
+            U = builder(V if name == 'cx_transfer' else J, dt, hbar)
+            qc = QiskitCircuit(4)
+            qc.append(UnitaryGate(U), [0, 1, 2, 3])
+            qc_t = transpile(qc, basis_gates=['cx', 'u3'], optimization_level=3)
+            cx_count = qc_t.count_ops().get('cx', 0)
+            results[name] = cx_count
+
+        results['cx_avg'] = (results['cx_transfer'] + results['cx_tta']) / 2
+        return results
 
     def __init__(self, params):
         self.params = params
@@ -280,13 +347,24 @@ class QubitMolecularDynamicsSimulatorNoisy:
     def simulate(self, T_total: float, N_steps: int,
                  initial_state_type: str = 'edge_triplet',
                  shots: int = 10000,
-                 noise_params: Dict = None) -> Dict:
+                 noise_params: Dict = None,
+                 cx_per_pair_gate: int = 1) -> Dict:
         """Run noisy simulation using density matrix with pair-level noise.
 
         Uses density matrix formalism with per-pair-gate 2-molecule depolarizing
         noise. Each 2-molecule pair interaction (H_transfer, H_TTA) receives
-        independent depolarizing noise, matching the per-gate noise model used
-        in the qudit noisy simulator.
+        independent depolarizing noise.
+
+        On real qubit hardware, each pair interaction requires multiple CX gates.
+        The ``cx_per_pair_gate`` parameter controls how many CX gates are assumed
+        per pair interaction.  The effective depolarization per pair is computed as:
+
+            p_eff = 1 - (1 - depol_2q)^cx_per_pair_gate
+
+        When ``cx_per_pair_gate=1`` (default), p_eff equals depol_2q, giving the
+        same noise level as the qudit simulator.  For realistic qubit hardware,
+        ``cx_per_pair_gate`` should be set to the actual CX count obtained from
+        circuit decomposition (use ``estimate_cx_per_pair_gate()``).
 
         Parameters
         ----------
@@ -300,6 +378,11 @@ class QubitMolecularDynamicsSimulatorNoisy:
             Number of measurement shots per time step (for Monte Carlo sampling)
         noise_params : dict or None
             Noise parameters. Keys: 'depol_1q' (unused), 'depol_2q'
+            depol_2q is interpreted as the physical per-CX-gate error rate.
+        cx_per_pair_gate : int
+            Number of CX gates per pair interaction on qubit hardware.
+            Default 1 gives same noise level as qudit.
+            Use estimate_cx_per_pair_gate() to compute the actual value.
         """
         print("\n" + "="*70)
         print("Qubitベースシミュレーション開始（ノイズモデル付き）")
@@ -314,9 +397,18 @@ class QubitMolecularDynamicsSimulatorNoisy:
         depol_1q = noise_params.get('depol_1q', 0.001)
         depol_2q = noise_params.get('depol_2q', 0.01)
 
+        # Compute effective pair depolarization from CX gate overhead
+        if cx_per_pair_gate < 1:
+            msg = f"cx_per_pair_gate must be >= 1, got {cx_per_pair_gate}"
+            raise ValueError(msg)
+        depol_2q_eff = 1 - (1 - depol_2q) ** cx_per_pair_gate
+
         print("\nノイズモデルパラメータ:")
         print(f"  1量子ビットゲート: 理想的（ノイズなし）")
-        print(f"  2量子ビットゲート脱分極エラー: {depol_2q*100:.3f}%")
+        print(f"  物理CXゲートエラー率 (p_phys): {depol_2q*100:.4f}%")
+        print(f"  ペアあたりのCXゲート数: {cx_per_pair_gate}")
+        print(f"  有効ペア脱分極率 (p_eff): {depol_2q_eff*100:.4f}%"
+              f"  [= 1-(1-{depol_2q})^{cx_per_pair_gate}]")
         print(f"  ノイズ適用: ペアゲートレベル（H_transfer, H_TTA）")
         print(f"  熱緩和: 無効")
 
@@ -329,8 +421,8 @@ class QubitMolecularDynamicsSimulatorNoisy:
 
         n_2qubit_gates = 2 * (len(U_transfer_half_list) + len(U_TTA_half_list))
         print(f"  2-molecule pair gates per Trotter step: {n_2qubit_gates}")
-        print(f"  Effective per-step noise: 1-(1-{depol_2q})^{n_2qubit_gates} = "
-              f"{1-(1-depol_2q)**n_2qubit_gates:.4f}")
+        print(f"  Effective per-step noise: 1-(1-{depol_2q_eff:.6f})^{n_2qubit_gates} = "
+              f"{1-(1-depol_2q_eff)**n_2qubit_gates:.6f}")
 
         # Initial state
         psi_0 = self._build_initial_statevector(initial_state_type)
@@ -348,7 +440,7 @@ class QubitMolecularDynamicsSimulatorNoisy:
 
         # Time evolution
         print(f"\n時間発展を実行中（{N_steps}ステップ、密度行列シミュレーション）...")
-        print(f"  ノイズ: 各ペアゲートに{depol_2q*100:.3f}%脱分極エラーを適用")
+        print(f"  ノイズ: 各ペアゲートに{depol_2q_eff*100:.4f}%有効脱分極エラーを適用")
 
         for step in range(1, N_steps + 1):
             # Forward half: H0 -> H_transfer -> H_TTA
@@ -357,20 +449,20 @@ class QubitMolecularDynamicsSimulatorNoisy:
 
             for U_tr, pair in U_transfer_half_list:
                 rho = U_tr @ rho @ U_tr.conj().T
-                rho = self._apply_2qubit_pair_depolarizing_dm(rho, pair[0], pair[1], depol_2q)
+                rho = self._apply_2qubit_pair_depolarizing_dm(rho, pair[0], pair[1], depol_2q_eff)
 
             for U_TTA, pair in U_TTA_half_list:
                 rho = U_TTA @ rho @ U_TTA.conj().T
-                rho = self._apply_2qubit_pair_depolarizing_dm(rho, pair[0], pair[1], depol_2q)
+                rho = self._apply_2qubit_pair_depolarizing_dm(rho, pair[0], pair[1], depol_2q_eff)
 
             # Backward half: H_TTA -> H_transfer -> H0 (reverse)
             for U_TTA, pair in reversed(U_TTA_half_list):
                 rho = U_TTA @ rho @ U_TTA.conj().T
-                rho = self._apply_2qubit_pair_depolarizing_dm(rho, pair[0], pair[1], depol_2q)
+                rho = self._apply_2qubit_pair_depolarizing_dm(rho, pair[0], pair[1], depol_2q_eff)
 
             for U_tr, pair in reversed(U_transfer_half_list):
                 rho = U_tr @ rho @ U_tr.conj().T
-                rho = self._apply_2qubit_pair_depolarizing_dm(rho, pair[0], pair[1], depol_2q)
+                rho = self._apply_2qubit_pair_depolarizing_dm(rho, pair[0], pair[1], depol_2q_eff)
 
             for U_H0 in reversed(U_H0_half_list):
                 rho = U_H0 @ rho @ U_H0.conj().T
@@ -410,6 +502,9 @@ class QubitMolecularDynamicsSimulatorNoisy:
         print(f"  非物理的状態: {populations[-1]['unphysical']:.6f}")
         print(f"\n回路統計:")
         print(f"  ペアゲート数/ステップ: {n_2qubit_gates}")
+        print(f"  CXゲート/ペア: {cx_per_pair_gate}")
+        print(f"  物理CXエラー率: {depol_2q*100:.4f}%")
+        print(f"  有効ペア脱分極率: {depol_2q_eff*100:.4f}%")
         print(f"  総ペアゲート数: {n_2qubit_gates * N_steps}")
         print(f"  実行時間: {elapsed:.2f}秒")
 
@@ -417,9 +512,12 @@ class QubitMolecularDynamicsSimulatorNoisy:
             'times': times,
             'populations': populations,
             'elapsed_time': elapsed,
-            'method': f'Qubit (Noisy, depol_2q={depol_2q:.4f})',
+            'method': f'Qubit (Noisy, p_phys={depol_2q:.4f}, cx/pair={cx_per_pair_gate}, p_eff={depol_2q_eff:.4f})',
             'n_2qubit_gates_per_step': n_2qubit_gates,
             'total_gates': n_2qubit_gates * N_steps,
+            'cx_per_pair_gate': cx_per_pair_gate,
+            'depol_2q_physical': depol_2q,
+            'depol_2q_effective': depol_2q_eff,
             'shots': shots,
             'noise_params': noise_params
         }

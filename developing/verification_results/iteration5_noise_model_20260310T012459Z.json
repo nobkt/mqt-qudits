@@ -1,0 +1,198 @@
+{
+  "timestamp": "20260310T012459Z",
+  "iteration": 5,
+  "checks": [
+    {
+      "name": "total_cells",
+      "status": "PASS",
+      "detail": "cells=44, expected=44"
+    },
+    {
+      "name": "cell34_p_dephasing_0",
+      "status": "PASS",
+      "detail": "Cell 34 should have p_dephasing=0.0"
+    },
+    {
+      "name": "cell34_depol_pair_only",
+      "status": "PASS",
+      "detail": "Cell 34 should have depol_pair_only=True"
+    },
+    {
+      "name": "cell34_no_old_dephasing",
+      "status": "PASS",
+      "detail": "Cell 34 should NOT have old p_dephasing=0.005"
+    },
+    {
+      "name": "cell38_p_dephasing_0",
+      "status": "PASS",
+      "detail": "Cell 38 should have p_dephasing=0.0"
+    },
+    {
+      "name": "cell38_depol_pair_only",
+      "status": "PASS",
+      "detail": "Cell 38 should have depol_pair_only=True"
+    },
+    {
+      "name": "cell38_no_old_dephasing",
+      "status": "PASS",
+      "detail": "Cell 38 should NOT have old p_dephasing=0.005"
+    },
+    {
+      "name": "cell30_no_dephasing_in_table",
+      "status": "PASS",
+      "detail": "Cell 30 table should not mention 脱分極+位相緩和"
+    },
+    {
+      "name": "cell30_depol_only_in_table",
+      "status": "PASS",
+      "detail": "Cell 30 table should mention 脱分極のみ"
+    },
+    {
+      "name": "cell33_depol_pair_only",
+      "status": "PASS",
+      "detail": "Cell 33 should mention depol_pair_only"
+    },
+    {
+      "name": "cell33_no_old_dephasing",
+      "status": "PASS",
+      "detail": "Cell 33 should NOT mention old p_dephasing=0.005"
+    },
+    {
+      "name": "cell37_depol_pair_only",
+      "status": "PASS",
+      "detail": "Cell 37 should mention depol_pair_only"
+    },
+    {
+      "name": "cell37_no_old_dephasing",
+      "status": "PASS",
+      "detail": "Cell 37 should NOT mention old p_dephasing=0.005"
+    },
+    {
+      "name": "cell39_depol_pair_only",
+      "status": "PASS",
+      "detail": "Cell 39 should mention depol_pair_only"
+    },
+    {
+      "name": "cell39_model_unification",
+      "status": "PASS",
+      "detail": "Cell 39 should mention model unification with complete_comparison"
+    },
+    {
+      "name": "cell41_depol_only_in_table",
+      "status": "PASS",
+      "detail": "Cell 41 table should use 脱分極のみ"
+    },
+    {
+      "name": "cell41_no_old_dephasing",
+      "status": "PASS",
+      "detail": "Cell 41 should NOT have 脱分極+位相緩和"
+    },
+    {
+      "name": "cell43_depol_only_qudit",
+      "status": "PASS",
+      "detail": "Cell 43 should mention 脱分極のみ for qudit"
+    },
+    {
+      "name": "cell43_depol_only_qubit",
+      "status": "PASS",
+      "detail": "Cell 43 should mention 脱分極のみ（ペアゲートのみ）for qubit"
+    },
+    {
+      "name": "cell43_no_old_noise_model",
+      "status": "PASS",
+      "detail": "Cell 43 should NOT have old dephasing noise model description"
+    },
+    {
+      "name": "complete_cell15_depol_2q",
+      "status": "PASS",
+      "detail": "Cell 15 should use depol_2q parameter"
+    },
+    {
+      "name": "complete_cell15_no_dephasing",
+      "status": "PASS",
+      "detail": "Cell 15 should not have dephasing noise"
+    },
+    {
+      "name": "complete_cell15_2qubit_only",
+      "status": "PASS",
+      "detail": "Cell 15 should specify 2-qubit gates only"
+    },
+    {
+      "name": "complete_cell23_depol_2q",
+      "status": "PASS",
+      "detail": "Cell 23 should use depol_2q parameter"
+    },
+    {
+      "name": "complete_cell23_noise_gates",
+      "status": "PASS",
+      "detail": "Cell 23 should specify noise_gates list"
+    },
+    {
+      "name": "complete_cell23_2qudit_only",
+      "status": "PASS",
+      "detail": "Cell 23 should specify 2-qudit gates only"
+    },
+    {
+      "name": "qudit_shot_noisy_depol_pair_only_param",
+      "status": "PASS",
+      "detail": "QuditGKSLNoisyShotSimulator should have depol_pair_only parameter"
+    },
+    {
+      "name": "qudit_shot_noisy_depol_pair_only_default",
+      "status": "PASS",
+      "detail": "depol_pair_only should default to False"
+    },
+    {
+      "name": "qudit_shot_noisy_noise_params_output",
+      "status": "PASS",
+      "detail": "noise_params should include depol_pair_only"
+    },
+    {
+      "name": "qubit_shot_noisy_depol_pair_only_param",
+      "status": "PASS",
+      "detail": "QubitGKSLNoisyShotSimulator should have depol_pair_only parameter"
+    },
+    {
+      "name": "qubit_shot_noisy_depol_pair_only_default",
+      "status": "PASS",
+      "detail": "depol_pair_only should default to False"
+    },
+    {
+      "name": "qubit_shot_noisy_noise_params_output",
+      "status": "PASS",
+      "detail": "noise_params should include depol_pair_only"
+    },
+    {
+      "name": "gksl_qudit_depol_rate",
+      "status": "PASS",
+      "detail": "GKSL qudit should use p_depol=0.01"
+    },
+    {
+      "name": "gksl_qubit_depol_rate",
+      "status": "PASS",
+      "detail": "GKSL qubit should use p_depol=0.01"
+    },
+    {
+      "name": "complete_qubit_depol_rate",
+      "status": "PASS",
+      "detail": "Complete qubit should use depol_2q=0.01"
+    },
+    {
+      "name": "complete_qudit_depol_rate",
+      "status": "PASS",
+      "detail": "Complete qudit should use depol_2q=0.01"
+    },
+    {
+      "name": "gksl_no_dephasing_qudit",
+      "status": "PASS",
+      "detail": "GKSL qudit should NOT have p_dephasing=0.005"
+    },
+    {
+      "name": "gksl_no_dephasing_qubit",
+      "status": "PASS",
+      "detail": "GKSL qubit should NOT have p_dephasing=0.005"
+    }
+  ],
+  "passed": 38,
+  "failed": 0
+}

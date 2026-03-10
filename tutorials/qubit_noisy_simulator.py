@@ -77,7 +77,7 @@ class QubitMolecularDynamicsSimulatorNoisy:
             elif mol_i == 2 and mol_j == 3:
                 result = np.kron(np.kron(I4, I4), op_16x16)
             else:
-                msg = f"Unsupported molecule pair: ({mol_i}, {mol_j})"
+                msg = f"Unsupported molecule pair: ({mol_i}, {mol_j}). Only adjacent pairs (0,1), (1,2), (2,3) are supported."
                 raise ValueError(msg)
             return result
 
@@ -235,7 +235,7 @@ class QubitMolecularDynamicsSimulatorNoisy:
                 idx += mol_states[i] * (self.d ** i)
             psi[idx] = 1.0
         else:
-            msg = f"Unknown initial state type: {initial_state_type}"
+            msg = f"Unknown initial state type: '{initial_state_type}'. Valid options: 'edge_triplet', 'all_triplet'."
             raise ValueError(msg)
 
         return psi

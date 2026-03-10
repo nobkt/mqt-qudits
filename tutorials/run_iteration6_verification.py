@@ -252,7 +252,7 @@ def main():
 
     check(
         "qubit_partial_trace",
-        "einsum" in qubit_noisy_src and "Tr_{ij}" in qubit_noisy_src or "partial trace" in qubit_noisy_src.lower(),
+        "einsum" in qubit_noisy_src and ("Tr_{ij}" in qubit_noisy_src or "partial trace" in qubit_noisy_src.lower()),
         "Qubit simulator should use partial trace for depolarizing channel",
     )
 

@@ -259,7 +259,7 @@ def main():
     )
 
     # If we know the actual CX count from Qiskit, add analysis
-    if cx_counts is not None:
+    if cx_counts is not None and 'cx_avg' in cx_counts:
         cx_avg = cx_counts['cx_avg']
         p_eff_actual = 1 - (1 - p_phys) ** cx_avg
         check(
@@ -323,7 +323,7 @@ def main():
     print("     → More efficient state representation")
 
     # Expected qudit advantage for p_phys=0.001
-    if cx_counts is not None:
+    if cx_counts is not None and 'cx_avg' in cx_counts:
         cx_avg = cx_counts['cx_avg']
         p_eff_qubit = 1 - (1 - p_phys) ** cx_avg
         p_eff_qudit = p_phys
@@ -375,7 +375,7 @@ def main():
         "checks": checks,
     }
 
-    if cx_counts is not None:
+    if cx_counts is not None and 'cx_avg' in cx_counts:
         cx_avg = cx_counts['cx_avg']
         result["effective_rates"]["qubit_p_eff_actual"] = 1 - (1 - p_phys) ** cx_avg
         result["effective_rates"]["cx_avg"] = cx_avg

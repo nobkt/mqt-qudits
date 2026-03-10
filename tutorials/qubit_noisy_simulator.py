@@ -408,7 +408,7 @@ class QubitMolecularDynamicsSimulatorNoisy:
         print(f"  物理CXゲートエラー率 (p_phys): {depol_2q*100:.4f}%")
         print(f"  ペアあたりのCXゲート数: {cx_per_pair_gate}")
         print(f"  有効ペア脱分極率 (p_eff): {depol_2q_eff*100:.4f}%"
-              f"  [= 1-(1-{depol_2q})^{cx_per_pair_gate}]")
+              f"  [= 1-(1-{depol_2q*100:.4f}%)^{cx_per_pair_gate}]")
         print(f"  ノイズ適用: ペアゲートレベル（H_transfer, H_TTA）")
         print(f"  熱緩和: 無効")
 
@@ -420,9 +420,9 @@ class QubitMolecularDynamicsSimulatorNoisy:
             self._build_per_pair_unitaries(dt)
 
         n_2qubit_gates = 2 * (len(U_transfer_half_list) + len(U_TTA_half_list))
+        per_step_noise = 1 - (1 - depol_2q_eff) ** n_2qubit_gates
         print(f"  2-molecule pair gates per Trotter step: {n_2qubit_gates}")
-        print(f"  Effective per-step noise: 1-(1-{depol_2q_eff:.6f})^{n_2qubit_gates} = "
-              f"{1-(1-depol_2q_eff)**n_2qubit_gates:.6f}")
+        print(f"  Effective per-step noise: {per_step_noise:.6f}")
 
         # Initial state
         psi_0 = self._build_initial_statevector(initial_state_type)

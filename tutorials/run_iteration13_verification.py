@@ -329,7 +329,8 @@ check(
 check(
     "qubit_N2_gate_count",
     r_cq2["gates_per_step"] == 30,
-    f"Qubit N=2 gates_per_step={r_cq2['gates_per_step']} (expected 30 = 2*(2+1)+2*(10+2))",
+    f"Qubit N=2 gates_per_step={r_cq2['gates_per_step']} "
+    f"(expected 30 = 2*(N+n_pairs)+2*(n_single+n_pair) = 2*(2+1)+2*(10+2))",
 )
 
 boson_gb = r_cb["gate_breakdown"]

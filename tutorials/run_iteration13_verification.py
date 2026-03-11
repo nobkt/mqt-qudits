@@ -22,6 +22,8 @@ import re
 import sys
 from datetime import datetime, timezone
 
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
@@ -41,7 +43,7 @@ def check(name: str, passed: bool, detail: str) -> None:
 # ---------------------------------------------------------------------------
 print("\n=== Section 1: Qudit circuit simulator palindromic Trotter ===")
 
-src = open("qudit_gksl_circuit_simulator.py").read()
+src = open(os.path.join(_SCRIPT_DIR, "qudit_gksl_circuit_simulator.py")).read()
 
 # Check _trotter_step_circuit uses dt/2 (not full dt) for Stinespring
 check(
@@ -83,7 +85,7 @@ check(
 # ---------------------------------------------------------------------------
 print("\n=== Section 2: Qubit circuit simulator palindromic Trotter ===")
 
-src_qubit = open("qubit_gksl_circuit_simulator.py").read()
+src_qubit = open(os.path.join(_SCRIPT_DIR, "qubit_gksl_circuit_simulator.py")).read()
 
 check(
     "qubit_circuit_dt_half",
@@ -197,7 +199,7 @@ check(
 # ---------------------------------------------------------------------------
 print("\n=== Section 5: Boson circuit gate count fix ===")
 
-src_boson = open("qudit_gksl_circuit_boson_simulator.py").read()
+src_boson = open(os.path.join(_SCRIPT_DIR, "qudit_gksl_circuit_boson_simulator.py")).read()
 
 check(
     "boson_gate_single_2x",
@@ -252,7 +254,7 @@ check(
 # ---------------------------------------------------------------------------
 print("\n=== Section 7: Numerical verification ===")
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _SCRIPT_DIR)
 
 from gksl_physical_parameters import GKSLPhysicalParameters
 from qudit_gksl_simulator import QuditGKSLSimulator
@@ -363,7 +365,7 @@ if failed > 0:
 
 # Save to file
 timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-output_dir = os.path.join(os.path.dirname(__file__), "..", "developing", "verification_results")
+output_dir = os.path.join(_SCRIPT_DIR, "..", "developing", "verification_results")
 os.makedirs(output_dir, exist_ok=True)
 output_file = os.path.join(output_dir, f"iteration13_palindromic_trotter_{timestamp}.json")
 

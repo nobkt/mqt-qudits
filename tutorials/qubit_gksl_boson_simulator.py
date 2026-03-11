@@ -285,11 +285,14 @@ class QubitGKSLBosonSimulator:
         rho_el_final = self._extract_electronic_rho(rho)
 
         # Gate count estimate for qubit circuit in extended space
+        # (palindromic 2nd-order Trotter)
+        # 2 × ~n_el_qubits Rz gates (electronic H0, two half-steps)
+        # 2 × ~n_ph_qubits Rz gates (phonon H0, two half-steps)
+        # 2 × ~10 gates per H_transfer pair (two half-steps)
+        # 2 × n_lindblad × ~6 gates per Stinespring channel (fwd + rev)
         gates_per_step = (
-            self.n_el_qubits
-            + self.n_ph_qubits
-            + len(self.params.neighbors) * 10
-            + self.n_ancilla * 6
+            2 * (self.n_el_qubits + self.n_ph_qubits + len(self.params.neighbors) * 10)
+            + self.n_ancilla * 6 * 2
         )
 
         return {

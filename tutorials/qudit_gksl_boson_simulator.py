@@ -195,12 +195,15 @@ class QuditGKSLBosonSimulator:
         rho_el_final = partial_trace_phonon(rho, self.dim_el, self.dim_ph)
 
         # Gate count estimate for qudit circuit in extended space
+        # (palindromic 2nd-order Trotter)
         # Qudit advantage: native d-level ops, no forbidden states
+        # 2 × N cu_one gates (electronic on-site, two half-steps)
+        # 2 × N cu_one gates (phonon on-site, two half-steps)
+        # 2 × (N-1) cu_two gates (H_transfer, two half-steps)
+        # 2 × n_lindblad Stinespring gates (fwd + rev)
         gates_per_step = (
-            self.n_system_qudits
-            + self.n_phonon_qudits
-            + len(self.params.neighbors)
-            + self.n_ancilla_qudits
+            2 * (self.n_system_qudits + self.n_phonon_qudits + len(self.params.neighbors))
+            + self.n_ancilla_qudits * 2
         )
 
         return {

@@ -536,11 +536,12 @@ class QubitGKSLShotSimulator:
 
         elapsed = time_module.time() - start
 
-        # Gate count estimate: matches QubitGKSLSimulator
-        # ~n_sys_qubits Rz gates (H0) + (N-1)*~10 gates (H_transfer pairs)
-        # + n_ancilla * 2 * ~6 gates per Stinespring channel (palindromic)
+        # Gate count estimate for a real qubit circuit (palindromic 2nd-order Trotter):
+        # 2 × ~n_sys_qubits Rz gates (H0, two half-steps)
+        # 2 × ~10 gates per H_transfer pair (two half-steps)
+        # 2 × n_lindblad × ~6 gates per Stinespring channel (fwd + rev)
         gates_per_step = (
-            self.n_sys_qubits + len(self.params.neighbors) * 10 + self.n_ancilla * 6 * 2
+            2 * (self.n_sys_qubits + len(self.params.neighbors) * 10) + self.n_ancilla * 6 * 2
         )
 
         return {

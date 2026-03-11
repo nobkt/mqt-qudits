@@ -54,11 +54,11 @@ class QuditGKSLCircuitBosonSimulator:
       - 26 ancilla qudits (d=3, Stinespring channels)
       Total: 2N qutrits + 26 ancilla qudits
 
-    Gate types per Trotter step:
-      - cu_one: electronic on-site (N) + phonon on-site (N)
-      - cu_two: electronic transfer (N-1 pairs) + el-ph coupling (N)
-               + single-site Stinespring (20)
-      - cu_multi: TTA pair Stinespring (6)
+    Gate types per Trotter step (palindromic 2nd-order):
+      - cu_one: electronic on-site (N) + phonon on-site (N)   [x2 half-steps]
+      - cu_two: electronic transfer (N-1 pairs) + el-ph coupling (N) [x2]
+               + single-site Stinespring (20 x 2 fwd+rev = 40)
+      - cu_multi: TTA pair Stinespring (6 x 2 fwd+rev = 12)
     """
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:

@@ -46,12 +46,12 @@ class QuditGKSLCircuitSimulator:
     Since this targets qudit quantum computers, all registers — including
     Stinespring ancillas — are native d-level qudits.
 
-    Quantum resources per Trotter step:
+    Quantum resources per Trotter step (palindromic 2nd-order):
       - 4 cu_one gates (on-site Hamiltonian phases, half step) x 2 = 8
       - 3 cu_two gates (pair transfer, half step) x 2 = 6
-      - 20 cu_two gates (single-site Stinespring, d*3 × d*3 each)
-      - 6 cu_multi gates (TTA pair Stinespring, d*9 × d*9 each)
-      Total: 40 gates per Trotter step
+      - 20 cu_two gates (single-site Stinespring) x 2 (fwd+rev) = 40
+      - 6 cu_multi gates (TTA pair Stinespring) x 2 (fwd+rev) = 12
+      Total: 66 gates per Trotter step
     """
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
@@ -856,8 +856,8 @@ class QuditGKSLCircuitSimulator:
 
         # --- Per-step totals ---
         ham_native_half = ham_onsite_total + ham_transfer_total
-        total_native_per_step = 2 * ham_native_half + single_native_total
-        total_uncompiled_per_step = pair_uncompiled_total
+        total_native_per_step = 2 * ham_native_half + 2 * single_native_total
+        total_uncompiled_per_step = 2 * pair_uncompiled_total
 
         results["per_step_summary"] = {
             "native_gates": total_native_per_step,

@@ -55,12 +55,12 @@ class QubitGKSLCircuitSimulator:
     same Kraus-operator machinery as the qutrit circuit simulator, operating
     in the 81-dim qutrit space.
 
-    Quantum resources per Trotter step:
+    Quantum resources per Trotter step (palindromic 2nd-order):
       - 4 UnitaryGate (4x4 on-site Hamiltonian, per molecule) x 2 = 8
       - 3 UnitaryGate (16x16 pair transfer) x 2 = 6
-      - 20 UnitaryGate (8x8 single-site Stinespring)
-      - 6 UnitaryGate (32x32 TTA pair Stinespring)
-      Total: 40 gates per Trotter step
+      - 20 UnitaryGate (8x8 single-site Stinespring) x 2 (fwd+rev) = 40
+      - 6 UnitaryGate (32x32 TTA pair Stinespring) x 2 (fwd+rev) = 12
+      Total: 66 gates per Trotter step
     """
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
@@ -962,8 +962,8 @@ class QubitGKSLCircuitSimulator:
         # --- Per-step totals ---
         total_onsite = self.N * onsite_total * 2  # 2 half-steps
         total_transfer = sum(r["basic_gates"] for r in transfer_results) * 2
-        total_single = sum(r["basic_gates"] for r in single_results)
-        total_pair = sum(r["basic_gates"] for r in pair_results)
+        total_single = sum(r["basic_gates"] for r in single_results) * 2  # fwd+rev
+        total_pair = sum(r["basic_gates"] for r in pair_results) * 2  # fwd+rev
         total_per_step = total_onsite + total_transfer + total_single + total_pair
 
         results["per_step_summary"] = {

@@ -1,0 +1,188 @@
+{
+  "iteration": 12,
+  "timestamp": "20260311T093649Z",
+  "description": "Circuit boson simulator d_anc fix: hardcoded ancilla=2 replaced with d_anc",
+  "summary": {
+    "total_checks": 32,
+    "passed": 32,
+    "failed": 0
+  },
+  "bugs_fixed": [
+    {
+      "file": "qudit_gksl_circuit_boson_simulator.py",
+      "method": "build_stinespring_circuit_single",
+      "old": "QuantumCircuit(2, [d, 2], 0)",
+      "new": "QuantumCircuit(2, [d, d_anc], 0)",
+      "impact": "Circuit-unitary dimension mismatch when d_anc > 2"
+    },
+    {
+      "file": "qudit_gksl_circuit_boson_simulator.py",
+      "method": "build_stinespring_circuit_pair",
+      "old": "QuantumCircuit(3, [d, d, 2], 0)",
+      "new": "QuantumCircuit(3, [d, d, d_anc], 0)",
+      "impact": "Circuit-unitary dimension mismatch when d_anc > 2"
+    }
+  ],
+  "checks": [
+    {
+      "name": "boson_single_circuit_d_anc",
+      "status": "PASS",
+      "detail": "build_stinespring_circuit_single uses [d, d_anc] (not [d, 2])"
+    },
+    {
+      "name": "boson_pair_circuit_d_anc",
+      "status": "PASS",
+      "detail": "build_stinespring_circuit_pair uses [d, d, d_anc] (not [d, d, 2])"
+    },
+    {
+      "name": "boson_d_anc_from_params",
+      "status": "PASS",
+      "detail": "QuditGKSLCircuitBosonSimulator sets d_anc = params.d"
+    },
+    {
+      "name": "boson_single_uses_d_anc_var",
+      "status": "PASS",
+      "detail": "build_stinespring_circuit_single extracts d_anc = self.d_anc"
+    },
+    {
+      "name": "circuit_single_d_anc",
+      "status": "PASS",
+      "detail": "QuditGKSLCircuitSimulator single uses [d, d_anc]"
+    },
+    {
+      "name": "circuit_pair_d_anc",
+      "status": "PASS",
+      "detail": "QuditGKSLCircuitSimulator pair uses [d, d, d_anc]"
+    },
+    {
+      "name": "QuditGKSLSimulator_d_anc",
+      "status": "PASS",
+      "detail": "QuditGKSLSimulator sets d_anc = params.d"
+    },
+    {
+      "name": "QuditGKSLShotSimulator_d_anc",
+      "status": "PASS",
+      "detail": "QuditGKSLShotSimulator sets d_anc = params.d"
+    },
+    {
+      "name": "QuditGKSLBosonSimulator_d_anc",
+      "status": "PASS",
+      "detail": "QuditGKSLBosonSimulator sets d_anc = params.d"
+    },
+    {
+      "name": "QuditGKSLCircuitSimulator_d_anc",
+      "status": "PASS",
+      "detail": "QuditGKSLCircuitSimulator sets d_anc = params.d"
+    },
+    {
+      "name": "QuditGKSLCircuitBosonSimulator_d_anc",
+      "status": "PASS",
+      "detail": "QuditGKSLCircuitBosonSimulator sets d_anc = params.d"
+    },
+    {
+      "name": "QubitGKSLShotSimulator_no_d_anc",
+      "status": "PASS",
+      "detail": "QubitGKSLShotSimulator does not set d_anc (uses default=2)"
+    },
+    {
+      "name": "QubitGKSLNoisySimulator_no_d_anc",
+      "status": "PASS",
+      "detail": "QubitGKSLNoisySimulator does not set d_anc (uses default=2)"
+    },
+    {
+      "name": "stinespring_unitary_d_anc_param",
+      "status": "PASS",
+      "detail": "stinespring_unitary_from_lindblad has d_anc=2 default"
+    },
+    {
+      "name": "stinespring_dm_d_anc_param",
+      "status": "PASS",
+      "detail": "apply_stinespring_to_density_matrix has d_anc=2 default"
+    },
+    {
+      "name": "QuditGKSLSimulator_naming",
+      "status": "PASS",
+      "detail": "QuditGKSLSimulator: uses n_ancilla_qudits=True, no n_ancilla_qubits=True"
+    },
+    {
+      "name": "QuditGKSLShotSimulator_naming",
+      "status": "PASS",
+      "detail": "QuditGKSLShotSimulator: uses n_ancilla_qudits=True, no n_ancilla_qubits=True"
+    },
+    {
+      "name": "QuditGKSLBosonSimulator_naming",
+      "status": "PASS",
+      "detail": "QuditGKSLBosonSimulator: uses n_ancilla_qudits=True, no n_ancilla_qubits=True"
+    },
+    {
+      "name": "circuit_build_uses_d_anc",
+      "status": "PASS",
+      "detail": "circuit: _build_local_stinespring_unitary uses d_anc correctly"
+    },
+    {
+      "name": "circuit_boson_build_uses_d_anc",
+      "status": "PASS",
+      "detail": "circuit_boson: _build_local_stinespring_unitary uses d_anc correctly"
+    },
+    {
+      "name": "circuit_extract_uses_d_anc",
+      "status": "PASS",
+      "detail": "circuit: _extract_kraus uses d_anc correctly"
+    },
+    {
+      "name": "circuit_boson_extract_uses_d_anc",
+      "status": "PASS",
+      "detail": "circuit_boson: _extract_kraus uses d_anc correctly"
+    },
+    {
+      "name": "gksl_uses_cx_transfer",
+      "status": "PASS",
+      "detail": "GKSL Cell 38 uses cx_info['cx_transfer']"
+    },
+    {
+      "name": "complete_uses_cx_avg",
+      "status": "PASS",
+      "detail": "Complete Cell 15 uses cx_info['cx_avg']"
+    },
+    {
+      "name": "gksl_depol_001",
+      "status": "PASS",
+      "detail": "GKSL uses p_depol=0.001"
+    },
+    {
+      "name": "complete_depol_001",
+      "status": "PASS",
+      "detail": "Complete uses depol_2q=0.001"
+    },
+    {
+      "name": "single_stinespring_dim",
+      "status": "PASS",
+      "detail": "Single-site Stinespring: 3×3 = 9×9 unitary"
+    },
+    {
+      "name": "pair_stinespring_dim",
+      "status": "PASS",
+      "detail": "Pair Stinespring: 3×3² = 27×27 unitary"
+    },
+    {
+      "name": "single_circuit_dim_match",
+      "status": "PASS",
+      "detail": "Single circuit dim [d=3, d_anc=3] = 9 matches unitary dim 9"
+    },
+    {
+      "name": "pair_circuit_dim_match",
+      "status": "PASS",
+      "detail": "Pair circuit dim [d=3, d=3, d_anc=3] = 27 matches unitary dim 27"
+    },
+    {
+      "name": "old_single_mismatch",
+      "status": "PASS",
+      "detail": "Old bug: [d=3, 2] = 6 ≠ 9 (dimension mismatch!)"
+    },
+    {
+      "name": "old_pair_mismatch",
+      "status": "PASS",
+      "detail": "Old bug: [d=3, d=3, 2] = 18 ≠ 27 (dimension mismatch!)"
+    }
+  ]
+}

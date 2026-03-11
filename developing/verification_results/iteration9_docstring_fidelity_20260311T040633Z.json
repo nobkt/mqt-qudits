@@ -1,0 +1,158 @@
+{
+  "iteration": 9,
+  "timestamp": "20260311T040633Z",
+  "description": "Docstring type fix and fidelity note correction",
+  "summary": {
+    "total_checks": 27,
+    "passed": 27,
+    "failed": 0
+  },
+  "cx_gate_counts": {
+    "complete": {
+      "cx_transfer": 47,
+      "cx_tta": 86,
+      "cx_avg": 66.5
+    }
+  },
+  "fixes_verified": {
+    "docstring_type": "cx_per_pair_gate : int -> cx_per_pair_gate : float",
+    "fidelity_note": "misleadingly low -> correctly includes leakage penalty"
+  },
+  "checks": [
+    {
+      "name": "docstring_cx_float",
+      "status": "PASS",
+      "detail": "simulate() docstring should say 'cx_per_pair_gate : float'"
+    },
+    {
+      "name": "docstring_cx_not_int",
+      "status": "PASS",
+      "detail": "simulate() docstring should NOT say 'cx_per_pair_gate : int'"
+    },
+    {
+      "name": "docstring_accepts_float",
+      "status": "PASS",
+      "detail": "Docstring should mention that float values are accepted"
+    },
+    {
+      "name": "type_hint_float",
+      "status": "PASS",
+      "detail": "Type hint in simulate() signature should be float"
+    },
+    {
+      "name": "type_hint_not_int",
+      "status": "PASS",
+      "detail": "Type hint should NOT be int anywhere"
+    },
+    {
+      "name": "no_misleading_text",
+      "status": "PASS",
+      "detail": "Cell 40 should NOT contain 'misleadingly' (incorrect characterization)"
+    },
+    {
+      "name": "fraw_correctly_includes",
+      "status": "PASS",
+      "detail": "Cell 40 should state F_raw 'correctly includes' the leakage penalty"
+    },
+    {
+      "name": "conditional_fidelity",
+      "status": "PASS",
+      "detail": "Cell 40 should mention 'conditional fidelity' for F_norm"
+    },
+    {
+      "name": "leakage_penalty",
+      "status": "PASS",
+      "detail": "Cell 40 should mention 'leakage penalty'"
+    },
+    {
+      "name": "output_no_misleading",
+      "status": "PASS",
+      "detail": "Cell 40 output should not contain 'misleadingly'"
+    },
+    {
+      "name": "cx_type_hint_float",
+      "status": "PASS",
+      "detail": "cx_per_pair_gate should have float type hint"
+    },
+    {
+      "name": "cx_effective_rate_formula",
+      "status": "PASS",
+      "detail": "Effective rate formula preserved: p_eff = 1 - (1-depol_2q)^cx_per_pair_gate"
+    },
+    {
+      "name": "complete_cell15_cx_param",
+      "status": "PASS",
+      "detail": "Cell 15 still passes cx_per_pair_gate to simulate()"
+    },
+    {
+      "name": "complete_cell15_cx_estimate",
+      "status": "PASS",
+      "detail": "Cell 15 still computes CX count via estimate_cx_per_pair_gate()"
+    },
+    {
+      "name": "gksl_qubit_cx_param",
+      "status": "PASS",
+      "detail": "QubitGKSLNoisyShotSimulator still accepts cx_per_pair_gate"
+    },
+    {
+      "name": "gksl_qubit_p_eff_formula",
+      "status": "PASS",
+      "detail": "Still computes p_depol_pair_eff from p_depol and cx_per_pair_gate"
+    },
+    {
+      "name": "gksl_cell38_cx_param",
+      "status": "PASS",
+      "detail": "GKSL Cell 38 still passes cx_per_pair_gate"
+    },
+    {
+      "name": "qudit_noisy_no_cx_param",
+      "status": "PASS",
+      "detail": "Qudit noisy simulator still has no cx_per_pair_gate (native gates)"
+    },
+    {
+      "name": "qudit_gksl_no_cx_param",
+      "status": "PASS",
+      "detail": "QuditGKSLNoisyShotSimulator still has no cx_per_pair_gate"
+    },
+    {
+      "name": "p_eff_cx1_identity",
+      "status": "PASS",
+      "detail": "cx=1: p_eff=0.0010000000000000009 == p_phys (backward compatible)"
+    },
+    {
+      "name": "p_eff_cx66_significant",
+      "status": "PASS",
+      "detail": "cx=66.5: p_eff=0.0644 (64x larger than p_phys)"
+    },
+    {
+      "name": "cx_complete_transfer",
+      "status": "PASS",
+      "detail": "Complete H_transfer: 47 CX gates"
+    },
+    {
+      "name": "cx_complete_tta",
+      "status": "PASS",
+      "detail": "Complete H_TTA: 86 CX gates"
+    },
+    {
+      "name": "cx_complete_avg_reasonable",
+      "status": "PASS",
+      "detail": "Complete average: 66.5 CX/pair (reasonable)"
+    },
+    {
+      "name": "gksl_cell37_cx_doc",
+      "status": "PASS",
+      "detail": "GKSL Cell 37 markdown still mentions CX gate overhead"
+    },
+    {
+      "name": "gksl_cell37_p_eff_formula",
+      "status": "PASS",
+      "detail": "GKSL Cell 37 still shows p_eff formula"
+    },
+    {
+      "name": "gksl_simulator_cx_docstring",
+      "status": "PASS",
+      "detail": "QubitGKSLNoisyShotSimulator class docstring mentions cx_per_pair_gate"
+    }
+  ]
+}

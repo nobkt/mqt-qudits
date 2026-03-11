@@ -39,6 +39,9 @@ class QuditGKSLBosonSimulator:
     Uses native qutrit (d=3) encoding for electronic states and qutrit encoding
     for phonon modes (when n_max=2). No forbidden states for either subsystem.
     Works in the extended space dim_total = d^N * (n_max+1)^N.
+
+    Since this targets qudit quantum computers, all registers — including
+    Stinespring ancillas — are native d-level qudits.
     """
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
@@ -46,16 +49,17 @@ class QuditGKSLBosonSimulator:
             raise ValueError("QuditGKSLBosonSimulator requires with_boson=True")
         self.params = params
         self.N = params.N_molecules
+        self.d_anc = params.d  # ancilla dimension matches system qudit dimension
 
         # Dimensions
         self.dim_el = params.d ** params.N_molecules
         self.dim_ph = (params.n_max + 1) ** params.N_molecules
         self.dim_total = self.dim_el * self.dim_ph
 
-        # Qudit/qubit counts
+        # Qudit counts
         self.n_system_qudits = params.N_molecules  # electronic qutrits
         self.n_phonon_qudits = params.N_molecules   # phonon qutrits (for n_max=2)
-        self.n_ancilla_qubits = 2 * len(params.neighbors) + 5 * params.N_molecules
+        self.n_ancilla_qudits = 2 * len(params.neighbors) + 5 * params.N_molecules
         self.n_total_qudits = self.n_system_qudits + self.n_phonon_qudits
 
         # Build extended Hamiltonian
@@ -70,10 +74,13 @@ class QuditGKSLBosonSimulator:
     # ------------------------------------------------------------------
 
     def _precompute_unitaries(self, dt: float) -> None:
-        """Pre-compute time-step-dependent unitaries (called once per simulation)."""
+        """Pre-compute time-step-dependent unitaries (called once per simulation).
+
+        Ancilla dimension is d_anc (= params.d).
+        """
         self._U_H_half = expm(-1j * self.H_total * dt / 2)
         self._U_stines_half = [
-            stinespring_unitary_from_lindblad(L_op, dt / 2)
+            stinespring_unitary_from_lindblad(L_op, dt / 2, d_anc=self.d_anc)
             for L_op, _gamma in self.lindblad_ops
         ]
 
@@ -94,10 +101,10 @@ class QuditGKSLBosonSimulator:
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         # Forward half-step for all Lindblad channels
         for U_stine_half in self._U_stines_half:
-            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half, d_anc=self.d_anc)
         # Reverse half-step for all Lindblad channels (palindromic)
         for U_stine_half in reversed(self._U_stines_half):
-            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half, d_anc=self.d_anc)
         # Half Hamiltonian
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         return rho
@@ -193,7 +200,7 @@ class QuditGKSLBosonSimulator:
             self.n_system_qudits
             + self.n_phonon_qudits
             + len(self.params.neighbors)
-            + self.n_ancilla_qubits
+            + self.n_ancilla_qudits
         )
 
         return {
@@ -208,7 +215,8 @@ class QuditGKSLBosonSimulator:
             "params": self.params.to_dict(),
             "n_system_qudits": self.n_system_qudits,
             "n_phonon_qudits": self.n_phonon_qudits,
-            "n_ancilla_qubits": self.n_ancilla_qubits,
+            "n_ancilla_qudits": self.n_ancilla_qudits,
+            "d_anc": self.d_anc,
             "n_total_qudits": self.n_total_qudits,
             "dim_total": self.dim_total,
             "estimated_gates_per_step": gates_per_step,

@@ -49,7 +49,11 @@ class QuditGKSLSimulator:
     """Qudit GKSL simulator using Stinespring dilation + Trotter splitting.
 
     Uses native qutrit (d=3) encoding. No forbidden states exist.
-    4 qutrits for system + 26 ancilla qubits for Lindblad channels.
+    4 qutrits for system + 26 ancilla qudits (d=3) for Lindblad channels.
+
+    Since this simulator targets qudit-type quantum computers (e.g.
+    qudit-boson ion-trap processors), all registers — including Stinespring
+    ancillas — are native d-level qudits, not 2-level qubits.
 
     The Hamiltonian–Dissipator Strang splitting is 2nd-order, but the
     Stinespring dilation is a 1st-order approximation of each Lindblad
@@ -63,6 +67,7 @@ class QuditGKSLSimulator:
             raise ValueError("QuditGKSLSimulator is for non-boson model only")
         self.params = params
         self.n_system_qudits = params.N_molecules
+        self.d_anc = params.d  # ancilla dimension matches system qudit dimension
 
         # Build operators in native qutrit space
         self.H_0 = build_onsite_hamiltonian(params)
@@ -70,7 +75,7 @@ class QuditGKSLSimulator:
         self.H_total = self.H_0 + self.H_transfer
         self.lindblad_ops = build_lindblad_operators(params)
 
-        self.n_ancilla_qubits = len(self.lindblad_ops)
+        self.n_ancilla_qudits = len(self.lindblad_ops)
 
         # System dimension (qutrit space)
         self.dim = params.d ** params.N_molecules  # 81
@@ -83,11 +88,11 @@ class QuditGKSLSimulator:
         """Pre-compute time-step-dependent unitaries (called once per simulation).
 
         Stores half-dt Stinespring unitaries for the symmetric palindromic
-        product used in _trotter_step.
+        product used in _trotter_step.  Ancilla dimension is d_anc (= params.d).
         """
         self._U_H_half = expm(-1j * self.H_total * dt / 2)
         self._U_stines_half = [
-            stinespring_unitary_from_lindblad(L_op, dt / 2)
+            stinespring_unitary_from_lindblad(L_op, dt / 2, d_anc=self.d_anc)
             for L_op, _gamma in self.lindblad_ops
         ]
 
@@ -109,10 +114,10 @@ class QuditGKSLSimulator:
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         # Forward half-step for all Lindblad channels
         for U_stine_half in self._U_stines_half:
-            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half, d_anc=self.d_anc)
         # Reverse half-step for all Lindblad channels (palindromic)
         for U_stine_half in reversed(self._U_stines_half):
-            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half, d_anc=self.d_anc)
         # Half Hamiltonian
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         return rho
@@ -205,7 +210,8 @@ class QuditGKSLSimulator:
             "method": "qudit_gksl",
             "params": self.params.to_dict(),
             "n_system_qudits": self.n_system_qudits,
-            "n_ancilla_qubits": self.n_ancilla_qubits,
+            "n_ancilla_qudits": self.n_ancilla_qudits,
+            "d_anc": self.d_anc,
             "estimated_gates_per_step": gates_per_step,
             "total_estimated_gates": gates_per_step * n_steps,
         }

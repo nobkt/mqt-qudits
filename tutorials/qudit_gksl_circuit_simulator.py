@@ -43,11 +43,14 @@ class QuditGKSLCircuitSimulator:
     quantum circuit object, verified via MQT-Qudits state-vector simulation,
     and then used in density-matrix evolution via local Kraus operators.
 
+    Since this targets qudit quantum computers, all registers — including
+    Stinespring ancillas — are native d-level qudits.
+
     Quantum resources per Trotter step:
       - 4 cu_one gates (on-site Hamiltonian phases, half step) x 2 = 8
       - 3 cu_two gates (pair transfer, half step) x 2 = 6
-      - 20 cu_two gates (single-site Stinespring, 6x6 each)
-      - 6 cu_multi gates (TTA pair Stinespring, 18x18 each)
+      - 20 cu_two gates (single-site Stinespring, d*3 × d*3 each)
+      - 6 cu_multi gates (TTA pair Stinespring, d*9 × d*9 each)
       Total: 40 gates per Trotter step
     """
 
@@ -57,6 +60,7 @@ class QuditGKSLCircuitSimulator:
             raise ValueError(msg)
         self.params = params
         self.d = params.d
+        self.d_anc = params.d  # ancilla dimension matches system qudit dimension
         self.N = params.N_molecules
         self.dim = params.d ** params.N_molecules
 
@@ -276,21 +280,23 @@ class QuditGKSLCircuitSimulator:
         """Build local Stinespring unitary from local Lindblad operator.
 
         For a d_local-dimensional local operator L_local, constructs the
-        (2*d_local × 2*d_local) Stinespring unitary:
-          G = [[0, L†], [L, 0]]
+        (d_anc*d_local × d_anc*d_local) Stinespring unitary:
+          G = [[0, L†, 0], [L, 0, 0], [0, 0, 0]]   (for d_anc=3)
           U = expm(-i * sqrt(dt) * G)
 
-        Convention: env ⊗ system ordering (ancilla qubit first).
+        Convention: env ⊗ system ordering (ancilla qudit first).
         """
         d_local = L_local.shape[0]
-        G = np.zeros((2 * d_local, 2 * d_local), dtype=np.complex128)
-        G[:d_local, d_local:] = L_local.conj().T
-        G[d_local:, :d_local] = L_local
+        d_anc = self.d_anc
+        dim_total = d_anc * d_local
+        G = np.zeros((dim_total, dim_total), dtype=np.complex128)
+        G[:d_local, d_local : 2 * d_local] = L_local.conj().T
+        G[d_local : 2 * d_local, :d_local] = L_local
 
         theta = np.sqrt(dt)
         U = expm(-1j * theta * G)
 
-        residual = np.linalg.norm(U.conj().T @ U - np.eye(2 * d_local), ord="fro")
+        residual = np.linalg.norm(U.conj().T @ U - np.eye(dim_total), ord="fro")
         if residual >= 1e-10:
             msg = f"Local Stinespring unitarity check failed: ||U†U - I||_F = {residual}"
             raise ValueError(msg)
@@ -301,18 +307,19 @@ class QuditGKSLCircuitSimulator:
     ):
         """Build MQT-Qudits circuit for single-site Stinespring channel.
 
-        Creates a circuit with the target qutrit and one ancilla qubit,
-        applying the 6×6 Stinespring unitary as a cu_two gate.
+        Creates a circuit with the target qutrit and one ancilla qudit,
+        applying the (d_anc*3 × d_anc*3) Stinespring unitary as a cu_two gate.
 
-        Returns (circuit, U_local_6x6) tuple.
+        Returns (circuit, U_local) tuple.
         """
         from mqt.qudits.quantum_circuit import QuantumCircuit
 
         d = self.d
+        d_anc = self.d_anc
         U_local = self._build_local_stinespring_unitary(L_local_3x3, dt)
 
-        # Circuit: [target_qutrit(d=3), ancilla(d=2)]
-        circuit = QuantumCircuit(2, [d, 2], 0)
+        # Circuit: [target_qutrit(d=3), ancilla(d=d_anc)]
+        circuit = QuantumCircuit(2, [d, d_anc], 0)
         circuit.cu_two([0, 1], U_local)
 
         return circuit, U_local
@@ -326,18 +333,19 @@ class QuditGKSLCircuitSimulator:
     ):
         """Build MQT-Qudits circuit for TTA pair Stinespring channel.
 
-        Creates a circuit with two qutrits and one ancilla qubit,
-        applying the 18×18 Stinespring unitary as a cu_multi gate.
+        Creates a circuit with two qutrits and one ancilla qudit,
+        applying the (d_anc*9 × d_anc*9) Stinespring unitary as a cu_multi gate.
 
-        Returns (circuit, U_local_18x18) tuple.
+        Returns (circuit, U_local) tuple.
         """
         from mqt.qudits.quantum_circuit import QuantumCircuit
 
         d = self.d
+        d_anc = self.d_anc
         U_local = self._build_local_stinespring_unitary(L_local_9x9, dt)
 
-        # Circuit: [qutrit_i(d=3), qutrit_j(d=3), ancilla(d=2)]
-        circuit = QuantumCircuit(3, [d, d, 2], 0)
+        # Circuit: [qutrit_i(d=3), qutrit_j(d=3), ancilla(d=d_anc)]
+        circuit = QuantumCircuit(3, [d, d, d_anc], 0)
         circuit.cu_multi([0, 1, 2], U_local)
 
         return circuit, U_local
@@ -390,24 +398,25 @@ class QuditGKSLCircuitSimulator:
     # Kraus operator extraction from local Stinespring unitaries
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _extract_kraus_from_local_stinespring(
-        U_local: np.ndarray, d_local: int
-    ) -> tuple[np.ndarray, np.ndarray]:
+        self, U_local: np.ndarray, d_local: int
+    ) -> list[np.ndarray]:
         """Extract Kraus operators from a local Stinespring unitary.
 
-        U_local has env⊗sys ordering with a 2-level ancilla:
-          U_local = [[A, B], [C, D]]  (blocks of size d_local × d_local)
+        U_local has env⊗sys ordering with a d_anc-level ancilla.
+        The unitary is partitioned into d_anc × d_anc blocks of size d_local.
 
         For ancilla initially in |0⟩:
-          K_0 = A  (ancilla stays |0⟩)
-          K_1 = C  (ancilla flips to |1⟩)
+          K_k = U_local[k*d_local:(k+1)*d_local, 0:d_local]  for k=0,...,d_anc-1
 
-        Satisfies: K_0†K_0 + K_1†K_1 = I (trace preservation)
+        Satisfies: sum_k K_k† K_k = I (trace preservation)
         """
-        K0 = U_local[:d_local, :d_local].copy()
-        K1 = U_local[d_local:, :d_local].copy()
-        return K0, K1
+        d_anc = self.d_anc
+        kraus_ops = []
+        for k in range(d_anc):
+            K = U_local[k * d_local : (k + 1) * d_local, :d_local].copy()
+            kraus_ops.append(K)
+        return kraus_ops
 
     # ------------------------------------------------------------------
     # Density matrix evolution using circuit-derived local operators
@@ -426,37 +435,38 @@ class QuditGKSLCircuitSimulator:
     def _apply_single_site_channel(
         self,
         rho: np.ndarray,
-        K0: np.ndarray,
-        K1: np.ndarray,
+        kraus_ops: list[np.ndarray],
         site: int,
     ) -> np.ndarray:
         """Apply single-site Kraus channel using tensor-product structure.
 
-        E[ρ] = (I⊗...⊗K0⊗...⊗I) ρ (I⊗...⊗K0†⊗...⊗I)
-             + (I⊗...⊗K1⊗...⊗I) ρ (I⊗...⊗K1†⊗...⊗I)
+        E[ρ] = sum_k (I⊗...⊗K_k⊗...⊗I) ρ (I⊗...⊗K_k†⊗...⊗I)
         """
         d = self.d
         N = self.N
-        K0_full = build_single_site_operator(K0, site, N, d)
-        K1_full = build_single_site_operator(K1, site, N, d)
-        return K0_full @ rho @ K0_full.conj().T + K1_full @ rho @ K1_full.conj().T
+        rho_out = np.zeros_like(rho)
+        for K in kraus_ops:
+            K_full = build_single_site_operator(K, site, N, d)
+            rho_out += K_full @ rho @ K_full.conj().T
+        return rho_out
 
     def _apply_pair_channel(
         self,
         rho: np.ndarray,
-        K0: np.ndarray,
-        K1: np.ndarray,
+        kraus_ops: list[np.ndarray],
         site_i: int,
         site_j: int,
     ) -> np.ndarray:
         """Apply pair Kraus channel using tensor-product structure.
 
-        K0, K1 are d^2 × d^2 Kraus operators acting on the (site_i, site_j) pair.
+        K_k are d^2 × d^2 Kraus operators acting on the (site_i, site_j) pair.
         Embeds into the full system via tensor product with identity on other sites.
         """
-        K0_full = self._embed_pair_operator(K0, site_i, site_j)
-        K1_full = self._embed_pair_operator(K1, site_i, site_j)
-        return K0_full @ rho @ K0_full.conj().T + K1_full @ rho @ K1_full.conj().T
+        rho_out = np.zeros_like(rho)
+        for K in kraus_ops:
+            K_full = self._embed_pair_operator(K, site_i, site_j)
+            rho_out += K_full @ rho @ K_full.conj().T
+        return rho_out
 
     def _embed_pair_operator(
         self, op_pair: np.ndarray, site_i: int, site_j: int
@@ -506,12 +516,12 @@ class QuditGKSLCircuitSimulator:
         for op_type, sites, L_local, _gamma in self.lindblad_local_info:
             d_local = L_local.shape[0]
             U_local = self._build_local_stinespring_unitary(L_local, dt)
-            K0, K1 = self._extract_kraus_from_local_stinespring(U_local, d_local)
+            kraus_ops = self._extract_kraus_from_local_stinespring(U_local, d_local)
 
             if op_type == "single":
-                rho = self._apply_single_site_channel(rho, K0, K1, sites[0])
+                rho = self._apply_single_site_channel(rho, kraus_ops, sites[0])
             elif op_type == "pair":
-                rho = self._apply_pair_channel(rho, K0, K1, sites[0], sites[1])
+                rho = self._apply_pair_channel(rho, kraus_ops, sites[0], sites[1])
 
         # Half Hamiltonian (circuit-decomposed)
         rho = self._apply_hamiltonian_step_circuit(rho, dt / 2)
@@ -604,22 +614,22 @@ class QuditGKSLCircuitSimulator:
         for idx, ((L_full, gamma), (op_type, sites, L_local, _gamma_local)) in (
             enumerate(zip(lindblad_ops, self.lindblad_local_info))
         ):
-            # Full-system Stinespring
-            U_full = stinespring_unitary_from_lindblad(L_full, dt)
-            rho_full = apply_stinespring_to_density_matrix(rho_test, U_full)
+            # Full-system Stinespring (use d_anc for consistency)
+            U_full = stinespring_unitary_from_lindblad(L_full, dt, d_anc=self.d_anc)
+            rho_full = apply_stinespring_to_density_matrix(rho_test, U_full, d_anc=self.d_anc)
 
             # Local Stinespring via Kraus
             d_local = L_local.shape[0]
             U_local = self._build_local_stinespring_unitary(L_local, dt)
-            K0, K1 = self._extract_kraus_from_local_stinespring(U_local, d_local)
+            kraus_ops = self._extract_kraus_from_local_stinespring(U_local, d_local)
 
             if op_type == "single":
                 rho_local = self._apply_single_site_channel(
-                    rho_test, K0, K1, sites[0]
+                    rho_test, kraus_ops, sites[0]
                 )
             else:
                 rho_local = self._apply_pair_channel(
-                    rho_test, K0, K1, sites[0], sites[1]
+                    rho_test, kraus_ops, sites[0], sites[1]
                 )
 
             distance = np.linalg.norm(rho_full - rho_local, ord="fro")
@@ -941,7 +951,8 @@ class QuditGKSLCircuitSimulator:
             "method": "qudit_gksl_circuit",
             "params": self.params.to_dict(),
             "n_system_qudits": self.N,
-            "n_ancilla_qubits": len(self.lindblad_local_info),
+            "n_ancilla_qudits": len(self.lindblad_local_info),
+            "d_anc": self.d_anc,
             "gates_per_step": gates_per_step,
             "total_gates": gates_per_step * n_steps,
             "gate_breakdown": {

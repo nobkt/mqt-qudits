@@ -231,7 +231,8 @@ class TestQuditGKSLSimulator:
 
     def test_initialization(self, sim):
         assert sim.n_system_qudits == 4
-        assert sim.n_ancilla_qubits == 26
+        assert sim.n_ancilla_qudits == 26
+        assert sim.d_anc == 3  # ancilla uses native qutrit on qudit QC
 
     def test_trace_preservation(self, sim):
         result = sim.simulate(t_max=5.0, n_steps=5, initial_state="edge_triplet")

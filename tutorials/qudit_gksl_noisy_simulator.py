@@ -6,6 +6,9 @@ Extends QuditGKSLSimulator by applying per-gate local noise channels after
 each 2-qudit gate operation in the Trotter step. The noise acts on the
 subsystem(s) involved in each gate, not globally.
 
+Since this simulator targets qudit-type quantum computers, all registers —
+including Stinespring ancillas — are native d-level qudits.
+
 Physical distinction:
   - Lindblad dissipators (TTA, fluorescence, etc.) model real physical processes
   - Hardware noise (depolarization, dephasing) models gate imperfections
@@ -245,7 +248,7 @@ class QuditGKSLNoisySimulator(QuditGKSLSimulator):
 
         # --- Forward half-step Lindblad channels ---
         for k, U_stine_half in enumerate(self._U_stines_half):
-            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half, d_anc=self.d_anc)
             sites = self._lindblad_sites[k]
             if len(sites) == 1:
                 if not self.depol_pair_only:
@@ -257,7 +260,7 @@ class QuditGKSLNoisySimulator(QuditGKSLSimulator):
         n_channels = len(self._U_stines_half)
         for k_rev in range(n_channels - 1, -1, -1):
             U_stine_half = self._U_stines_half[k_rev]
-            rho = apply_stinespring_to_density_matrix(rho, U_stine_half)
+            rho = apply_stinespring_to_density_matrix(rho, U_stine_half, d_anc=self.d_anc)
             sites = self._lindblad_sites[k_rev]
             if len(sites) == 1:
                 if not self.depol_pair_only:

@@ -45,11 +45,14 @@ class QuditGKSLCircuitBosonSimulator:
     Constructs MQT-Qudits quantum circuits for each Trotter step component
     in the extended electronic⊗phonon Hilbert space.
 
+    Since this targets qudit quantum computers, all registers — including
+    Stinespring ancillas — are native d-level qudits.
+
     Quantum resources:
       - N electronic qutrits (d=3)
       - N phonon qutrits (d=n_max+1, typically d=3 for n_max=2)
-      - 26 ancilla qubits (Stinespring channels)
-      Total: 2N qutrits + 26 ancilla qubits
+      - 26 ancilla qudits (d=3, Stinespring channels)
+      Total: 2N qutrits + 26 ancilla qudits
 
     Gate types per Trotter step:
       - cu_one: electronic on-site (N) + phonon on-site (N)
@@ -64,6 +67,7 @@ class QuditGKSLCircuitBosonSimulator:
             raise ValueError(msg)
         self.params = params
         self.d = params.d
+        self.d_anc = params.d  # ancilla dimension matches system qudit dimension
         self.N = params.N_molecules
         self.n_max = params.n_max
         self.d_ph = params.n_max + 1
@@ -122,36 +126,39 @@ class QuditGKSLCircuitBosonSimulator:
     # Circuit construction helpers (delegated to QuditGKSLCircuitSimulator)
     # ------------------------------------------------------------------
 
-    @staticmethod
     def _build_local_stinespring_unitary(
-        L_local: np.ndarray, dt: float
+        self, L_local: np.ndarray, dt: float
     ) -> np.ndarray:
         """Build local Stinespring unitary from local Lindblad operator.
 
-        Same logic as QuditGKSLCircuitSimulator._build_local_stinespring_unitary.
+        Uses d_anc-level ancilla qudit (same dimension as system qudits).
         """
         d_local = L_local.shape[0]
-        G = np.zeros((2 * d_local, 2 * d_local), dtype=np.complex128)
-        G[:d_local, d_local:] = L_local.conj().T
-        G[d_local:, :d_local] = L_local
+        d_anc = self.d_anc
+        dim_total = d_anc * d_local
+        G = np.zeros((dim_total, dim_total), dtype=np.complex128)
+        G[:d_local, d_local : 2 * d_local] = L_local.conj().T
+        G[d_local : 2 * d_local, :d_local] = L_local
 
         theta = np.sqrt(dt)
         U = expm(-1j * theta * G)
 
-        residual = np.linalg.norm(U.conj().T @ U - np.eye(2 * d_local), ord="fro")
+        residual = np.linalg.norm(U.conj().T @ U - np.eye(dim_total), ord="fro")
         if residual >= 1e-10:
             msg = f"Local Stinespring unitarity check failed: ||U†U - I||_F = {residual}"
             raise ValueError(msg)
         return U
 
-    @staticmethod
     def _extract_kraus_from_local_stinespring(
-        U_local: np.ndarray, d_local: int
-    ) -> tuple[np.ndarray, np.ndarray]:
+        self, U_local: np.ndarray, d_local: int
+    ) -> list[np.ndarray]:
         """Extract Kraus operators from local Stinespring unitary."""
-        return QuditGKSLCircuitSimulator._extract_kraus_from_local_stinespring(
-            U_local, d_local
-        )
+        d_anc = self.d_anc
+        kraus_ops = []
+        for k in range(d_anc):
+            K = U_local[k * d_local : (k + 1) * d_local, :d_local].copy()
+            kraus_ops.append(K)
+        return kraus_ops
 
     # ------------------------------------------------------------------
     # MQT-Qudits circuit construction
@@ -411,13 +418,12 @@ class QuditGKSLCircuitBosonSimulator:
     def _apply_single_site_channel_extended(
         self,
         rho: np.ndarray,
-        K0: np.ndarray,
-        K1: np.ndarray,
+        kraus_ops: list[np.ndarray],
         el_site: int,
     ) -> np.ndarray:
         """Apply Kraus channel on electronic qutrit in extended space.
 
-        K0, K1 are d x d Kraus operators acting on electronic qutrit el_site.
+        kraus_ops are d x d Kraus operators acting on electronic qutrit el_site.
         Phonon space is identity.
         """
         d = self.d
@@ -436,22 +442,22 @@ class QuditGKSLCircuitBosonSimulator:
             K_el_full = reduce(np.kron, op_list)
             return np.kron(K_el_full, eye_ph)
 
-        K0_full = _embed_kraus(K0)
-        K1_full = _embed_kraus(K1)
-
-        return K0_full @ rho @ K0_full.conj().T + K1_full @ rho @ K1_full.conj().T
+        rho_out = np.zeros_like(rho)
+        for K in kraus_ops:
+            K_full = _embed_kraus(K)
+            rho_out += K_full @ rho @ K_full.conj().T
+        return rho_out
 
     def _apply_pair_channel_extended(
         self,
         rho: np.ndarray,
-        K0: np.ndarray,
-        K1: np.ndarray,
+        kraus_ops: list[np.ndarray],
         el_site_i: int,
         el_site_j: int,
     ) -> np.ndarray:
         """Apply Kraus channel on electronic qutrit pair in extended space.
 
-        K0, K1 are d^2 x d^2 Kraus operators acting on (el_site_i, el_site_j).
+        kraus_ops are d^2 x d^2 Kraus operators acting on (el_site_i, el_site_j).
         """
         d = self.d
         N = self.N
@@ -464,10 +470,11 @@ class QuditGKSLCircuitBosonSimulator:
             )
             return np.kron(K_el_full, np.eye(dim_ph, dtype=np.complex128))
 
-        K0_full = _embed_pair_kraus(K0)
-        K1_full = _embed_pair_kraus(K1)
-
-        return K0_full @ rho @ K0_full.conj().T + K1_full @ rho @ K1_full.conj().T
+        rho_out = np.zeros_like(rho)
+        for K in kraus_ops:
+            K_full = _embed_pair_kraus(K)
+            rho_out += K_full @ rho @ K_full.conj().T
+        return rho_out
 
     def _embed_pair_operator_electronic(
         self, op: np.ndarray, site_i: int, site_j: int
@@ -507,15 +514,15 @@ class QuditGKSLCircuitBosonSimulator:
         for op_type, sites, L_local, _gamma in self.lindblad_local_info:
             d_local = L_local.shape[0]
             U_local = self._build_local_stinespring_unitary(L_local, dt)
-            K0, K1 = self._extract_kraus_from_local_stinespring(U_local, d_local)
+            kraus_ops = self._extract_kraus_from_local_stinespring(U_local, d_local)
 
             if op_type == "single":
                 rho = self._apply_single_site_channel_extended(
-                    rho, K0, K1, sites[0]
+                    rho, kraus_ops, sites[0]
                 )
             elif op_type == "pair":
                 rho = self._apply_pair_channel_extended(
-                    rho, K0, K1, sites[0], sites[1]
+                    rho, kraus_ops, sites[0], sites[1]
                 )
 
         # Half Hamiltonian
@@ -632,7 +639,8 @@ class QuditGKSLCircuitBosonSimulator:
             "params": self.params.to_dict(),
             "n_el_qutrits": N,
             "n_ph_qutrits": N,
-            "n_ancilla_qubits": len(self.lindblad_local_info),
+            "n_ancilla_qudits": len(self.lindblad_local_info),
+            "d_anc": self.d_anc,
             "gates_per_step": gates_per_step,
             "total_gates": gates_per_step * n_steps,
             "gate_breakdown": {

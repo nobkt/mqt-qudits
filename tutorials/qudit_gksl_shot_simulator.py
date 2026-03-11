@@ -3,7 +3,11 @@
 Implements shot-based (quantum trajectory) simulation for GKSL-Lindblad dynamics
 using the Stinespring dilation approach. Instead of evolving the full density matrix,
 each shot evolves a pure state through the Trotter steps, stochastically measuring
-ancilla qubits at each Stinespring channel, then measures the system at the end.
+ancilla qudits at each Stinespring channel, then measures the system at the end.
+
+Since this simulator targets qudit-type quantum computers (e.g. qudit-boson
+ion-trap processors), all registers — including Stinespring ancillas — are
+native d-level qudits, not 2-level qubits.
 
 Two classes are provided:
   - QuditGKSLShotSimulator: ideal shot-based (no hardware noise)
@@ -75,8 +79,11 @@ class QuditGKSLShotSimulator:
     """Shot-based qudit GKSL simulator using quantum trajectories.
 
     Each shot evolves a pure state |psi> through the Trotter decomposition,
-    stochastically measuring Stinespring ancillas via the Born rule.
+    stochastically measuring Stinespring ancilla qudits via the Born rule.
     At the end, the system is measured in the computational basis.
+
+    Since this targets qudit quantum computers, Stinespring ancillas are
+    d-level qudits (same dimension as system qudits), not 2-level qubits.
 
     Parameters:
         params: GKSLPhysicalParameters (with_boson=False)
@@ -88,6 +95,7 @@ class QuditGKSLShotSimulator:
             raise ValueError(msg)
         self.params = params
         self.dim = params.d ** params.N_molecules
+        self.d_anc = params.d  # ancilla dimension matches system qudit dimension
 
         # Build operators in native qutrit space
         self.H_0 = build_onsite_hamiltonian(params)
@@ -96,17 +104,17 @@ class QuditGKSLShotSimulator:
         self.lindblad_ops = build_lindblad_operators(params)
 
         self.n_system_qudits = params.N_molecules
-        self.n_ancilla_qubits = len(self.lindblad_ops)
+        self.n_ancilla_qudits = len(self.lindblad_ops)
 
     def _precompute_unitaries(self, dt: float) -> None:
         """Pre-compute time-step-dependent unitaries (shared across all shots).
 
         Stores half-dt Stinespring unitaries for the palindromic ordering in
-        _trotter_step_trajectory.
+        _trotter_step_trajectory.  Ancilla dimension is d_anc (= params.d).
         """
         self._U_H_half = expm(-1j * self.H_total * dt / 2)
         self._U_stines_half = [
-            stinespring_unitary_from_lindblad(L_op, dt / 2)
+            stinespring_unitary_from_lindblad(L_op, dt / 2, d_anc=self.d_anc)
             for L_op, _gamma in self.lindblad_ops
         ]
 
@@ -137,33 +145,35 @@ class QuditGKSLShotSimulator:
     def _apply_stinespring_with_measurement(
         self, psi: np.ndarray, U_stine: np.ndarray, rng: np.random.Generator
     ) -> np.ndarray:
-        """Apply Stinespring unitary and stochastically measure ancilla.
+        """Apply Stinespring unitary and stochastically measure ancilla qudit.
 
         Extends |psi> with ancilla |0>, applies U_stine, then measures
-        the ancilla in the {|0>, |1>} basis using the Born rule.
+        the ancilla in the {|0>, |1>, ..., |d_anc-1>} basis using the Born rule.
 
         Returns the post-measurement system state (normalized).
         """
         d_sys = len(psi)
-        # |Psi_ext> = |0>_anc ⊗ |psi>_sys = [psi; 0]
-        psi_ext = np.zeros(2 * d_sys, dtype=np.complex128)
+        d_anc = self.d_anc
+        # |Psi_ext> = |0>_anc ⊗ |psi>_sys
+        psi_ext = np.zeros(d_anc * d_sys, dtype=np.complex128)
         psi_ext[:d_sys] = psi
 
         # Apply Stinespring unitary
         psi_ext = U_stine @ psi_ext
 
-        # Project onto ancilla outcomes
-        psi_0 = psi_ext[:d_sys]  # ancilla = |0> (no jump)
-        psi_1 = psi_ext[d_sys:]  # ancilla = |1> (jump)
-
-        p_0 = np.real(np.vdot(psi_0, psi_0))
-        p_1 = np.real(np.vdot(psi_1, psi_1))
+        # Project onto ancilla outcomes and compute Born probabilities
+        probs = np.zeros(d_anc)
+        psi_branches = []
+        for k in range(d_anc):
+            branch = psi_ext[k * d_sys : (k + 1) * d_sys]
+            psi_branches.append(branch)
+            probs[k] = np.real(np.vdot(branch, branch))
 
         # Born rule: sample measurement outcome
-        if rng.random() < p_0 / (p_0 + p_1):
-            return psi_0 / np.sqrt(p_0)
-        else:
-            return psi_1 / np.sqrt(p_1)
+        total = probs.sum()
+        probs_norm = probs / total
+        outcome = rng.choice(d_anc, p=probs_norm)
+        return psi_branches[outcome] / np.sqrt(probs[outcome])
 
     def _trotter_step_trajectory(
         self, psi: np.ndarray, rng: np.random.Generator
@@ -279,7 +289,7 @@ class QuditGKSLShotSimulator:
         elapsed = time_module.time() - start
 
         # N VirtRz (H_0 diagonal) + (N-1) CustomTwo (NN transfer) + n_lindblad×2 Stinespring (palindromic)
-        gates_per_step = self.n_system_qudits + len(self.params.neighbors) + self.n_ancilla_qubits * 2
+        gates_per_step = self.n_system_qudits + len(self.params.neighbors) + self.n_ancilla_qudits * 2
 
         return {
             "times": times,
@@ -292,7 +302,8 @@ class QuditGKSLShotSimulator:
             "method": "qudit_gksl_shot",
             "params": self.params.to_dict(),
             "n_system_qudits": self.n_system_qudits,
-            "n_ancilla_qubits": self.n_ancilla_qubits,
+            "n_ancilla_qudits": self.n_ancilla_qudits,
+            "d_anc": self.d_anc,
             "estimated_gates_per_step": gates_per_step,
             "total_estimated_gates": gates_per_step * n_steps,
             "n_shots": n_shots,

@@ -26,6 +26,24 @@ PR#228（quditアンシラ修正）では以下の修正が行われたが：
 
 ## 2. 発見されたバグの詳細
 
+### 2.0 バグ #0: _trotter_step の非回文構造（Trotter分割不一致）
+
+`qudit_gksl_circuit_boson_simulator.py`の`_trotter_step`が非回文（non-palindromic）
+1次Trotter分割を使用していた。これは`QuditGKSLBosonSimulator`の回文2次分割と異なる。
+
+**修正前:**
+```python
+H(dt/2) → D_1...D_26(dt) → H(dt/2)  # 非回文、full dt
+```
+
+**修正後:**
+```python
+H(dt/2) → D_1...D_26(dt/2) → D_26...D_1(dt/2) → H(dt/2)  # 回文、half dt
+```
+
+この修正により`test_matches_matrix_boson_simulator`テストが通過するようになった
+（修正前: diff=3.6e-4でFAIL、修正後: diff<1e-10でPASS）。
+
 ### 2.1 バグ #1: build_stinespring_circuit_single
 
 **修正前:**

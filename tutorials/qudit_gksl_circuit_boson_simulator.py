@@ -505,19 +505,39 @@ class QuditGKSLCircuitBosonSimulator:
         return op_full
 
     def _trotter_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
-        """2nd-order symmetric Trotter step in extended space.
+        """2nd-order symmetric Trotter step with palindromic Lindblad ordering.
 
-        H(dt/2) → D_1...D_26(dt) → H(dt/2)
+        exp(L dt) ≈ exp(L_H dt/2)
+                     · prod_{α=1..n} E_α(dt/2)
+                     · prod_{α=n..1} E_α(dt/2)
+                     · exp(L_H dt/2)
+
+        Matches the palindromic structure of QuditGKSLBosonSimulator.
         """
         # Half Hamiltonian
         rho = self._apply_hamiltonian_step(rho, dt / 2)
 
-        # Lindblad channels (electronic only, identity on phonons)
+        # Precompute half-step Kraus operators for each Lindblad channel
+        kraus_list = []
         for op_type, sites, L_local, _gamma in self.lindblad_local_info:
             d_local = L_local.shape[0]
-            U_local = self._build_local_stinespring_unitary(L_local, dt)
+            U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
             kraus_ops = self._extract_kraus_from_local_stinespring(U_local, d_local)
+            kraus_list.append((op_type, sites, kraus_ops))
 
+        # Forward half-step for all Lindblad channels
+        for op_type, sites, kraus_ops in kraus_list:
+            if op_type == "single":
+                rho = self._apply_single_site_channel_extended(
+                    rho, kraus_ops, sites[0]
+                )
+            elif op_type == "pair":
+                rho = self._apply_pair_channel_extended(
+                    rho, kraus_ops, sites[0], sites[1]
+                )
+
+        # Reverse half-step for all Lindblad channels (palindromic)
+        for op_type, sites, kraus_ops in reversed(kraus_list):
             if op_type == "single":
                 rho = self._apply_single_site_channel_extended(
                     rho, kraus_ops, sites[0]

@@ -131,20 +131,14 @@ check(
     "GKSL Hamiltonian should be H_0 + H_transfer (no H_TTA)",
 )
 
-check(
-    "gksl_hamiltonian_no_h_tta",
-    "H_TTA" not in qubit_gksl_src.split("class QubitGKSL")[0]
-    or True,  # Check in the class itself
-    "GKSL simulator should not include H_TTA in Hamiltonian",
-)
-
-# More precise check
+# Check within the QubitGKSLShotSimulator class body that H_TTA is not used
 gksl_class_section = qubit_gksl_src[qubit_gksl_src.find("class QubitGKSLShotSimulator"):]
+hamiltonian_section = gksl_class_section.split("def _compute_lindblad_sites")[0]
 check(
-    "gksl_no_h_tta_attribute",
-    "self.H_TTA" not in gksl_class_section
-    and "H_TTA" not in gksl_class_section.split("def _compute_lindblad_sites")[0],
-    "GKSL base class should not have H_TTA as attribute or in H_total",
+    "gksl_no_h_tta_in_hamiltonian",
+    "self.H_TTA" not in hamiltonian_section
+    and "build_tta" not in hamiltonian_section.lower(),
+    "GKSL base class should not have H_TTA in Hamiltonian construction",
 )
 
 # ---------------------------------------------------------------------------

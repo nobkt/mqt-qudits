@@ -1,0 +1,171 @@
+{
+  "timestamp": "20260311T073907Z",
+  "checks": [
+    {
+      "name": "Stinespring d_anc=2 dimension",
+      "passed": true,
+      "details": "shape=(6, 6), expected=(6, 6)"
+    },
+    {
+      "name": "Stinespring d_anc=3 dimension",
+      "passed": true,
+      "details": "shape=(9, 9), expected=(9, 9)"
+    },
+    {
+      "name": "K0 identical (d_anc=2 vs 3)",
+      "passed": "True",
+      "details": "||K0_2 - K0_3||_F = 0.00e+00"
+    },
+    {
+      "name": "K1 identical (d_anc=2 vs 3)",
+      "passed": "True",
+      "details": "||K1_2 - K1_3||_F = 0.00e+00"
+    },
+    {
+      "name": "K2 is zero (d_anc=3)",
+      "passed": "True",
+      "details": "||K2||_F = 0.00e+00"
+    },
+    {
+      "name": "Trace preservation (d_anc=3)",
+      "passed": "True",
+      "details": "||sum K_k†K_k - I||_F = 0.00e+00"
+    },
+    {
+      "name": "DM channel output identical (d_anc=2 vs 3)",
+      "passed": "True",
+      "details": "||rho_2 - rho_3||_F = 0.00e+00"
+    },
+    {
+      "name": "Trace preservation after channel",
+      "passed": true,
+      "details": "Tr(rho_out) = 1.000000000000000"
+    },
+    {
+      "name": "has n_ancilla_qudits attribute",
+      "passed": true,
+      "details": "n_ancilla_qudits=26"
+    },
+    {
+      "name": "no n_ancilla_qubits attribute",
+      "passed": true,
+      "details": "should not have n_ancilla_qubits"
+    },
+    {
+      "name": "d_anc == params.d",
+      "passed": true,
+      "details": "d_anc=3, params.d=3"
+    },
+    {
+      "name": "n_ancilla_qudits == 26",
+      "passed": true,
+      "details": "n_ancilla_qudits=26"
+    },
+    {
+      "name": "shot sim has n_ancilla_qudits",
+      "passed": true,
+      "details": "n_ancilla_qudits=26"
+    },
+    {
+      "name": "shot sim no n_ancilla_qubits",
+      "passed": true,
+      "details": "should not have n_ancilla_qubits"
+    },
+    {
+      "name": "shot sim d_anc == params.d",
+      "passed": true,
+      "details": "d_anc=3"
+    },
+    {
+      "name": "boson sim has n_ancilla_qudits",
+      "passed": true,
+      "details": "n_ancilla_qudits=26"
+    },
+    {
+      "name": "boson sim no n_ancilla_qubits",
+      "passed": true,
+      "details": "should not have n_ancilla_qubits"
+    },
+    {
+      "name": "boson sim d_anc == params.d",
+      "passed": true,
+      "details": "d_anc=3"
+    },
+    {
+      "name": "result has n_ancilla_qudits key",
+      "passed": true,
+      "details": "keys=['n_ancilla_qudits', 'd_anc']"
+    },
+    {
+      "name": "result has d_anc key",
+      "passed": true,
+      "details": "d_anc=3"
+    },
+    {
+      "name": "result no n_ancilla_qubits key",
+      "passed": true,
+      "details": "should not have n_ancilla_qubits"
+    },
+    {
+      "name": "Channel equivalence (d_anc=2 vs 3, 81-dim)",
+      "passed": true,
+      "details": "max ||rho_2 - rho_3||_F = 0.00e+00 (first 5 channels)"
+    },
+    {
+      "name": "Full system Stinespring dim (d_anc=3)",
+      "passed": true,
+      "details": "shape=(243, 243), expected=(243, 243)"
+    },
+    {
+      "name": "Unitarity of full Stinespring (d_anc=3)",
+      "passed": "True",
+      "details": "||U†U - I||_F = 4.75e-16"
+    },
+    {
+      "name": "Trace preservation (5 steps)",
+      "passed": true,
+      "details": "max |Tr - 1| = 6.66e-16"
+    },
+    {
+      "name": "noisy sim has d_anc",
+      "passed": true,
+      "details": "d_anc=3"
+    },
+    {
+      "name": "noisy sim d_anc == 3",
+      "passed": true,
+      "details": "d_anc=3"
+    },
+    {
+      "name": "noisy sim has n_ancilla_qudits",
+      "passed": true,
+      "details": "n_ancilla_qudits=26"
+    },
+    {
+      "name": "noisy shot sim has d_anc",
+      "passed": true,
+      "details": "d_anc=3"
+    },
+    {
+      "name": "noisy shot sim d_anc == 3",
+      "passed": true,
+      "details": "d_anc=3"
+    },
+    {
+      "name": "qubit sim no d_anc (default d_anc=2 in stinespring)",
+      "passed": true,
+      "details": "qubit simulator uses default d_anc=2"
+    },
+    {
+      "name": "qubit sim has n_ancilla (not n_ancilla_qudits)",
+      "passed": true,
+      "details": "n_ancilla=26"
+    }
+  ],
+  "summary": {
+    "total_checks": 32,
+    "passed": 32,
+    "failed": 0,
+    "all_passed": true
+  }
+}

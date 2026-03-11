@@ -362,11 +362,12 @@ class QubitGKSLSimulator:
         # Return the qutrit-space density matrix for cross-scenario comparison
         rho_final_qt = self._extract_from_qubit_space(rho)
 
-        # Gate count estimate for a real qubit circuit:
-        # ~n_sys_qubits Rz gates (H0) + 3 * ~10 gates (H_transfer pairs)
-        # + n_lindblad * 2 * ~6 gates per Stinespring channel (palindromic: forward + reverse)
+        # Gate count estimate for a real qubit circuit (palindromic 2nd-order Trotter):
+        # 2 × ~n_sys_qubits Rz gates (H0, two half-steps)
+        # 2 × ~10 gates per H_transfer pair (two half-steps)
+        # 2 × n_lindblad × ~6 gates per Stinespring channel (fwd + rev)
         gates_per_step = (
-            self.n_sys_qubits + len(self.params.neighbors) * 10 + self.n_ancilla * 6 * 2
+            2 * (self.n_sys_qubits + len(self.params.neighbors) * 10) + self.n_ancilla * 6 * 2
         )
 
         return {

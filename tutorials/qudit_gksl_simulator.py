@@ -191,13 +191,13 @@ class QuditGKSLSimulator:
 
         elapsed = time_module.time() - start
 
-        # Gate count estimate for qudit circuit
+        # Gate count estimate for qudit circuit (palindromic 2nd-order Trotter)
         # Qutrit advantages: no encoding overhead, native 3-level operations
-        # N VirtRz gates (H_0 diagonal for N molecules)
-        # (N-1) CustomTwo gates (H_transfer for nearest-neighbour pairs)
-        # n_lindblad×2 Stinespring CustomTwo gates (palindromic: forward + reverse)
+        # 2 × N cu_one gates (H_0 diagonal, two half-steps)
+        # 2 × (N-1) cu_two gates (H_transfer, two half-steps)
+        # 2 × n_lindblad Stinespring cu_two/cu_multi gates (fwd + rev)
         n_lindblad = len(self.lindblad_ops)
-        gates_per_step = self.n_system_qudits + len(self.params.neighbors) + n_lindblad * 2
+        gates_per_step = 2 * (self.n_system_qudits + len(self.params.neighbors)) + n_lindblad * 2
 
         return {
             "times": times,

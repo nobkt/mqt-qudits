@@ -610,14 +610,25 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
     (tensor products of d=2 single-qubit Paulis). This correctly models
     qubit hardware noise, including forbidden-state leakage.
 
+    On real qubit hardware, each pair interaction must be decomposed into
+    multiple CX (CNOT) gates. The ``cx_per_pair_gate`` parameter controls
+    how many CX gates are assumed per pair interaction. The effective
+    depolarization per pair is:
+
+        p_eff = 1 - (1 - p_depol)^cx_per_pair_gate
+
+    When ``cx_per_pair_gate=1`` (default), p_eff equals p_depol (same as
+    qudit). For realistic qubit hardware, set to the actual CX count.
+
     Parameters:
         params: GKSLPhysicalParameters (with_boson=False)
-        p_depol: depolarization probability per 2-qubit gate (default 0.01)
+        p_depol: depolarization probability per CX gate (default 0.01)
         p_dephasing: dephasing probability per gate (default 0.0)
         T1: energy relaxation time (default None = no relaxation)
         t_gate: 2-qubit gate time (default 300.0)
         depol_pair_only: if True, apply noise only after pair (2+ qubit)
             interactions, skipping single-site Lindblad channels (default False)
+        cx_per_pair_gate: number of CX gates per pair interaction (default 1)
     """
 
     def __init__(
@@ -628,6 +639,7 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
         T1: float | None = None,
         t_gate: float = 300.0,
         depol_pair_only: bool = False,
+        cx_per_pair_gate: float = 1,
     ) -> None:
         super().__init__(params)
         if p_depol < 0.0 or p_depol > 1.0:
@@ -636,7 +648,12 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
         if p_dephasing < 0.0 or p_dephasing > 1.0:
             msg = f"p_dephasing must be in [0, 1], got {p_dephasing}"
             raise ValueError(msg)
+        if cx_per_pair_gate < 1:
+            msg = f"cx_per_pair_gate must be >= 1, got {cx_per_pair_gate}"
+            raise ValueError(msg)
         self.p_depol = p_depol
+        self.cx_per_pair_gate = cx_per_pair_gate
+        self.p_depol_pair_eff = 1.0 - (1.0 - p_depol) ** cx_per_pair_gate
         self.p_dephasing = p_dephasing
         self.T1 = T1
         self.t_gate = t_gate
@@ -671,7 +688,7 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
         psi = self._U_H_half @ psi
         for i, j in self.params.neighbors:
             psi = _apply_stochastic_qubit_depolarization_pair(
-                psi, i, j, N, self.p_depol, rng
+                psi, i, j, N, self.p_depol_pair_eff, rng
             )
             if self.p_dephasing > 0.0:
                 psi = _apply_stochastic_qubit_dephasing_single(
@@ -696,7 +713,7 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
                         )
             else:
                 psi = _apply_stochastic_qubit_depolarization_pair(
-                    psi, sites[0], sites[1], N, self.p_depol, rng
+                    psi, sites[0], sites[1], N, self.p_depol_pair_eff, rng
                 )
                 if self.p_dephasing > 0.0:
                     psi = _apply_stochastic_qubit_dephasing_single(
@@ -723,7 +740,7 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
                         )
             else:
                 psi = _apply_stochastic_qubit_depolarization_pair(
-                    psi, sites[0], sites[1], N, self.p_depol, rng
+                    psi, sites[0], sites[1], N, self.p_depol_pair_eff, rng
                 )
                 if self.p_dephasing > 0.0:
                     psi = _apply_stochastic_qubit_dephasing_single(
@@ -737,7 +754,7 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
         psi = self._U_H_half @ psi
         for i, j in self.params.neighbors:
             psi = _apply_stochastic_qubit_depolarization_pair(
-                psi, i, j, N, self.p_depol, rng
+                psi, i, j, N, self.p_depol_pair_eff, rng
             )
             if self.p_dephasing > 0.0:
                 psi = _apply_stochastic_qubit_dephasing_single(
@@ -775,6 +792,8 @@ class QubitGKSLNoisyShotSimulator(QubitGKSLShotSimulator):
         result["method"] = "qubit_gksl_noisy_shot"
         result["noise_params"] = {
             "p_depol": self.p_depol,
+            "p_depol_pair_eff": self.p_depol_pair_eff,
+            "cx_per_pair_gate": self.cx_per_pair_gate,
             "p_dephasing": self.p_dephasing,
             "T1": self.T1,
             "t_gate": self.t_gate,

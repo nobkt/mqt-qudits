@@ -348,7 +348,7 @@ class QubitMolecularDynamicsSimulatorNoisy:
                  initial_state_type: str = 'edge_triplet',
                  shots: int = 10000,
                  noise_params: Dict = None,
-                 cx_per_pair_gate: int = 1) -> Dict:
+                 cx_per_pair_gate: float = 1) -> Dict:
         """Run noisy simulation using density matrix with pair-level noise.
 
         Uses density matrix formalism with per-pair-gate 2-molecule depolarizing

@@ -1,0 +1,148 @@
+{
+  "iteration": 10,
+  "timestamp": "20260311T054951Z",
+  "description": "GKSL cx_per_pair_gate correction: use cx_transfer instead of cx_avg",
+  "summary": {
+    "total_checks": 26,
+    "passed": 26,
+    "failed": 0
+  },
+  "physics_rationale": {
+    "issue": "GKSL Hamiltonian = H_0 + H_transfer (no H_TTA). Using cx_avg (average of H_transfer and H_TTA) incorrectly inflated the Hamiltonian noise by including irrelevant H_TTA CX count.",
+    "fix": "Use cx_transfer instead of cx_avg for cx_per_pair_gate in GKSL notebook.",
+    "impact": "Reduces effective pair depolarization from ~6.4% to ~4.5% (correct physical value for the GKSL model).",
+    "note": "Lindblad pair channels also use cx_transfer as approximation. Stinespring unitary CX estimation is left for future work."
+  },
+  "checks": [
+    {
+      "name": "gksl_cell38_uses_cx_transfer",
+      "status": "PASS",
+      "detail": "Cell 38 should use cx_info['cx_transfer'] (not cx_avg)"
+    },
+    {
+      "name": "gksl_cell38_no_cx_avg_assignment",
+      "status": "PASS",
+      "detail": "Cell 38 should NOT assign cx_per_pair from cx_avg"
+    },
+    {
+      "name": "gksl_cell38_explains_rationale",
+      "status": "PASS",
+      "detail": "Cell 38 should explain why cx_transfer is used"
+    },
+    {
+      "name": "gksl_cell37_gksl_hamiltonian_note",
+      "status": "PASS",
+      "detail": "Cell 37 should mention GKSL Hamiltonian = H_0 + H_transfer"
+    },
+    {
+      "name": "gksl_cell37_lindblad_tta",
+      "status": "PASS",
+      "detail": "Cell 37 should mention TTA is via Lindblad operators"
+    },
+    {
+      "name": "gksl_cell37_stinespring_note",
+      "status": "PASS",
+      "detail": "Cell 37 should mention Stinespring dilation for Lindblad CX estimation"
+    },
+    {
+      "name": "gksl_hamiltonian_h0_transfer",
+      "status": "PASS",
+      "detail": "GKSL Hamiltonian should be H_0 + H_transfer (no H_TTA)"
+    },
+    {
+      "name": "gksl_no_h_tta_in_hamiltonian",
+      "status": "PASS",
+      "detail": "GKSL base class should not have H_TTA in Hamiltonian construction"
+    },
+    {
+      "name": "p_eff_cx46_correct",
+      "status": "PASS",
+      "detail": "cx=46: p_eff=0.0450 should be ~4.5% (vs previous ~6.4% with cx=66)"
+    },
+    {
+      "name": "p_eff_cx1_backward_compatible",
+      "status": "PASS",
+      "detail": "cx=1: p_eff=0.0010000000000000009 == p_phys (backward compatible)"
+    },
+    {
+      "name": "p_eff_cx66_reference",
+      "status": "PASS",
+      "detail": "cx=66.5: p_eff=0.0644 (complete comparison reference)"
+    },
+    {
+      "name": "cx_transfer_less_than_avg",
+      "status": "PASS",
+      "detail": "cx_transfer (46) should be less than cx_avg (~66), reducing noise"
+    },
+    {
+      "name": "complete_cell15_uses_cx_avg",
+      "status": "PASS",
+      "detail": "Complete Cell 15 should still use cx_avg (H_transfer+H_TTA both in Hamiltonian)"
+    },
+    {
+      "name": "complete_cell15_cx_param",
+      "status": "PASS",
+      "detail": "Complete Cell 15 still passes cx_per_pair_gate to simulate()"
+    },
+    {
+      "name": "complete_cell15_estimate_call",
+      "status": "PASS",
+      "detail": "Complete Cell 15 still calls estimate_cx_per_pair_gate()"
+    },
+    {
+      "name": "complete_cell15_v_j_params",
+      "status": "PASS",
+      "detail": "Complete Cell 15 passes V and J from PhysicalParameters"
+    },
+    {
+      "name": "complete_different_from_gksl",
+      "status": "PASS",
+      "detail": "Complete uses cx_avg, GKSL uses cx_transfer (different and correct for each)"
+    },
+    {
+      "name": "docstring_cx_float",
+      "status": "PASS",
+      "detail": "simulate() docstring should say 'cx_per_pair_gate : float'"
+    },
+    {
+      "name": "type_hint_float",
+      "status": "PASS",
+      "detail": "Type hint in simulate() signature should be float"
+    },
+    {
+      "name": "no_misleading_text",
+      "status": "PASS",
+      "detail": "Cell 40 should NOT contain 'misleadingly'"
+    },
+    {
+      "name": "fraw_correctly_includes",
+      "status": "PASS",
+      "detail": "Cell 40 should state F_raw 'correctly includes' the leakage penalty"
+    },
+    {
+      "name": "cx_gksl_transfer",
+      "status": "PASS",
+      "detail": "GKSL H_transfer: 46 CX gates"
+    },
+    {
+      "name": "cx_gksl_tta",
+      "status": "PASS",
+      "detail": "GKSL H_TTA: 86 CX gates (reference only)"
+    },
+    {
+      "name": "cx_gksl_transfer_less_than_avg",
+      "status": "PASS",
+      "detail": "cx_transfer (46) < cx_avg (66.0)"
+    },
+    {
+      "name": "cx_complete_transfer",
+      "status": "PASS",
+      "detail": "Complete H_transfer: 47 CX gates"
+    },
+    {
+      "name": "cx_complete_avg",
+      "status": "PASS",
+      "detail": "Complete cx_avg (66.5) > cx_transfer (47)"
+    }
+  ]
+}

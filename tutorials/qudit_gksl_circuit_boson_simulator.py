@@ -226,9 +226,10 @@ class QuditGKSLCircuitBosonSimulator:
         from mqt.qudits.quantum_circuit import QuantumCircuit
 
         d = self.d
+        d_anc = self.d_anc
         U_local = self._build_local_stinespring_unitary(L_local_3x3, dt)
 
-        circuit = QuantumCircuit(2, [d, 2], 0)
+        circuit = QuantumCircuit(2, [d, d_anc], 0)
         circuit.cu_two([0, 1], U_local)
 
         return circuit, U_local
@@ -248,9 +249,10 @@ class QuditGKSLCircuitBosonSimulator:
         from mqt.qudits.quantum_circuit import QuantumCircuit
 
         d = self.d
+        d_anc = self.d_anc
         U_local = self._build_local_stinespring_unitary(L_local_9x9, dt)
 
-        circuit = QuantumCircuit(3, [d, d, 2], 0)
+        circuit = QuantumCircuit(3, [d, d, d_anc], 0)
         circuit.cu_multi([0, 1, 2], U_local)
 
         return circuit, U_local

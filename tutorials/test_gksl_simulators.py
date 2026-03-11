@@ -982,7 +982,12 @@ class TestQuditGKSLCircuitSimulator:
             assert abs(tr - 1.0) < 1e-10
 
     def test_circuit_matches_matrix_simulator(self):
-        """Circuit-based simulator matches matrix-level simulator closely."""
+        """Circuit-based simulator matches matrix-level simulator closely.
+
+        Both use palindromic 2nd-order Trotter for Lindblad channels.
+        Remaining O(dt²) difference is from Hamiltonian circuit decomposition
+        (product of local unitaries vs full matrix exponential).
+        """
         from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
         from qudit_gksl_simulator import QuditGKSLSimulator
 
@@ -993,10 +998,10 @@ class TestQuditGKSLCircuitSimulator:
         r_m = sim_matrix.simulate(t_max=5.0, n_steps=5)
         r_c = sim_circuit.simulate(t_max=5.0, n_steps=5)
 
-        # Stinespring channels match exactly; Hamiltonian has Trotter error
+        # Hamiltonian Trotter error O(dt²) ≈ 3.5e-5 for dt=1.0
         for key in ["N_S0", "N_T1", "N_S1"]:
             diff = abs(r_m["populations"][-1][key] - r_c["populations"][-1][key])
-            assert diff < 1e-3, f"{key} mismatch: {diff}"
+            assert diff < 1e-4, f"{key} mismatch: {diff}"
 
     def test_gate_breakdown(self):
         """Gate breakdown is reported correctly."""
@@ -1012,9 +1017,9 @@ class TestQuditGKSLCircuitSimulator:
         n_pair = 2 * n_pairs  # 2 TTA channels × number of pairs
         assert gb["cu_one_onsite"] == 2 * N
         assert gb["cu_two_transfer"] == 2 * n_pairs
-        assert gb["cu_two_stinespring_single"] == n_single
-        assert gb["cu_multi_stinespring_pair"] == n_pair
-        assert result["gates_per_step"] == 2 * (N + n_pairs) + n_single + n_pair
+        assert gb["cu_two_stinespring_single"] == 2 * n_single
+        assert gb["cu_multi_stinespring_pair"] == 2 * n_pair
+        assert result["gates_per_step"] == 2 * (N + n_pairs) + 2 * (n_single + n_pair)
 
     def test_method_label(self):
         """Result contains correct method label."""
@@ -1032,8 +1037,8 @@ class TestQuditGKSLCircuitSimulator:
         params = GKSLPhysicalParameters()
         sim = QuditGKSLCircuitSimulator(params)
         info = sim.build_full_trotter_step_circuit(dt=1.0)
-        assert info["total_gates"] == 40
-        assert info["n_stinespring_gates"] == 26
+        assert info["total_gates"] == 66
+        assert info["n_stinespring_gates"] == 52
 
 
 # ================================================================
@@ -1392,7 +1397,11 @@ class TestQubitGKSLCircuitSimulator:
             assert abs(tr - 1.0) < 1e-10
 
     def test_circuit_matches_matrix_simulator(self):
-        """Circuit simulator matches matrix-level QubitGKSLSimulator."""
+        """Circuit simulator matches matrix-level QubitGKSLSimulator.
+
+        Both use palindromic 2nd-order Trotter for Lindblad channels.
+        Remaining O(dt²) difference is from Hamiltonian circuit decomposition.
+        """
         from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
         from qubit_gksl_simulator import QubitGKSLSimulator
 
@@ -1403,9 +1412,10 @@ class TestQubitGKSLCircuitSimulator:
         r_m = sim_matrix.simulate(t_max=5.0, n_steps=5)
         r_c = sim_circuit.simulate(t_max=5.0, n_steps=5)
 
+        # Hamiltonian Trotter error O(dt²) ≈ 3.5e-5 for dt=1.0
         for key in ["N_S0", "N_T1", "N_S1"]:
             diff = abs(r_m["populations"][-1][key] - r_c["populations"][-1][key])
-            assert diff < 1e-3, f"{key} mismatch: {diff}"
+            assert diff < 1e-4, f"{key} mismatch: {diff}"
 
     def test_gate_breakdown(self):
         """Gate breakdown is reported correctly."""
@@ -1421,9 +1431,9 @@ class TestQubitGKSLCircuitSimulator:
         n_pair_ops = 2 * n_pairs
         assert gb["unitary_4x4_onsite"] == 2 * N
         assert gb["unitary_16x16_transfer"] == 2 * n_pairs
-        assert gb["unitary_8x8_stinespring_single"] == n_single
-        assert gb["unitary_32x32_stinespring_pair"] == n_pair_ops
-        assert result["gates_per_step"] == 2 * (N + n_pairs) + n_single + n_pair_ops
+        assert gb["unitary_8x8_stinespring_single"] == 2 * n_single
+        assert gb["unitary_32x32_stinespring_pair"] == 2 * n_pair_ops
+        assert result["gates_per_step"] == 2 * (N + n_pairs) + 2 * (n_single + n_pair_ops)
 
     def test_method_label(self):
         """Result contains correct method label."""
@@ -1441,8 +1451,8 @@ class TestQubitGKSLCircuitSimulator:
         params = GKSLPhysicalParameters()
         sim = QubitGKSLCircuitSimulator(params)
         info = sim.build_full_trotter_step_circuit(dt=1.0)
-        assert info["total_gates"] == 40
-        assert info["n_stinespring_gates"] == 26
+        assert info["total_gates"] == 66
+        assert info["n_stinespring_gates"] == 52
 
     def test_qubit_circuit_info(self):
         """Simulation result includes correct qubit resource info."""

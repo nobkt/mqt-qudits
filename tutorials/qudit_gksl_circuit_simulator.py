@@ -353,8 +353,9 @@ class QuditGKSLCircuitSimulator:
     def build_full_trotter_step_circuit(self, dt: float):
         """Build MQT-Qudits circuit for one full 2nd-order Trotter step.
 
-        Structure: H(dt/2) → D_1...D_26(dt) → H(dt/2)
+        Structure: H(dt/2) → D_1...D_n(dt/2) → D_n...D_1(dt/2) → H(dt/2)
 
+        Palindromic Lindblad ordering matches QuditGKSLSimulator._trotter_step.
         Returns a dict with circuit info and gate counts.
         """
         circuits = []
@@ -365,22 +366,43 @@ class QuditGKSLCircuitSimulator:
         circuits.append(("hamiltonian_half_1", h_circ))
         total_gates += h_gates
 
-        # Lindblad channels
+        # Forward Lindblad half-step channels
+        lindblad_circuits_forward = []
         for idx, (op_type, sites, L_local, _gamma) in enumerate(
             self.lindblad_local_info
         ):
             if op_type == "single":
                 circ, _ = self.build_stinespring_circuit_single(
-                    L_local, dt, sites[0]
+                    L_local, dt / 2, sites[0]
                 )
-                circuits.append((f"stinespring_single_{idx}", circ))
+                lindblad_circuits_forward.append((f"stinespring_fwd_single_{idx}", circ))
                 total_gates += 1
             elif op_type == "pair":
                 circ, _ = self.build_stinespring_circuit_pair(
-                    L_local, dt, sites[0], sites[1]
+                    L_local, dt / 2, sites[0], sites[1]
                 )
-                circuits.append((f"stinespring_pair_{idx}", circ))
+                lindblad_circuits_forward.append((f"stinespring_fwd_pair_{idx}", circ))
                 total_gates += 1
+        circuits.extend(lindblad_circuits_forward)
+
+        # Reverse Lindblad half-step channels (palindromic)
+        lindblad_circuits_reverse = []
+        for idx, (op_type, sites, L_local, _gamma) in reversed(
+            list(enumerate(self.lindblad_local_info))
+        ):
+            if op_type == "single":
+                circ, _ = self.build_stinespring_circuit_single(
+                    L_local, dt / 2, sites[0]
+                )
+                lindblad_circuits_reverse.append((f"stinespring_rev_single_{idx}", circ))
+                total_gates += 1
+            elif op_type == "pair":
+                circ, _ = self.build_stinespring_circuit_pair(
+                    L_local, dt / 2, sites[0], sites[1]
+                )
+                lindblad_circuits_reverse.append((f"stinespring_rev_pair_{idx}", circ))
+                total_gates += 1
+        circuits.extend(lindblad_circuits_reverse)
 
         # Second half Hamiltonian step
         h_circ2, h_gates2 = self.build_hamiltonian_circuit(dt / 2)
@@ -391,7 +413,7 @@ class QuditGKSLCircuitSimulator:
             "circuits": circuits,
             "total_gates": total_gates,
             "n_hamiltonian_gates": h_gates + h_gates2,
-            "n_stinespring_gates": len(self.lindblad_local_info),
+            "n_stinespring_gates": 2 * len(self.lindblad_local_info),
         }
 
     # ------------------------------------------------------------------
@@ -505,19 +527,35 @@ class QuditGKSLCircuitSimulator:
         return op_full
 
     def _trotter_step_circuit(self, rho: np.ndarray, dt: float) -> np.ndarray:
-        """2nd-order symmetric Trotter step using circuit-derived local operators.
+        """2nd-order symmetric Trotter step with palindromic Lindblad ordering.
 
-        exp(L dt) ≈ exp(L_H dt/2) · Π_α exp(L_D_α dt) · exp(L_H dt/2)
+        exp(L dt) ≈ exp(L_H dt/2)
+                     · prod_{α=1..n} E_α(dt/2)
+                     · prod_{α=n..1} E_α(dt/2)
+                     · exp(L_H dt/2)
+
+        Matches the palindromic structure of QuditGKSLSimulator._trotter_step.
         """
         # Half Hamiltonian (circuit-decomposed)
         rho = self._apply_hamiltonian_step_circuit(rho, dt / 2)
 
-        # All Lindblad channels via local Stinespring Kraus operators
+        # Precompute half-step Kraus operators for each Lindblad channel
+        kraus_list = []
         for op_type, sites, L_local, _gamma in self.lindblad_local_info:
             d_local = L_local.shape[0]
-            U_local = self._build_local_stinespring_unitary(L_local, dt)
+            U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
             kraus_ops = self._extract_kraus_from_local_stinespring(U_local, d_local)
+            kraus_list.append((op_type, sites, kraus_ops))
 
+        # Forward half-step for all Lindblad channels
+        for op_type, sites, kraus_ops in kraus_list:
+            if op_type == "single":
+                rho = self._apply_single_site_channel(rho, kraus_ops, sites[0])
+            elif op_type == "pair":
+                rho = self._apply_pair_channel(rho, kraus_ops, sites[0], sites[1])
+
+        # Reverse half-step for all Lindblad channels (palindromic)
+        for op_type, sites, kraus_ops in reversed(kraus_list):
             if op_type == "single":
                 rho = self._apply_single_site_channel(rho, kraus_ops, sites[0])
             elif op_type == "pair":
@@ -938,7 +976,11 @@ class QuditGKSLCircuitSimulator:
             1 for t, _, _, _ in self.lindblad_local_info if t == "pair"
         )
         gates_per_half_ham = n_hamiltonian_onsite + n_hamiltonian_transfer
-        gates_per_step = 2 * gates_per_half_ham + n_stinespring_single + n_stinespring_pair
+        gates_per_step = (
+            2 * gates_per_half_ham
+            + 2 * n_stinespring_single
+            + 2 * n_stinespring_pair
+        )
 
         return {
             "times": times,
@@ -958,7 +1000,7 @@ class QuditGKSLCircuitSimulator:
             "gate_breakdown": {
                 "cu_one_onsite": 2 * n_hamiltonian_onsite,
                 "cu_two_transfer": 2 * n_hamiltonian_transfer,
-                "cu_two_stinespring_single": n_stinespring_single,
-                "cu_multi_stinespring_pair": n_stinespring_pair,
+                "cu_two_stinespring_single": 2 * n_stinespring_single,
+                "cu_multi_stinespring_pair": 2 * n_stinespring_pair,
             },
         }

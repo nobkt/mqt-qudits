@@ -647,7 +647,7 @@ class QuditGKSLCircuitBosonSimulator:
         n_eph_gates = N if self.params.g_eph != 0.0 else 0
         # N (el on-site) + n_pairs (el transfer) + N (ph on-site) + n_eph (el-ph coupling)
         gates_per_half_ham = N + n_pairs + N + n_eph_gates
-        gates_per_step = 2 * gates_per_half_ham + n_stinespring_single + n_stinespring_pair
+        gates_per_step = 2 * gates_per_half_ham + 2 * n_stinespring_single + 2 * n_stinespring_pair
 
         return {
             "times": times,
@@ -670,7 +670,7 @@ class QuditGKSLCircuitBosonSimulator:
                 "cu_two_el_transfer": 2 * n_pairs,
                 "cu_one_ph_onsite": 2 * N,
                 "cu_two_eph_coupling": 2 * n_eph_gates,
-                "cu_two_stinespring_single": n_stinespring_single,
-                "cu_multi_stinespring_pair": n_stinespring_pair,
+                "cu_two_stinespring_single": 2 * n_stinespring_single,
+                "cu_multi_stinespring_pair": 2 * n_stinespring_pair,
             },
         }

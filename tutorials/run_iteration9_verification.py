@@ -80,9 +80,11 @@ def main():
         "simulate() docstring should NOT say 'cx_per_pair_gate : int'",
     )
 
+    # Extract the cx_per_pair_gate parameter section from docstring
+    cx_param_section = sim_docstring.split("cx_per_pair_gate")[1].split("----------")[0]
     check(
         "docstring_accepts_float",
-        "float" in sim_docstring.split("cx_per_pair_gate")[1][:50],
+        "float" in cx_param_section,
         "Docstring should mention that float values are accepted",
     )
 
@@ -286,9 +288,12 @@ def main():
     )
 
     # GKSL simulator docstring should mention CX overhead
+    # Extract the class body up to the first method definition
+    gksl_class_section = qubit_gksl_src.split("class QubitGKSLNoisyShotSimulator")[1]
+    gksl_class_header = gksl_class_section.split("def __init__")[0]
     check(
         "gksl_simulator_cx_docstring",
-        "cx_per_pair_gate" in qubit_gksl_src.split("class QubitGKSLNoisyShotSimulator")[1][:500],
+        "cx_per_pair_gate" in gksl_class_header,
         "QubitGKSLNoisyShotSimulator class docstring mentions cx_per_pair_gate",
     )
 

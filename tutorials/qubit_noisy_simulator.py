@@ -379,8 +379,9 @@ class QubitMolecularDynamicsSimulatorNoisy:
         noise_params : dict or None
             Noise parameters. Keys: 'depol_1q' (unused), 'depol_2q'
             depol_2q is interpreted as the physical per-CX-gate error rate.
-        cx_per_pair_gate : int
+        cx_per_pair_gate : float
             Number of CX gates per pair interaction on qubit hardware.
+            Accepts float values for averaged counts (e.g. 66.5).
             Default 1 gives same noise level as qudit.
             Use estimate_cx_per_pair_gate() to compute the actual value.
         """

@@ -1,0 +1,90 @@
+{
+  "iteration": 17,
+  "timestamp": "20260312T071135Z",
+  "total_checks": 16,
+  "passed": 16,
+  "failed": 0,
+  "all_passed": true,
+  "checks": [
+    {
+      "name": "qudit_boson_formula_has_eph",
+      "passed": true,
+      "detail": "Source should contain 'self.params.N_molecules' for H_eph coupling gates"
+    },
+    {
+      "name": "qudit_boson_not_old_74",
+      "passed": true,
+      "detail": "New (82) != old (74)"
+    },
+    {
+      "name": "qudit_boson_expected_82",
+      "passed": true,
+      "detail": "Expected 82, computed 82"
+    },
+    {
+      "name": "qubit_boson_formula_has_eph",
+      "passed": true,
+      "detail": "Source should contain 'self.params.N_molecules * 10' for H_eph coupling gates"
+    },
+    {
+      "name": "qubit_boson_not_old_404",
+      "passed": true,
+      "detail": "New (484) != old (404)"
+    },
+    {
+      "name": "qubit_boson_expected_484",
+      "passed": true,
+      "detail": "Expected 484, computed 484"
+    },
+    {
+      "name": "h_eph_nonzero",
+      "passed": true,
+      "detail": "||H_eph|| = 2.645449"
+    },
+    {
+      "name": "h_eph_hermitian",
+      "passed": true,
+      "detail": "||H_eph - H_eph\u2020|| = 0.00e+00"
+    },
+    {
+      "name": "h_eph_n_terms",
+      "passed": true,
+      "detail": "H_eph = g_eph * \u03a3_{i=1..4} |1\u27e9_i\u27e81| \u2297 (a_i + a\u2020_i) \u2014 4 coupling terms"
+    },
+    {
+      "name": "qudit_boson_palindromic_2x",
+      "passed": true,
+      "detail": "Palindromic 2\u00d7 factor preserved for qudit boson"
+    },
+    {
+      "name": "qubit_boson_palindromic_2x",
+      "passed": true,
+      "detail": "Palindromic 2\u00d7 factor preserved for qubit boson"
+    },
+    {
+      "name": "regression_qudit_dm_gps_66",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "regression_qubit_dm_gps_388",
+      "passed": true,
+      "detail": "Expected 388, got 388"
+    },
+    {
+      "name": "regression_qudit_shot_gps_66",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "regression_qubit_shot_gps_388",
+      "passed": true,
+      "detail": "Expected 388, got 388"
+    },
+    {
+      "name": "boson_qubit_qudit_ratio",
+      "passed": true,
+      "detail": "Qubit/Qudit ratio = 5.90 (484/82 = 5.90\u00d7)"
+    }
+  ]
+}

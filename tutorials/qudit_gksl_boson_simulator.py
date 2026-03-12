@@ -200,9 +200,11 @@ class QuditGKSLBosonSimulator:
         # 2 × N cu_one gates (electronic on-site, two half-steps)
         # 2 × N cu_one gates (phonon on-site, two half-steps)
         # 2 × (N-1) cu_two gates (H_transfer, two half-steps)
+        # 2 × N cu_two gates (H_eph electron-phonon coupling, two half-steps)
         # 2 × n_lindblad Stinespring gates (fwd + rev)
         gates_per_step = (
-            2 * (self.n_system_qudits + self.n_phonon_qudits + len(self.params.neighbors))
+            2 * (self.n_system_qudits + self.n_phonon_qudits
+                 + len(self.params.neighbors) + self.params.N_molecules)
             + self.n_ancilla_qudits * 2
         )
 

@@ -447,6 +447,77 @@ class TestPhysicalLimits:
 
 
 # ---------------------------------------------------------------------------
+# 9b. TestS0S1PopulationSymmetry – TTA pair creation symmetry
+# ---------------------------------------------------------------------------
+class TestS0S1PopulationSymmetry:
+    """Verify that delta_S0 = delta_S1 when TTA is the only source/sink,
+    and delta_S0 > delta_S1 when decay channels are present."""
+
+    def test_tta_only_s0_equals_s1(self):
+        """TTA-only GKSL (no fluorescence/IC/ISC): delta_S0 must equal delta_S1."""
+        params = GKSLPhysicalParameters(
+            gamma_TTA=0.05,
+            Gamma_fl=0, Gamma_ph=0,
+            k_IC=0, k_ISC_ST=0, k_ISC_TS=0,
+        )
+        sim = ClassicalGKSLSimulator(params)
+        result = sim.simulate(t_max=50.0, n_steps=50, initial_state="edge_triplet")
+
+        S0 = np.array([p["N_S0"] for p in result["populations"]])
+        S1 = np.array([p["N_S1"] for p in result["populations"]])
+        dS0 = S0 - S0[0]
+        dS1 = S1 - S1[0]
+
+        # Changes must be identical (machine precision)
+        assert np.max(np.abs(dS0 - dS1)) < 1e-10, (
+            f"TTA-only: delta_S0 and delta_S1 should be identical, "
+            f"max diff = {np.max(np.abs(dS0 - dS1)):.2e}"
+        )
+        # Both should increase from initial values
+        assert dS0[-1] > 0.01, "S0 should increase from TTA"
+        assert dS1[-1] > 0.01, "S1 should increase from TTA"
+
+    def test_full_gksl_s0_greater_than_s1(self):
+        """Full GKSL (all decay channels): delta_S0 must exceed delta_S1."""
+        params = GKSLPhysicalParameters()
+        sim = ClassicalGKSLSimulator(params)
+        result = sim.simulate(t_max=100.0, n_steps=100, initial_state="edge_triplet")
+
+        S0 = np.array([p["N_S0"] for p in result["populations"]])
+        S1 = np.array([p["N_S1"] for p in result["populations"]])
+        dS0 = S0 - S0[0]
+        dS1 = S1 - S1[0]
+
+        # S0 must accumulate more than S1 due to S1->S0 decay channels
+        assert dS0[-1] > dS1[-1] * 2.0, (
+            f"Full GKSL: delta_S0 ({dS0[-1]:.4f}) should be >> delta_S1 ({dS1[-1]:.4f})"
+        )
+
+    def test_conservation_with_symmetry(self):
+        """In TTA-only mode: delta_S0 = delta_S1 = -delta_T1/2."""
+        params = GKSLPhysicalParameters(
+            gamma_TTA=0.05,
+            Gamma_fl=0, Gamma_ph=0,
+            k_IC=0, k_ISC_ST=0, k_ISC_TS=0,
+        )
+        sim = ClassicalGKSLSimulator(params)
+        result = sim.simulate(t_max=50.0, n_steps=50, initial_state="edge_triplet")
+
+        S0 = np.array([p["N_S0"] for p in result["populations"]])
+        S1 = np.array([p["N_S1"] for p in result["populations"]])
+        T1 = np.array([p["N_T1"] for p in result["populations"]])
+        dS0 = S0 - S0[0]
+        dT1 = T1 - T1[0]
+
+        # delta_S0 = -delta_T1 / 2
+        expected_dS0 = -dT1 / 2.0
+        assert np.max(np.abs(dS0 - expected_dS0)) < 1e-10, (
+            f"TTA-only: delta_S0 should equal -delta_T1/2, "
+            f"max diff = {np.max(np.abs(dS0 - expected_dS0)):.2e}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # 10. TestStinespringFidelity – Classical vs Qudit/Qubit fidelity comparison
 # ---------------------------------------------------------------------------
 class TestStinespringFidelity:

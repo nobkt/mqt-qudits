@@ -76,6 +76,7 @@ class QuditGKSLSimulator:
         self.lindblad_ops = build_lindblad_operators(params)
 
         self.n_ancilla_qudits = len(self.lindblad_ops)
+        self.n_total_qudits = self.n_system_qudits + self.n_ancilla_qudits
 
         # System dimension (qutrit space)
         self.dim = params.d ** params.N_molecules  # 81
@@ -211,6 +212,7 @@ class QuditGKSLSimulator:
             "params": self.params.to_dict(),
             "n_system_qudits": self.n_system_qudits,
             "n_ancilla_qudits": self.n_ancilla_qudits,
+            "n_total_qudits": self.n_total_qudits,
             "d_anc": self.d_anc,
             "estimated_gates_per_step": gates_per_step,
             "total_estimated_gates": gates_per_step * n_steps,

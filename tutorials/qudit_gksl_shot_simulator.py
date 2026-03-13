@@ -105,6 +105,7 @@ class QuditGKSLShotSimulator:
 
         self.n_system_qudits = params.N_molecules
         self.n_ancilla_qudits = len(self.lindblad_ops)
+        self.n_total_qudits = self.n_system_qudits + self.n_ancilla_qudits
 
     def _precompute_unitaries(self, dt: float) -> None:
         """Pre-compute time-step-dependent unitaries (shared across all shots).
@@ -306,6 +307,7 @@ class QuditGKSLShotSimulator:
             "params": self.params.to_dict(),
             "n_system_qudits": self.n_system_qudits,
             "n_ancilla_qudits": self.n_ancilla_qudits,
+            "n_total_qudits": self.n_total_qudits,
             "d_anc": self.d_anc,
             "estimated_gates_per_step": gates_per_step,
             "total_estimated_gates": gates_per_step * n_steps,

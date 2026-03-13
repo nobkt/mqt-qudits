@@ -60,7 +60,7 @@ class QuditGKSLBosonSimulator:
         self.n_system_qudits = params.N_molecules  # electronic qutrits
         self.n_phonon_qudits = params.N_molecules   # phonon qutrits (for n_max=2)
         self.n_ancilla_qudits = 2 * len(params.neighbors) + 5 * params.N_molecules
-        self.n_total_qudits = self.n_system_qudits + self.n_phonon_qudits
+        self.n_total_qudits = self.n_system_qudits + self.n_phonon_qudits + self.n_ancilla_qudits
 
         # Build extended Hamiltonian
         self.H_total = build_H_total_boson(params)

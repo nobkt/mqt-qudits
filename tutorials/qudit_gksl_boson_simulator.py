@@ -58,7 +58,9 @@ class QuditGKSLBosonSimulator:
 
         # Qudit counts
         self.n_system_qudits = params.N_molecules  # electronic qutrits
-        self.n_phonon_qudits = params.N_molecules   # phonon qutrits (for n_max=2)
+        # Number of d-level qudits needed per phonon mode: ceil(log_d(n_max+1))
+        n_ph_per_mol = int(np.ceil(np.log(params.n_max + 1) / np.log(params.d)))
+        self.n_phonon_qudits = n_ph_per_mol * params.N_molecules
         self.n_ancilla_qudits = 2 * len(params.neighbors) + 5 * params.N_molecules
         self.n_total_qudits = self.n_system_qudits + self.n_phonon_qudits + self.n_ancilla_qudits
 

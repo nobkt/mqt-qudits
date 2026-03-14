@@ -636,6 +636,10 @@ class QuditGKSLCircuitBosonSimulator:
 
         elapsed = time_module.time() - start
 
+        # Return electronic-only reduced density matrix for consistency
+        # with QuditGKSLBosonSimulator and to match time-series observables
+        rho_el_final = partial_trace_phonon(rho, self.dim_el, self.dim_ph)
+
         N = self.N
         n_pairs = len(self.params.neighbors)
         n_stinespring_single = sum(
@@ -649,22 +653,31 @@ class QuditGKSLCircuitBosonSimulator:
         gates_per_half_ham = N + n_pairs + N + n_eph_gates
         gates_per_step = 2 * gates_per_half_ham + 2 * n_stinespring_single + 2 * n_stinespring_pair
 
+        # Register counts consistent with QuditGKSLBosonSimulator
+        n_system_qudits = N
+        n_ph_per_mol = int(np.ceil(np.log(self.params.n_max + 1) / np.log(self.d)))
+        n_phonon_qudits = n_ph_per_mol * N
+        n_ancilla_qudits = len(self.lindblad_local_info)
+        n_total_qudits = n_system_qudits + n_phonon_qudits + n_ancilla_qudits
+
         return {
             "times": times,
             "populations": populations,
             "entropy": entropies,
             "purity": purities,
             "trace": traces,
-            "rho_final": rho,
+            "rho_final": rho_el_final,
             "elapsed_time": elapsed,
             "method": "qudit_gksl_circuit_boson",
             "params": self.params.to_dict(),
-            "n_el_qutrits": N,
-            "n_ph_qutrits": N,
-            "n_ancilla_qudits": len(self.lindblad_local_info),
+            "n_system_qudits": n_system_qudits,
+            "n_phonon_qudits": n_phonon_qudits,
+            "n_ancilla_qudits": n_ancilla_qudits,
             "d_anc": self.d_anc,
-            "gates_per_step": gates_per_step,
-            "total_gates": gates_per_step * n_steps,
+            "n_total_qudits": n_total_qudits,
+            "dim_total": self.dim_total,
+            "estimated_gates_per_step": gates_per_step,
+            "total_estimated_gates": gates_per_step * n_steps,
             "gate_breakdown": {
                 "cu_one_el_onsite": 2 * N,
                 "cu_two_el_transfer": 2 * n_pairs,

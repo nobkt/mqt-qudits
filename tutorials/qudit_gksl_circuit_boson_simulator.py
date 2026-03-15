@@ -417,6 +417,31 @@ class QuditGKSLCircuitBosonSimulator:
         U = self._compute_hamiltonian_unitary(dt)
         return U @ rho @ U.conj().T
 
+    # ------------------------------------------------------------------
+    # Precomputation (called once per simulation)
+    # ------------------------------------------------------------------
+
+    def _precompute_unitaries(self, dt: float) -> None:
+        """Pre-compute time-step-dependent unitaries (called once per simulation).
+
+        Precomputes:
+          - Half-step Hamiltonian unitary (circuit-decomposed)
+          - Kraus operators for each Lindblad channel (half-step Stinespring)
+
+        This avoids redundant matrix exponentials on every Trotter step,
+        matching the precomputation strategy of QuditGKSLBosonSimulator.
+        """
+        self._U_H_half = self._compute_hamiltonian_unitary(dt / 2)
+
+        self._kraus_list: list[
+            tuple[str, list[int], list[np.ndarray]]
+        ] = []
+        for op_type, sites, L_local, _gamma in self.lindblad_local_info:
+            d_local = L_local.shape[0]
+            U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
+            kraus_ops = self._extract_kraus_from_local_stinespring(U_local, d_local)
+            self._kraus_list.append((op_type, sites, kraus_ops))
+
     def _apply_single_site_channel_extended(
         self,
         rho: np.ndarray,
@@ -504,7 +529,7 @@ class QuditGKSLCircuitBosonSimulator:
 
         return op_full
 
-    def _trotter_step(self, rho: np.ndarray, dt: float) -> np.ndarray:
+    def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
         """2nd-order symmetric Trotter step with palindromic Lindblad ordering.
 
         exp(L dt) ≈ exp(L_H dt/2)
@@ -513,20 +538,13 @@ class QuditGKSLCircuitBosonSimulator:
                      · exp(L_H dt/2)
 
         Matches the palindromic structure of QuditGKSLBosonSimulator.
+        Uses precomputed unitaries and Kraus operators from _precompute_unitaries().
         """
-        # Half Hamiltonian
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
-
-        # Precompute half-step Kraus operators for each Lindblad channel
-        kraus_list = []
-        for op_type, sites, L_local, _gamma in self.lindblad_local_info:
-            d_local = L_local.shape[0]
-            U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
-            kraus_ops = self._extract_kraus_from_local_stinespring(U_local, d_local)
-            kraus_list.append((op_type, sites, kraus_ops))
+        # Half Hamiltonian (precomputed)
+        rho = self._U_H_half @ rho @ self._U_H_half.conj().T
 
         # Forward half-step for all Lindblad channels
-        for op_type, sites, kraus_ops in kraus_list:
+        for op_type, sites, kraus_ops in self._kraus_list:
             if op_type == "single":
                 rho = self._apply_single_site_channel_extended(
                     rho, kraus_ops, sites[0]
@@ -537,7 +555,7 @@ class QuditGKSLCircuitBosonSimulator:
                 )
 
         # Reverse half-step for all Lindblad channels (palindromic)
-        for op_type, sites, kraus_ops in reversed(kraus_list):
+        for op_type, sites, kraus_ops in reversed(self._kraus_list):
             if op_type == "single":
                 rho = self._apply_single_site_channel_extended(
                     rho, kraus_ops, sites[0]
@@ -547,8 +565,8 @@ class QuditGKSLCircuitBosonSimulator:
                     rho, kraus_ops, sites[0], sites[1]
                 )
 
-        # Half Hamiltonian
-        rho = self._apply_hamiltonian_step(rho, dt / 2)
+        # Half Hamiltonian (precomputed)
+        rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         return rho
 
     # ------------------------------------------------------------------
@@ -613,6 +631,7 @@ class QuditGKSLCircuitBosonSimulator:
 
         start = time_module.time()
         dt = t_max / n_steps
+        self._precompute_unitaries(dt)
         rho = self.prepare_initial_state(initial_state)
 
         times: list[float] = [0.0]
@@ -620,14 +639,14 @@ class QuditGKSLCircuitBosonSimulator:
         populations = [compute_populations_from_density_matrix(rho_el, self.params)]
         entropies = [compute_von_neumann_entropy(rho_el)]
         purities = [compute_purity(rho_el)]
-        traces = [float(np.real(np.trace(rho)))]
+        traces = [float(np.real(np.trace(rho_el)))]
 
         for step in range(n_steps):
-            rho = self._trotter_step(rho, dt)
+            rho = self._trotter_step(rho)
 
-            times.append((step + 1) * dt)
-            traces.append(float(np.real(np.trace(rho))))
             rho_el = partial_trace_phonon(rho, self.dim_el, self.dim_ph)
+            times.append((step + 1) * dt)
+            traces.append(float(np.real(np.trace(rho_el))))
             populations.append(
                 compute_populations_from_density_matrix(rho_el, self.params)
             )

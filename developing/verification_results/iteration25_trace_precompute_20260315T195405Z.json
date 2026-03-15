@@ -1,0 +1,421 @@
+{
+  "iteration": 25,
+  "timestamp": "20260315T195405Z",
+  "total_checks": 89,
+  "passed": 89,
+  "failed": 0,
+  "all_passed": true,
+  "checks": [
+    {
+      "name": "qudit_dm_n_total_value",
+      "passed": true,
+      "detail": "QuditGKSL N=4: n_total_qudits=30, expected 30 (4+26)"
+    },
+    {
+      "name": "qubit_dm_n_total_value",
+      "passed": true,
+      "detail": "QubitGKSL N=4: n_total_qubits=34, expected 34 (8+26)"
+    },
+    {
+      "name": "qudit_boson_n_total_value",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=2: n_total_qudits=16, expected 16 (2+2+12)"
+    },
+    {
+      "name": "qubit_boson_n_total_value",
+      "passed": true,
+      "detail": "QubitGKSLBoson N=2 (n_max=1): n_total_qubits=18, expected 18 (4+2+12)"
+    },
+    {
+      "name": "qudit_shot_n_total_value",
+      "passed": true,
+      "detail": "QuditGKSLShot N=4: n_total_qudits=30, expected 30 (4+26)"
+    },
+    {
+      "name": "qubit_shot_n_total_value",
+      "passed": true,
+      "detail": "QubitGKSLShot N=4: n_total_qubits=34, expected 34 (8+26)"
+    },
+    {
+      "name": "qudit_boson_n4_n_total_value",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=4: n_total_qudits=34, expected 34 (4+4+26)"
+    },
+    {
+      "name": "qubit_boson_n4_n_total_value",
+      "passed": true,
+      "detail": "QubitGKSLBoson N=4 (n_max=1, formula): n_total_qubits=38, expected 38 (8+4+26)"
+    },
+    {
+      "name": "nonboson_same_ancilla",
+      "passed": true,
+      "detail": "Non-boson ancilla: qudit=26, qubit=26 (should match)"
+    },
+    {
+      "name": "boson_same_ancilla",
+      "passed": true,
+      "detail": "Boson ancilla: qudit=12, qubit=12 (should match)"
+    },
+    {
+      "name": "qudit_dm_shot_total_match",
+      "passed": true,
+      "detail": "Qudit DM (30) == Shot (30)"
+    },
+    {
+      "name": "qubit_dm_shot_total_match",
+      "passed": true,
+      "detail": "Qubit DM (34) == Shot (34)"
+    },
+    {
+      "name": "regression_qudit_dm_gps_66",
+      "passed": true,
+      "detail": "QuditGKSL N=4: GPS=66, expected 66"
+    },
+    {
+      "name": "regression_qubit_dm_gps_388",
+      "passed": true,
+      "detail": "QubitGKSL N=4: GPS=388, expected 388"
+    },
+    {
+      "name": "regression_qudit_boson_n2_gps_38",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=2: GPS=38, expected 38"
+    },
+    {
+      "name": "regression_qubit_boson_n2_gps_216",
+      "passed": true,
+      "detail": "QubitGKSLBoson N=2 (n_max=1): GPS=216, expected 216"
+    },
+    {
+      "name": "regression_qudit_shot_gps_66",
+      "passed": true,
+      "detail": "QuditGKSLShot N=4: GPS=66, expected 66"
+    },
+    {
+      "name": "regression_qubit_shot_gps_388",
+      "passed": true,
+      "detail": "QubitGKSLShot N=4: GPS=388, expected 388"
+    },
+    {
+      "name": "regression_qudit_boson_n4_gps_82",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=4: GPS=82, expected 82"
+    },
+    {
+      "name": "regression_qubit_boson_n4_gps_476",
+      "passed": true,
+      "detail": "QubitGKSLBoson N=4 (n_max=1, formula): GPS=476, expected 476"
+    },
+    {
+      "name": "cell6_has_total_qudits",
+      "passed": true,
+      "detail": "Cell 6 (QuditGKSL) should display n_total_qudits"
+    },
+    {
+      "name": "cell8_has_total_qubits",
+      "passed": true,
+      "detail": "Cell 8 (QubitGKSL) should display n_total_qubits"
+    },
+    {
+      "name": "cell12_has_total_qudits",
+      "passed": true,
+      "detail": "Cell 12 (QuditGKSLBoson) should display n_total_qudits"
+    },
+    {
+      "name": "cell14_has_total_qubits",
+      "passed": true,
+      "detail": "Cell 14 (QubitGKSLBoson) should display n_total_qubits"
+    },
+    {
+      "name": "cell32_has_total_qudits",
+      "passed": true,
+      "detail": "Cell 32 (QuditGKSLShot) should display n_total_qudits"
+    },
+    {
+      "name": "cell32_has_system_qudits",
+      "passed": true,
+      "detail": "Cell 32 (QuditGKSLShot) should display n_system_qudits"
+    },
+    {
+      "name": "cell32_has_ancilla_qudits",
+      "passed": true,
+      "detail": "Cell 32 (QuditGKSLShot) should display n_ancilla_qudits"
+    },
+    {
+      "name": "cell32_has_counts",
+      "passed": true,
+      "detail": "Cell 32 (QuditGKSLShot) should display measurement counts"
+    },
+    {
+      "name": "cell36_has_total_qubits",
+      "passed": true,
+      "detail": "Cell 36 (QubitGKSLShot) should display n_total_qubits"
+    },
+    {
+      "name": "cell36_has_ancilla",
+      "passed": true,
+      "detail": "Cell 36 (QubitGKSLShot) should display n_ancilla"
+    },
+    {
+      "name": "cell36_has_trace",
+      "passed": true,
+      "detail": "Cell 36 (QubitGKSLShot) should display trace conservation"
+    },
+    {
+      "name": "cell36_has_counts",
+      "passed": true,
+      "detail": "Cell 36 (QubitGKSLShot) should display measurement counts"
+    },
+    {
+      "name": "cell36_has_forbidden_count",
+      "passed": true,
+      "detail": "Cell 36 (QubitGKSLShot) should display forbidden_count"
+    },
+    {
+      "name": "qudit_dm_result_n_total",
+      "passed": true,
+      "detail": "QuditGKSL result n_total_qudits=30, expected 30"
+    },
+    {
+      "name": "qubit_dm_result_n_total",
+      "passed": true,
+      "detail": "QubitGKSL result n_total_qubits=34, expected 34"
+    },
+    {
+      "name": "qudit_boson_result_n_total",
+      "passed": true,
+      "detail": "QuditGKSLBoson result n_total_qudits=16, expected 16"
+    },
+    {
+      "name": "qubit_boson_result_n_total",
+      "passed": true,
+      "detail": "QubitGKSLBoson result n_total_qubits=18, expected 18 (n_max=1)"
+    },
+    {
+      "name": "qudit_shot_result_n_total",
+      "passed": true,
+      "detail": "QuditGKSLShot result n_total_qudits=30, expected 30"
+    },
+    {
+      "name": "qubit_shot_result_n_total",
+      "passed": true,
+      "detail": "QubitGKSLShot result n_total_qubits=34, expected 34"
+    },
+    {
+      "name": "qubit_shot_forbidden_count_zero",
+      "passed": true,
+      "detail": "QubitGKSLShot noiseless: forbidden_count=0, expected 0"
+    },
+    {
+      "name": "qubit_shot_has_counts_key",
+      "passed": true,
+      "detail": "QubitGKSLShot result dict should contain 'counts' key"
+    },
+    {
+      "name": "qubit_shot_has_forbidden_key",
+      "passed": true,
+      "detail": "QubitGKSLShot result dict should contain 'forbidden_count' key"
+    },
+    {
+      "name": "qudit_boson_n_total_nmax_independent",
+      "passed": true,
+      "detail": "QuditBoson n_total: n_max=1 (16) == n_max=2 (16)"
+    },
+    {
+      "name": "qudit_boson_gps_nmax_independent",
+      "passed": true,
+      "detail": "QuditBoson GPS: n_max=1 (38) == n_max=2 (38)"
+    },
+    {
+      "name": "qubit_boson_n_total_nmax_dependent",
+      "passed": true,
+      "detail": "QubitBoson n_total: n_max=1 (18) != n_max=2 (20)"
+    },
+    {
+      "name": "qubit_boson_gps_nmax_dependent",
+      "passed": true,
+      "detail": "QubitBoson GPS: n_max=1 (216) != n_max=2 (220)"
+    },
+    {
+      "name": "cell14_output_n_total_18",
+      "passed": true,
+      "detail": "Cell 14 output should show 'Total qubits: 18' (n_max=1)"
+    },
+    {
+      "name": "cell14_output_gps_216",
+      "passed": true,
+      "detail": "Cell 14 output should show 'Estimated gates/step: 216' (n_max=1)"
+    },
+    {
+      "name": "cell14_output_phonon_qubits_2",
+      "passed": true,
+      "detail": "Cell 14 output should show 'Phonon qubits: 2' (n_max=1, ceil(log2(2))*2=2)"
+    },
+    {
+      "name": "cell16_scenario6_has_fwd",
+      "passed": true,
+      "detail": "Cell 16 Scenario 6 should have forward Stinespring labels (stinespring_fwd_)"
+    },
+    {
+      "name": "cell16_scenario6_has_rev",
+      "passed": true,
+      "detail": "Cell 16 Scenario 6 should have reverse Stinespring labels (stinespring_rev_)"
+    },
+    {
+      "name": "cell16_scenario6_uses_half_dt",
+      "passed": true,
+      "detail": "Cell 16 Scenario 6 should use dt_quantum/2 for Stinespring circuits"
+    },
+    {
+      "name": "cell16_scenario4_has_fwd",
+      "passed": true,
+      "detail": "Cell 16 Scenario 4 should have forward Stinespring labels"
+    },
+    {
+      "name": "cell16_scenario4_has_rev",
+      "passed": true,
+      "detail": "Cell 16 Scenario 4 should have reverse Stinespring labels"
+    },
+    {
+      "name": "cell16_scenario4_uses_half_dt",
+      "passed": true,
+      "detail": "Cell 16 Scenario 4 should use dt_quantum/2 for Stinespring unitary"
+    },
+    {
+      "name": "cell16_boson_palindromic_reversed",
+      "passed": true,
+      "detail": "Cell 16 should have >=2 reversed() calls for palindromic boson circuits (found 2)"
+    },
+    {
+      "name": "cell16_no_full_dt_stinespring",
+      "passed": true,
+      "detail": "Cell 16 Scenario 4 should NOT use full dt for stinespring_unitary_from_lindblad"
+    },
+    {
+      "name": "n_phonon_qudits_nmax1",
+      "passed": true,
+      "detail": "n_max=1: n_phonon_qudits=2, expected 2 (ceil(log_3(2))=1)"
+    },
+    {
+      "name": "n_phonon_qudits_nmax2",
+      "passed": true,
+      "detail": "n_max=2: n_phonon_qudits=2, expected 2 (ceil(log_3(3))=1)"
+    },
+    {
+      "name": "n_phonon_qudits_nmax3",
+      "passed": true,
+      "detail": "n_max=3: n_phonon_qudits=4, expected 4 (ceil(log_3(4))=2)"
+    },
+    {
+      "name": "n_phonon_qudits_nmax8",
+      "passed": true,
+      "detail": "n_max=8: n_phonon_qudits=4, expected 4 (ceil(log_3(9))=2)"
+    },
+    {
+      "name": "n_phonon_qudits_uses_log_formula",
+      "passed": true,
+      "detail": "qudit_gksl_boson_simulator.py should use np.ceil(np.log()) for n_phonon_qudits"
+    },
+    {
+      "name": "circuit_boson_rho_final_shape",
+      "passed": true,
+      "detail": "Circuit boson rho_final shape should be (9,9), got (9, 9)"
+    },
+    {
+      "name": "circuit_boson_rho_matches_dm",
+      "passed": true,
+      "detail": "||rho_circuit - rho_dm||_F = 1.78e-15 (should be < 1e-12)"
+    },
+    {
+      "name": "circuit_boson_rho_final_trace",
+      "passed": true,
+      "detail": "Circuit boson rho_final trace = 1.0000000000 (should be ~1.0)"
+    },
+    {
+      "name": "circuit_boson_has_n_system_qudits",
+      "passed": true,
+      "detail": "Circuit boson should have 'n_system_qudits' key (value=2)"
+    },
+    {
+      "name": "circuit_boson_has_n_phonon_qudits",
+      "passed": true,
+      "detail": "Circuit boson should have 'n_phonon_qudits' key (value=2)"
+    },
+    {
+      "name": "circuit_boson_has_n_total_qudits",
+      "passed": true,
+      "detail": "Circuit boson should have 'n_total_qudits' key (value=16)"
+    },
+    {
+      "name": "circuit_boson_has_estimated_gps",
+      "passed": true,
+      "detail": "Circuit boson should have 'estimated_gates_per_step' key (value=38)"
+    },
+    {
+      "name": "circuit_boson_n_system_matches_dm",
+      "passed": true,
+      "detail": "n_system_qudits: circuit=2, dm=2"
+    },
+    {
+      "name": "circuit_boson_n_phonon_matches_dm",
+      "passed": true,
+      "detail": "n_phonon_qudits: circuit=2, dm=2"
+    },
+    {
+      "name": "circuit_boson_n_total_matches_dm",
+      "passed": true,
+      "detail": "n_total_qudits: circuit=16, dm=16"
+    },
+    {
+      "name": "circuit_boson_gps_matches_dm",
+      "passed": true,
+      "detail": "GPS: circuit=38, dm=38"
+    },
+    {
+      "name": "circuit_boson_no_old_keys",
+      "passed": true,
+      "detail": "Circuit boson should not have old keys 'n_el_qutrits'/'n_ph_qutrits'"
+    },
+    {
+      "name": "circuit_boson_trace_length_matches_dm",
+      "passed": true,
+      "detail": "Circuit traces length (3) should match DM (3)"
+    },
+    {
+      "name": "circuit_boson_trace_near_unity",
+      "passed": true,
+      "detail": "Circuit max |Tr-1| = 3.77e-15 (should be < 1e-10)"
+    },
+    {
+      "name": "circuit_boson_traces_match_dm",
+      "passed": true,
+      "detail": "max |trace_circuit - trace_dm| = 2.00e-15 (should be < 1e-12)"
+    },
+    {
+      "name": "circuit_boson_traces_use_rho_el",
+      "passed": true,
+      "detail": "simulate() should use np.trace(rho_el) (found 2) and NOT np.trace(rho) (found 0)"
+    },
+    {
+      "name": "circuit_boson_has_precompute",
+      "passed": true,
+      "detail": "Circuit boson should have _precompute_unitaries method"
+    },
+    {
+      "name": "circuit_boson_has_U_H_half",
+      "passed": true,
+      "detail": "After simulate(), circuit boson should have _U_H_half attribute"
+    },
+    {
+      "name": "circuit_boson_has_kraus_list",
+      "passed": true,
+      "detail": "After simulate(), circuit boson should have _kraus_list attribute"
+    },
+    {
+      "name": "circuit_boson_U_H_half_shape",
+      "passed": true,
+      "detail": "_U_H_half shape should be (36,36), got (36, 36)"
+    },
+    {
+      "name": "circuit_boson_U_H_half_unitary",
+      "passed": 

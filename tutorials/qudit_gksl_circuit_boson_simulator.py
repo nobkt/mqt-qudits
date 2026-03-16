@@ -29,6 +29,7 @@ from scipy.linalg import expm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gksl_math_utils import (
+    build_H_total_boson,
     build_phonon_operators,
     compute_populations_from_density_matrix,
     compute_purity,
@@ -425,13 +426,21 @@ class QuditGKSLCircuitBosonSimulator:
         """Pre-compute time-step-dependent unitaries (called once per simulation).
 
         Precomputes:
-          - Half-step Hamiltonian unitary (circuit-decomposed)
+          - Half-step Hamiltonian unitary (exact matrix exponential of full
+            H_total, matching QuditGKSLBosonSimulator)
           - Kraus operators for each Lindblad channel (half-step Stinespring)
 
-        This avoids redundant matrix exponentials on every Trotter step,
-        matching the precomputation strategy of QuditGKSLBosonSimulator.
+        The Hamiltonian unitary uses the exact matrix exponential of the full
+        extended-space Hamiltonian (H_el_ext + H_phonon + H_eph), matching
+        QuditGKSLBosonSimulator.  The Trotter decomposition into local gates
+        (build_hamiltonian_circuit) is used only for gate counting and
+        circuit visualization.
+
+        This avoids a first-order Trotter error that would otherwise appear
+        in the electron-phonon correlations of the full density matrix.
         """
-        self._U_H_half = self._compute_hamiltonian_unitary(dt / 2)
+        H_total = build_H_total_boson(self.params)
+        self._U_H_half = expm(-1j * H_total * dt / 2)
 
         self._kraus_list: list[
             tuple[str, list[int], list[np.ndarray]]

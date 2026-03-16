@@ -10,7 +10,7 @@ Checks:
 
 Usage:
     cd tutorials
-    python run_iteration26_verification.py
+    python run_iteration27_verification.py
 """
 
 from __future__ import annotations

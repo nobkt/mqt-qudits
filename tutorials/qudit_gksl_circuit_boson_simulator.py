@@ -636,6 +636,19 @@ class QuditGKSLCircuitBosonSimulator:
                 t_max=t_max, n_steps=n_steps, initial_state=initial_state
             )
             result["method"] = "qudit_gksl_circuit_boson (g_eph=0 exact reduction)"
+            # Add boson-specific keys for API consistency.
+            # When g_eph=0, phonon decouples completely so no phonon
+            # registers are needed and the non-boson gate count applies.
+            result.setdefault("n_phonon_qudits", 0)
+            n_sys = result.get("n_system_qudits", self.N)
+            n_anc = result.get("n_ancilla_qudits", 0)
+            result.setdefault("n_total_qudits", n_sys + n_anc)
+            result.setdefault("dim_total", self.dim_el)
+            # Normalize gate count key names
+            if "gates_per_step" in result and "estimated_gates_per_step" not in result:
+                result["estimated_gates_per_step"] = result["gates_per_step"]
+            if "total_gates" in result and "total_estimated_gates" not in result:
+                result["total_estimated_gates"] = result["total_gates"]
             return result
 
         start = time_module.time()

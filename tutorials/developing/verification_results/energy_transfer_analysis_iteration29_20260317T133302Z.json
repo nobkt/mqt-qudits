@@ -1,0 +1,38 @@
+{
+  "coupling_analysis": {
+    "initial_index": 28,
+    "initial_energy": 3.0,
+    "coupled_states": [
+      {
+        "index": 10,
+        "config": [
+          0,
+          1,
+          0,
+          1
+        ],
+        "coupling": 0.1,
+        "energy": 3.0,
+        "energy_diff": 0.0
+      },
+      {
+        "index": 30,
+        "config": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "coupling": 0.1,
+        "energy": 3.0,
+        "energy_diff": 0.0
+      }
+    ]
+  },
+  "dynamics_analysis": {
+    "max_delta_S0": 4.551914400963142e-13,
+    "max_delta_T1": 4.551914400963142e-13,
+    "max_delta_S1": 0.0,
+    "initial_state_prob_final": 0.05152958684004681
+  }
+}

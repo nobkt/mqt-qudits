@@ -1,10 +1,30 @@
-Iteration 48 Verification Results - 2026-03-23 04:05:17
+Iteration 48 Verification Results - 2026-03-23 04:15:21
 ======================================================================
 
 ======================================================================
 Section 1: Scenario 3 - Qubit GKSL (No Boson)
 ======================================================================
-[FAIL] S3-ERROR: Exception during Scenario 3 tests -- ModuleNotFoundError: No module named 'qiskit'
+[PASS] S3-01: build_combined_trotter_step_circuit returns dict
+[PASS] S3-02: dict has 'circuit' key
+[PASS] S3-03: dict has 'total_gates' key
+[PASS] S3-04: dict has 'n_hamiltonian_gates' key
+[PASS] S3-05: dict has 'n_stinespring_gates' key
+[PASS] S3-06: dict has 'n_system_qubits' key
+[PASS] S3-07: dict has 'n_ancilla_qubits' key
+[PASS] S3-08: dict has 'n_total_qubits' key
+[PASS] S3-09: total_gates matches separate circuits -- combined=66, separate=66
+[PASS] S3-10: n_hamiltonian_gates matches -- combined=14, separate=14
+[PASS] S3-11: n_stinespring_gates matches -- combined=52, separate=52
+[PASS] S3-12: n_system_qubits = 2*N -- got 8, expected 8
+[PASS] S3-13: n_ancilla_qubits = 1
+[PASS] S3-14: n_total_qubits = 2*N + 1 -- got 9, expected 9
+[PASS] S3-15: circuit is Qiskit QuantumCircuit -- type=QuantumCircuit
+[PASS] S3-16: circuit has correct num_qubits -- got 9, expected 9
+[PASS] S3-17: number of unitary gates matches total_gates -- unitary_gates=66, total_gates=66
+[PASS] S3-18: number of reset operations = 2 * n_lindblad_channels -- resets=52, expected=52
+[PASS] S3-19: total gates = 66 -- got 66
+[PASS] S3-20: n_hamiltonian_gates = 14 -- got 14
+[PASS] S3-21: n_stinespring_gates = 52 -- got 52
 
 ======================================================================
 Section 2: Scenario 5 - Qudit GKSL (No Boson)
@@ -24,7 +44,8 @@ Section 2: Scenario 5 - Qudit GKSL (No Boson)
 [PASS] S5-13: total gates = 66 -- got 66
 [PASS] S5-14: n_hamiltonian_gates = 14 -- got 14
 [PASS] S5-15: n_stinespring_gates = 52 -- got 52
-[FAIL] S5-ERROR: Exception during Scenario 5 tests -- NameError: name 'ancilla_idx' is not defined
+[PASS] S5-16: Hamiltonian gates do not touch ancilla qudit
+[PASS] S5-17: All Stinespring gates touch ancilla qudit
 
 ======================================================================
 Section 3: Scenario 6 - Qudit GKSL (With Boson)
@@ -44,19 +65,33 @@ Section 3: Scenario 6 - Qudit GKSL (With Boson)
 ======================================================================
 Section 4: Scenario 4 - Qubit GKSL (With Boson)
 ======================================================================
-[FAIL] S4-ERROR: Exception during Scenario 4 tests -- ModuleNotFoundError: No module named 'qiskit'
+[PASS] S4-01: Scenario 4 combined circuit built successfully
+[PASS] S4-02: circuit has correct num_qubits -- got 7, expected 7
+[PASS] S4-03: number of unitary gates correct -- unitary=26, expected=26
+[PASS] S4-04: number of reset operations = 2*n_lindblad -- resets=24, expected=24
+[PASS] S4-05: n_sys_qubits > 0 -- n_sys_qubits=6
+[PASS] S4-06: Hamiltonian gates = 2
+[PASS] S4-07: Stinespring gates = 2*n_lindblad -- n_st=24, expected=24
 
 ======================================================================
 Section 5: Cross-scenario consistency
 ======================================================================
-[FAIL] X-ERROR: Exception during cross-checks -- NameError: name 'combined3' is not defined
+[PASS] X-01: S3 and S5 have same total_gates -- S3=66, S5=66
+[PASS] X-02: S3 and S5 have same n_hamiltonian_gates -- S3=14, S5=14
+[PASS] X-03: S3 and S5 have same n_stinespring_gates -- S3=52, S5=52
+[PASS] X-04: Qudit uses fewer registers than qubit -- qudit=5, qubit=9
 
 ======================================================================
 Section 6: Visualization feasibility
 ======================================================================
-[FAIL] V-ERROR: Exception during visualization checks -- ModuleNotFoundError: No module named 'qiskit'
+[PASS] V-01: Scenario 3 combined circuit drawable
+[PASS] V-02: Scenario 4 combined circuit drawable
+[PASS] V-03: Scenario 5 circuit has instructions list -- n_instructions=66
+[PASS] V-04: Scenario 5 circuit has dimensions -- dims=[3, 3, 3, 3, 3]
+[PASS] V-05: Scenario 6 circuit has instructions list -- n_instructions=82
+[PASS] V-06: Scenario 6 circuit has dimensions -- dims=[3, 3, 3, 3, 2, 2, 2, 2, 3]
 
 ======================================================================
 SUMMARY
 ======================================================================
-Total: 31 checks, 26 PASS, 5 FAIL
+Total: 66 checks, 66 PASS, 0 FAIL

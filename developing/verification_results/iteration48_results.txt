@@ -1,0 +1,62 @@
+Iteration 48 Verification Results - 2026-03-23 04:05:17
+======================================================================
+
+======================================================================
+Section 1: Scenario 3 - Qubit GKSL (No Boson)
+======================================================================
+[FAIL] S3-ERROR: Exception during Scenario 3 tests -- ModuleNotFoundError: No module named 'qiskit'
+
+======================================================================
+Section 2: Scenario 5 - Qudit GKSL (No Boson)
+======================================================================
+[PASS] S5-01: build_combined_trotter_step_circuit returns dict
+[PASS] S5-02: dict has 'circuit' key
+[PASS] S5-03: total_gates matches separate circuits -- combined=66, separate=66
+[PASS] S5-04: n_hamiltonian_gates matches -- combined=14, separate=14
+[PASS] S5-05: n_stinespring_gates matches -- combined=52, separate=52
+[PASS] S5-06: n_system_qudits = N -- got 4, expected 4
+[PASS] S5-07: n_ancilla_qudits = 1
+[PASS] S5-08: n_total_qudits = N + 1 -- got 5, expected 5
+[PASS] S5-09: circuit is MQT-Qudits QuantumCircuit -- type=QuantumCircuit
+[PASS] S5-10: circuit has correct num_qudits -- got 5, expected 5
+[PASS] S5-11: circuit dimensions correct -- got [3, 3, 3, 3, 3], expected [3, 3, 3, 3, 3]
+[PASS] S5-12: number of circuit instructions matches total_gates -- instructions=66, total_gates=66
+[PASS] S5-13: total gates = 66 -- got 66
+[PASS] S5-14: n_hamiltonian_gates = 14 -- got 14
+[PASS] S5-15: n_stinespring_gates = 52 -- got 52
+[FAIL] S5-ERROR: Exception during Scenario 5 tests -- NameError: name 'ancilla_idx' is not defined
+
+======================================================================
+Section 3: Scenario 6 - Qudit GKSL (With Boson)
+======================================================================
+[PASS] S6-01: build_combined_trotter_step_circuit returns dict
+[PASS] S6-02: dict has required keys
+[PASS] S6-03: n_system_qudits = 2*N -- got 8, expected 8
+[PASS] S6-04: n_total_qudits = 2*N + 1 -- got 9, expected 9
+[PASS] S6-05: circuit has correct num_qudits -- got 9, expected 9
+[PASS] S6-06: circuit dimensions correct -- got [3, 3, 3, 3, 2, 2, 2, 2, 3], expected [3, 3, 3, 3, 2, 2, 2, 2, 3]
+[PASS] S6-07: instructions match total_gates -- instructions=82, total_gates=82
+[PASS] S6-08: n_hamiltonian_gates correct -- got 30, expected 30
+[PASS] S6-09: n_stinespring_gates correct -- got 52, expected 52
+[PASS] S6-10: total_gates = n_ham + n_st -- got 82, expected 82
+[PASS] S6-11: Forward Stinespring gates touch ancilla
+
+======================================================================
+Section 4: Scenario 4 - Qubit GKSL (With Boson)
+======================================================================
+[FAIL] S4-ERROR: Exception during Scenario 4 tests -- ModuleNotFoundError: No module named 'qiskit'
+
+======================================================================
+Section 5: Cross-scenario consistency
+======================================================================
+[FAIL] X-ERROR: Exception during cross-checks -- NameError: name 'combined3' is not defined
+
+======================================================================
+Section 6: Visualization feasibility
+======================================================================
+[FAIL] V-ERROR: Exception during visualization checks -- ModuleNotFoundError: No module named 'qiskit'
+
+======================================================================
+SUMMARY
+======================================================================
+Total: 31 checks, 26 PASS, 5 FAIL

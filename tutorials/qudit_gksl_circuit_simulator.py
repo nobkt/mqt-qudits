@@ -416,6 +416,106 @@ class QuditGKSLCircuitSimulator:
             "n_stinespring_gates": 2 * len(self.lindblad_local_info),
         }
 
+    def build_combined_trotter_step_circuit(self, dt: float):
+        """Build a single MQT-Qudits circuit for one full 2nd-order Trotter step.
+
+        All Hamiltonian and Stinespring gates are placed on a single circuit
+        with system qudits (indices 0..N-1) and one ancilla qudit (index N).
+
+        Structure: H(dt/2) → D_1...D_n(dt/2) → D_n...D_1(dt/2) → H(dt/2)
+
+        Note: MQT-Qudits does not support mid-circuit ancilla reset.
+        In the actual simulation, the ancilla is traced out after each
+        Stinespring channel. This combined circuit shows the gate structure
+        with the understanding that the ancilla is conceptually reset to |0⟩
+        between each channel.
+
+        Returns a dict with:
+          - "circuit": single MQT-Qudits QuantumCircuit
+          - "total_gates": total gate count
+          - "n_hamiltonian_gates": Hamiltonian gate count
+          - "n_stinespring_gates": Stinespring gate count
+          - "n_system_qudits": number of system qudits
+          - "n_ancilla_qudits": 1
+          - "n_total_qudits": total qudits in circuit
+        """
+        from mqt.qudits.quantum_circuit import QuantumCircuit
+
+        N = self.N
+        d = self.d
+        d_anc = self.d_anc
+        ancilla_idx = N  # ancilla is the last qudit
+        n_total = N + 1
+
+        dims = [d] * N + [d_anc]
+        circuit = QuantumCircuit(n_total, dims, 0)
+        total_gates = 0
+        n_ham_gates = 0
+        n_st_gates = 0
+
+        # --- Hamiltonian half-step 1 ---
+        U_onsite = expm(-1j * self.h_local * (dt / 2))
+        for i in range(N):
+            circuit.cu_one(i, U_onsite)
+            total_gates += 1
+            n_ham_gates += 1
+
+        for pair in self.params.neighbors:
+            ip, jp = pair
+            H_pair = self.h_transfer_pairs[(ip, jp)]
+            U_pair = expm(-1j * H_pair * (dt / 2))
+            circuit.cu_two([ip, jp], U_pair)
+            total_gates += 1
+            n_ham_gates += 1
+
+        # --- Forward Lindblad half-step ---
+        for _idx, (op_type, sites, L_local, _gamma) in enumerate(
+            self.lindblad_local_info
+        ):
+            U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
+            if op_type == "single":
+                circuit.cu_two([sites[0], ancilla_idx], U_local)
+            elif op_type == "pair":
+                circuit.cu_multi([sites[0], sites[1], ancilla_idx], U_local)
+            total_gates += 1
+            n_st_gates += 1
+
+        # --- Reverse Lindblad half-step (palindromic) ---
+        for _idx, (op_type, sites, L_local, _gamma) in reversed(
+            list(enumerate(self.lindblad_local_info))
+        ):
+            U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
+            if op_type == "single":
+                circuit.cu_two([sites[0], ancilla_idx], U_local)
+            elif op_type == "pair":
+                circuit.cu_multi([sites[0], sites[1], ancilla_idx], U_local)
+            total_gates += 1
+            n_st_gates += 1
+
+        # --- Hamiltonian half-step 2 ---
+        for i in range(N):
+            circuit.cu_one(i, U_onsite)
+            total_gates += 1
+            n_ham_gates += 1
+
+        for pair in self.params.neighbors:
+            ip, jp = pair
+            H_pair = self.h_transfer_pairs[(ip, jp)]
+            U_pair = expm(-1j * H_pair * (dt / 2))
+            circuit.cu_two([ip, jp], U_pair)
+            total_gates += 1
+            n_ham_gates += 1
+
+        return {
+            "circuit": circuit,
+            "total_gates": total_gates,
+            "n_hamiltonian_gates": n_ham_gates,
+            "n_stinespring_gates": n_st_gates,
+            "n_system_qudits": N,
+            "n_ancilla_qudits": 1,
+            "n_total_qudits": n_total,
+        }
+
     # ------------------------------------------------------------------
     # Kraus operator extraction from local Stinespring unitaries
     # ------------------------------------------------------------------

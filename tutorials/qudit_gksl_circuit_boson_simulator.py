@@ -258,6 +258,141 @@ class QuditGKSLCircuitBosonSimulator:
 
         return circuit, U_local
 
+    def build_combined_trotter_step_circuit(self, dt: float):
+        """Build a single MQT-Qudits circuit for one full 2nd-order Trotter step.
+
+        All Hamiltonian and Stinespring gates are placed on a single circuit
+        with electronic qudits (0..N-1), phonon qudits (N..2N-1), and one
+        ancilla qudit (index 2N).
+
+        Structure: H(dt/2) → D_1...D_n(dt/2) → D_n...D_1(dt/2) → H(dt/2)
+
+        Note: MQT-Qudits does not support mid-circuit ancilla reset.
+        In the actual simulation, the ancilla is traced out after each
+        Stinespring channel. This combined circuit shows the gate structure
+        with the understanding that the ancilla is conceptually reset to |0⟩
+        between each channel.
+
+        Returns a dict with:
+          - "circuit": single MQT-Qudits QuantumCircuit
+          - "total_gates": total gate count
+          - "n_hamiltonian_gates": Hamiltonian gate count
+          - "n_stinespring_gates": Stinespring gate count
+          - "n_system_qudits": number of system qudits (electronic + phonon)
+          - "n_ancilla_qudits": 1
+          - "n_total_qudits": total qudits in circuit
+        """
+        from mqt.qudits.quantum_circuit import QuantumCircuit
+
+        N = self.N
+        d = self.d
+        d_ph = self.d_ph
+        d_anc = self.d_anc
+        n_sys = 2 * N  # electronic + phonon
+        ancilla_idx = n_sys  # ancilla is the last qudit
+        n_total = n_sys + 1
+
+        # Circuit layout: [el_0, ..., el_{N-1}, ph_0, ..., ph_{N-1}, ancilla]
+        dims = [d] * N + [d_ph] * N + [d_anc]
+        circuit = QuantumCircuit(n_total, dims, 0)
+        total_gates = 0
+        n_ham_gates = 0
+        n_st_gates = 0
+
+        # --- Hamiltonian half-step 1 ---
+        # Electronic on-site
+        U_el_onsite = expm(-1j * self.h_el_local * (dt / 2))
+        for i in range(N):
+            circuit.cu_one(i, U_el_onsite)
+            total_gates += 1
+            n_ham_gates += 1
+
+        # Electronic transfer
+        for pair in self.params.neighbors:
+            ip, jp = pair
+            H_pair = self.h_transfer_pairs[(ip, jp)]
+            U_pair = expm(-1j * H_pair * (dt / 2))
+            circuit.cu_two([ip, jp], U_pair)
+            total_gates += 1
+            n_ham_gates += 1
+
+        # Phonon on-site
+        U_ph_onsite = expm(-1j * self.h_ph_local * (dt / 2))
+        for i in range(N):
+            circuit.cu_one(N + i, U_ph_onsite)
+            total_gates += 1
+            n_ham_gates += 1
+
+        # Electron-phonon coupling
+        if self.params.g_eph != 0.0:
+            U_eph = expm(-1j * self.h_eph_local * (dt / 2))
+            for i in range(N):
+                circuit.cu_two([i, N + i], U_eph)
+                total_gates += 1
+                n_ham_gates += 1
+
+        # --- Forward Lindblad half-step ---
+        for _idx, (op_type, sites, L_local, _gamma) in enumerate(
+            self.lindblad_local_info
+        ):
+            U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
+            if op_type == "single":
+                circuit.cu_two([sites[0], ancilla_idx], U_local)
+            elif op_type == "pair":
+                circuit.cu_multi([sites[0], sites[1], ancilla_idx], U_local)
+            total_gates += 1
+            n_st_gates += 1
+
+        # --- Reverse Lindblad half-step (palindromic) ---
+        for _idx, (op_type, sites, L_local, _gamma) in reversed(
+            list(enumerate(self.lindblad_local_info))
+        ):
+            U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
+            if op_type == "single":
+                circuit.cu_two([sites[0], ancilla_idx], U_local)
+            elif op_type == "pair":
+                circuit.cu_multi([sites[0], sites[1], ancilla_idx], U_local)
+            total_gates += 1
+            n_st_gates += 1
+
+        # --- Hamiltonian half-step 2 ---
+        U_el_onsite2 = expm(-1j * self.h_el_local * (dt / 2))
+        for i in range(N):
+            circuit.cu_one(i, U_el_onsite2)
+            total_gates += 1
+            n_ham_gates += 1
+
+        for pair in self.params.neighbors:
+            ip, jp = pair
+            H_pair = self.h_transfer_pairs[(ip, jp)]
+            U_pair = expm(-1j * H_pair * (dt / 2))
+            circuit.cu_two([ip, jp], U_pair)
+            total_gates += 1
+            n_ham_gates += 1
+
+        U_ph_onsite2 = expm(-1j * self.h_ph_local * (dt / 2))
+        for i in range(N):
+            circuit.cu_one(N + i, U_ph_onsite2)
+            total_gates += 1
+            n_ham_gates += 1
+
+        if self.params.g_eph != 0.0:
+            U_eph2 = expm(-1j * self.h_eph_local * (dt / 2))
+            for i in range(N):
+                circuit.cu_two([i, N + i], U_eph2)
+                total_gates += 1
+                n_ham_gates += 1
+
+        return {
+            "circuit": circuit,
+            "total_gates": total_gates,
+            "n_hamiltonian_gates": n_ham_gates,
+            "n_stinespring_gates": n_st_gates,
+            "n_system_qudits": n_sys,
+            "n_ancilla_qudits": 1,
+            "n_total_qudits": n_total,
+        }
+
     # ------------------------------------------------------------------
     # Density matrix evolution
     # ------------------------------------------------------------------

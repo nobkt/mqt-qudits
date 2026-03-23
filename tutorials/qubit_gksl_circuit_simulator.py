@@ -489,6 +489,130 @@ class QubitGKSLCircuitSimulator:
             "n_stinespring_gates": 2 * len(self.lindblad_local_info),
         }
 
+    def build_combined_trotter_step_circuit(self, dt: float):
+        """Build a single Qiskit circuit for one full 2nd-order Trotter step.
+
+        All Hamiltonian and Stinespring gates are placed on a single circuit
+        with system qubits (indices 0..2N-1) and one ancilla qubit (index 2N).
+
+        Structure: H(dt/2) → reset+D_1...reset+D_n(dt/2) → reset+D_n...reset+D_1(dt/2) → H(dt/2)
+
+        The ancilla qubit is explicitly reset before each Stinespring channel
+        to ensure the fresh |0⟩ state required by the Stinespring dilation.
+
+        Returns a dict with:
+          - "circuit": single QuantumCircuit
+          - "total_gates": total gate count (Hamiltonian + Stinespring)
+          - "n_hamiltonian_gates": Hamiltonian gate count
+          - "n_stinespring_gates": Stinespring gate count
+          - "n_system_qubits": number of system qubits
+          - "n_ancilla_qubits": 1
+          - "n_total_qubits": total qubits in circuit
+        """
+        from qiskit import QuantumCircuit
+        from qiskit.circuit.library import UnitaryGate
+
+        N = self.N
+        n_sys = 2 * N
+        ancilla_idx = n_sys  # ancilla is the last qubit
+        n_total = n_sys + 1
+
+        circuit = QuantumCircuit(n_total)
+        total_gates = 0
+        n_ham_gates = 0
+        n_st_gates = 0
+
+        # --- Hamiltonian half-step 1 ---
+        U_onsite_qt = expm(-1j * self.h_local * (dt / 2))
+        U_onsite_qb = self._embed_single_site_unitary(U_onsite_qt)
+        onsite_gate = UnitaryGate(U_onsite_qb, label="H_onsite")
+        for i in range(N):
+            circuit.append(onsite_gate, [2 * i, 2 * i + 1])
+            total_gates += 1
+            n_ham_gates += 1
+
+        for pair in self.params.neighbors:
+            ip, jp = pair
+            H_pair = self.h_transfer_pairs[(ip, jp)]
+            U_pair_qt = expm(-1j * H_pair * (dt / 2))
+            U_pair_qb = self._embed_pair_unitary(U_pair_qt)
+            pair_gate = UnitaryGate(U_pair_qb, label="H_transfer")
+            circuit.append(pair_gate, [2 * ip, 2 * ip + 1, 2 * jp, 2 * jp + 1])
+            total_gates += 1
+            n_ham_gates += 1
+
+        # --- Forward Lindblad half-step ---
+        for _idx, (op_type, sites, L_local, _gamma) in enumerate(
+            self.lindblad_local_info
+        ):
+            circuit.reset(ancilla_idx)
+            if op_type == "single":
+                U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
+                U_embedded = self._embed_stinespring_single(U_local)
+                gate = UnitaryGate(U_embedded, label="D_s")
+                k = sites[0]
+                circuit.append(gate, [ancilla_idx, 2 * k, 2 * k + 1])
+            elif op_type == "pair":
+                U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
+                U_embedded = self._embed_stinespring_pair(U_local)
+                gate = UnitaryGate(U_embedded, label="D_p")
+                i, j = sites[0], sites[1]
+                circuit.append(
+                    gate,
+                    [ancilla_idx, 2 * i, 2 * i + 1, 2 * j, 2 * j + 1],
+                )
+            total_gates += 1
+            n_st_gates += 1
+
+        # --- Reverse Lindblad half-step (palindromic) ---
+        for _idx, (op_type, sites, L_local, _gamma) in reversed(
+            list(enumerate(self.lindblad_local_info))
+        ):
+            circuit.reset(ancilla_idx)
+            if op_type == "single":
+                U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
+                U_embedded = self._embed_stinespring_single(U_local)
+                gate = UnitaryGate(U_embedded, label="D_s")
+                k = sites[0]
+                circuit.append(gate, [ancilla_idx, 2 * k, 2 * k + 1])
+            elif op_type == "pair":
+                U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
+                U_embedded = self._embed_stinespring_pair(U_local)
+                gate = UnitaryGate(U_embedded, label="D_p")
+                i, j = sites[0], sites[1]
+                circuit.append(
+                    gate,
+                    [ancilla_idx, 2 * i, 2 * i + 1, 2 * j, 2 * j + 1],
+                )
+            total_gates += 1
+            n_st_gates += 1
+
+        # --- Hamiltonian half-step 2 ---
+        for i in range(N):
+            circuit.append(onsite_gate, [2 * i, 2 * i + 1])
+            total_gates += 1
+            n_ham_gates += 1
+
+        for pair in self.params.neighbors:
+            ip, jp = pair
+            H_pair = self.h_transfer_pairs[(ip, jp)]
+            U_pair_qt = expm(-1j * H_pair * (dt / 2))
+            U_pair_qb = self._embed_pair_unitary(U_pair_qt)
+            pair_gate = UnitaryGate(U_pair_qb, label="H_transfer")
+            circuit.append(pair_gate, [2 * ip, 2 * ip + 1, 2 * jp, 2 * jp + 1])
+            total_gates += 1
+            n_ham_gates += 1
+
+        return {
+            "circuit": circuit,
+            "total_gates": total_gates,
+            "n_hamiltonian_gates": n_ham_gates,
+            "n_stinespring_gates": n_st_gates,
+            "n_system_qubits": n_sys,
+            "n_ancilla_qubits": 1,
+            "n_total_qubits": n_total,
+        }
+
     # ------------------------------------------------------------------
     # Kraus operator extraction from local Stinespring unitaries
     # ------------------------------------------------------------------

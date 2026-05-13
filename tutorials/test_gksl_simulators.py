@@ -1464,3 +1464,175 @@ class TestQubitGKSLCircuitSimulator:
         assert result["n_system_qubits"] == 2 * params.N_molecules
         assert result["n_ancilla_qubits"] == 26
         assert result["n_total_qubits"] == 2 * params.N_molecules + 26
+
+
+# ---------------------------------------------------------------------------
+# B-1 / A-1 / A-3: continuation of PR #257
+# ---------------------------------------------------------------------------
+class TestExactLocalChannelsConvergence:
+    """B-1: ``algorithm="exact_local_channels"`` recovers O(dt²) convergence.
+
+    The default ``algorithm="stinespring"`` is mathematically a 1st-order
+    approximation of each Lindblad channel and so the global trace-distance
+    convergence collapses to O(dt) regardless of the Strang+palindromic
+    structure (this is recorded as B-1 in ``STATUS_HONEST_2026-05.md``).
+
+    Replacing per-channel Stinespring with exact local-channel
+    exponentiation should restore the 2nd-order behaviour expected from
+    the Strang split.  We check this empirically on the smallest config
+    (N=2, d=3 ⇒ dim=9) by comparing against
+    :class:`ClassicalGKSLSimulator` (full Liouvillian exp).
+    """
+
+    @staticmethod
+    def _trace_distance(rho, sigma):
+        delta = rho - sigma
+        delta = (delta + delta.conj().T) / 2
+        eigenvalues = np.linalg.eigvalsh(delta)
+        return float(0.5 * np.sum(np.abs(eigenvalues)))
+
+    def test_constructor_rejects_unknown_algorithm(self):
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        with pytest.raises(ValueError, match="algorithm"):
+            QuditGKSLSimulator(params, algorithm="bogus")
+
+    def test_default_algorithm_is_stinespring(self):
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        sim = QuditGKSLSimulator(params)
+        assert sim.algorithm == "stinespring"
+        result = sim.simulate(t_max=1.0, n_steps=2, initial_state="edge_triplet")
+        assert result["algorithm"] == "stinespring"
+
+    def test_stinespring_is_first_order(self):
+        """Stinespring algorithm gives empirical rate ≈ 1.0 (B-1 docs)."""
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        t_max = 10.0
+        ref = ClassicalGKSLSimulator(params).simulate(
+            t_max=t_max, n_steps=2000, initial_state="edge_triplet"
+        )
+        rho_ref = ref["rho_final"]
+
+        rates = []
+        prev_T, prev_dt = None, None
+        for n_steps in (50, 100, 200):
+            res = QuditGKSLSimulator(params).simulate(
+                t_max=t_max, n_steps=n_steps, initial_state="edge_triplet"
+            )
+            T = self._trace_distance(rho_ref, res["rho_final"])
+            dt = t_max / n_steps
+            if prev_T is not None:
+                rates.append(np.log(prev_T / T) / np.log(prev_dt / dt))
+            prev_T, prev_dt = T, dt
+        # Empirically rates should be ≈ 1.0 — anything in [0.85, 1.15] is fine.
+        for r in rates:
+            assert 0.85 <= r <= 1.15, f"Stinespring rate not ≈ 1: {rates}"
+
+    def test_exact_local_channels_is_second_order(self):
+        """exact_local_channels gives empirical rate ≈ 2.0 on N=2."""
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        t_max = 10.0
+        ref = ClassicalGKSLSimulator(params).simulate(
+            t_max=t_max, n_steps=2000, initial_state="edge_triplet"
+        )
+        rho_ref = ref["rho_final"]
+
+        rates = []
+        prev_T, prev_dt = None, None
+        for n_steps in (20, 50, 100, 200):
+            res = QuditGKSLSimulator(
+                params, algorithm="exact_local_channels"
+            ).simulate(
+                t_max=t_max, n_steps=n_steps, initial_state="edge_triplet"
+            )
+            T = self._trace_distance(rho_ref, res["rho_final"])
+            dt = t_max / n_steps
+            if prev_T is not None:
+                rates.append(np.log(prev_T / T) / np.log(prev_dt / dt))
+            prev_T, prev_dt = T, dt
+        # Empirically rates should be ≈ 2.0 — assert ≥ 1.9 to allow for
+        # the asymptotic approach in the smallest n_steps pair.
+        for r in rates:
+            assert r >= 1.9, f"exact_local_channels rate not ≥ 1.9: {rates}"
+
+    def test_exact_local_beats_stinespring_at_same_dt(self):
+        """For the same n_steps the exact algorithm strictly more accurate."""
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        t_max = 10.0
+        ref = ClassicalGKSLSimulator(params).simulate(
+            t_max=t_max, n_steps=2000, initial_state="edge_triplet"
+        )
+        rho_ref = ref["rho_final"]
+
+        n_steps = 100
+        T_stine = self._trace_distance(
+            rho_ref,
+            QuditGKSLSimulator(params).simulate(
+                t_max=t_max, n_steps=n_steps, initial_state="edge_triplet"
+            )["rho_final"],
+        )
+        T_exact = self._trace_distance(
+            rho_ref,
+            QuditGKSLSimulator(
+                params, algorithm="exact_local_channels"
+            ).simulate(
+                t_max=t_max, n_steps=n_steps, initial_state="edge_triplet"
+            )["rho_final"],
+        )
+        # At n_steps=100 / t_max=10 / N=2, the exact channel scheme is
+        # observed to be ~89× more accurate than Stinespring.  Assert at
+        # least 10× to leave generous numerical headroom.
+        assert T_exact * 10 < T_stine, (
+            f"exact_local_channels not at least 10× more accurate than "
+            f"stinespring: T_stine={T_stine:.3e}, T_exact={T_exact:.3e}"
+        )
+
+
+class TestCompilerMeasuredGateCounts:
+    """A-3: ``compute_compiler_measured_gate_counts`` returns real numbers
+    from the MQT-Qudits compiler, not from a hard-coded formula.
+    """
+
+    def test_returns_compiler_breakdown(self):
+        from qudit_gksl_circuit_simulator import QuditGKSLKrausSimulator
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        sim = QuditGKSLSimulator(params)
+        out = sim.compute_compiler_measured_gate_counts(
+            dt=0.5, optimization_level=0
+        )
+        # Structure must match QuditGKSLKrausSimulator.compile_to_native_gates
+        ref = QuditGKSLKrausSimulator(params).compile_to_native_gates(
+            dt=0.5, optimization_level=0
+        )
+        assert (
+            out["per_step_summary"]["native_gates"]
+            == ref["per_step_summary"]["native_gates"]
+        )
+        assert (
+            out["per_step_summary"]["uncompiled_cu_multi"]
+            == ref["per_step_summary"]["uncompiled_cu_multi"]
+        )
+        # The number of high-level gates from the existing simulator
+        # output must NOT match the compiler-measured count — the whole
+        # point of A-3 is to expose that they are different.
+        result = sim.simulate(t_max=1.0, n_steps=2, initial_state="edge_triplet")
+        assert (
+            result["n_high_level_gates_per_step"]
+            != out["per_step_summary"]["native_gates"]
+        )
+        assert result["gate_count_method"] == "high_level_count"
+
+
+class TestN2TnsimVerification:
+    """A-1: every Trotter-step building block runs end-to-end on tnsim."""
+
+    def test_all_subcircuits_match_in_process_unitary(self):
+        from run_n2_tnsim_verification import run_n2_tnsim_verification
+
+        results = run_n2_tnsim_verification(dt=0.5)
+        # 1 Hamiltonian + 2 pair Stinespring + 5×2 single Stinespring = 13
+        assert len(results) == 13
+        for r in results:
+            assert r["match"], (
+                f"sub-circuit {r['label']} did not match: "
+                f"||Δsv|| = {r['distance']:.3e}"
+            )

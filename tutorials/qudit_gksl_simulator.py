@@ -47,6 +47,11 @@ from gksl_math_utils import (
     compute_purity,
     compute_von_neumann_entropy,
 )
+from exact_local_channels import (
+    apply_channel_pair,
+    apply_channel_single,
+    precompute_exact_channels_half,
+)
 from gksl_physical_parameters import GKSLPhysicalParameters
 from stinespring_utils import (
     apply_stinespring_to_density_matrix,
@@ -64,16 +69,41 @@ class QuditGKSLSimulator:
     qudit-boson ion-trap processors), all registers — including Stinespring
     ancillas — are native d-level qudits, not 2-level qubits.
 
-    The Hamiltonian–Dissipator Strang splitting is 2nd-order, but the
-    Stinespring dilation is a 1st-order approximation of each Lindblad
-    channel.  Lindblad channels are applied in symmetric (palindromic)
-    order to eliminate the Lie-Trotter product commutator error.
-    Effective convergence in trace distance is O(dt) (1st-order).
+    Two channel-application algorithms are supported (parameter
+    ``algorithm`` in :meth:`__init__`):
+
+    * ``"stinespring"`` (default, **back-compatible**): each Lindblad
+      channel is realised by a Stinespring dilation
+      ``U_α = expm(-i √dt · G_α)`` and a partial trace over the ancilla.
+      This is mathematically a **1st-order** approximation of
+      ``exp(L_{D_α} dt)``; combined with the Strang H–D split and
+      palindromic channel ordering the *global* convergence in trace
+      distance is **O(dt)** — see B-1 in
+      ``STATUS_HONEST_2026-05.md``.
+    * ``"exact_local_channels"``: each Lindblad channel is exponentiated
+      **exactly** as a local superoperator
+      ``expm(L_{D_α}^local · dt)`` (size ``9×9`` for single-site, ``81×81``
+      for TTA-pair channels) and applied to the system density matrix
+      via :mod:`exact_local_channels`.  No Stinespring approximation is
+      used.  Empirical convergence in trace distance is **O(dt²)** —
+      see :class:`tutorials.test_gksl_simulators.TestExactLocalChannelsConvergence`.
     """
 
-    def __init__(self, params: GKSLPhysicalParameters) -> None:
+    def __init__(
+        self,
+        params: GKSLPhysicalParameters,
+        algorithm: str = "stinespring",
+    ) -> None:
         if params.with_boson:
             raise ValueError("QuditGKSLSimulator is for non-boson model only")
+        if algorithm not in ("stinespring", "exact_local_channels"):
+            msg = (
+                "algorithm must be 'stinespring' (1st order, default) or "
+                "'exact_local_channels' (2nd order); got "
+                f"{algorithm!r}"
+            )
+            raise ValueError(msg)
+        self.algorithm = algorithm
         self.params = params
         self.n_system_qudits = params.N_molecules
         self.d_anc = params.d  # ancilla dimension matches system qudit dimension
@@ -97,14 +127,30 @@ class QuditGKSLSimulator:
     def _precompute_unitaries(self, dt: float) -> None:
         """Pre-compute time-step-dependent unitaries (called once per simulation).
 
-        Stores half-dt Stinespring unitaries for the symmetric palindromic
-        product used in _trotter_step.  Ancilla dimension is d_anc (= params.d).
+        For ``algorithm="stinespring"`` we cache the half-dt Stinespring
+        unitaries used in the symmetric palindromic product.
+
+        For ``algorithm="exact_local_channels"`` we instead cache, for
+        every Lindblad channel, the exponentiated local dissipator
+        ``expm(L_D^local · dt/2)`` and the site indices on which it
+        acts.  The forward + reverse pass over the cached half-step
+        channels then realises ``exp(L_D · dt)`` exactly up to the
+        ``O(dt³)`` Lie-product commutator error among local channels —
+        which is the whole point of the palindromic ordering.
         """
         self._U_H_half = expm(-1j * self.H_total * dt / 2)
-        self._U_stines_half = [
-            stinespring_unitary_from_lindblad(L_op, dt / 2, d_anc=self.d_anc)
-            for L_op, _gamma in self.lindblad_ops
-        ]
+        if self.algorithm == "stinespring":
+            self._U_stines_half = [
+                stinespring_unitary_from_lindblad(L_op, dt / 2, d_anc=self.d_anc)
+                for L_op, _gamma in self.lindblad_ops
+            ]
+            self._exact_channels_half = None
+        else:
+            # exact_local_channels
+            self._U_stines_half = None
+            self._exact_channels_half = precompute_exact_channels_half(
+                self.params, dt
+            )
 
     def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
         """Symmetric Trotter step with palindromic Lindblad channel ordering.
@@ -114,20 +160,37 @@ class QuditGKSLSimulator:
                      · prod_{α=n..1} E_α(dt/2)
                      · exp(L_H dt/2)
 
-        The Hamiltonian–Dissipator Strang splitting is 2nd-order O(dt³)/step.
-        The palindromic Lindblad product eliminates the Lie-Trotter commutator
-        error (also 2nd-order).  The remaining dominant error is the Stinespring
-        approximation: E_α(dt/2)(ρ) = exp(L_{D_α} dt/2)(ρ) + O(dt²), giving
-        O(dt²)/step and **O(dt) global convergence** in trace distance.
+        where ``E_α(dt/2)`` is either a Stinespring dilation
+        (``algorithm="stinespring"``, **1st-order** approximation of
+        ``exp(L_{D_α} dt/2)`` → global O(dt)) or the exact local channel
+        ``expm(L_{D_α}^local · dt/2)`` applied via
+        :mod:`exact_local_channels` (``algorithm="exact_local_channels"``,
+        exact → global O(dt²)).
         """
         # Half Hamiltonian
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
-        # Forward half-step for all Lindblad channels
-        for U_stine_half in self._U_stines_half:
-            rho = apply_stinespring_to_density_matrix(rho, U_stine_half, d_anc=self.d_anc)
-        # Reverse half-step for all Lindblad channels (palindromic)
-        for U_stine_half in reversed(self._U_stines_half):
-            rho = apply_stinespring_to_density_matrix(rho, U_stine_half, d_anc=self.d_anc)
+        if self.algorithm == "stinespring":
+            for U_stine_half in self._U_stines_half:
+                rho = apply_stinespring_to_density_matrix(
+                    rho, U_stine_half, d_anc=self.d_anc
+                )
+            for U_stine_half in reversed(self._U_stines_half):
+                rho = apply_stinespring_to_density_matrix(
+                    rho, U_stine_half, d_anc=self.d_anc
+                )
+        else:
+            N = self.n_system_qudits
+            d = self.params.d
+            for sites, exp_LD_half, kind in self._exact_channels_half:
+                if kind == "single":
+                    rho = apply_channel_single(rho, exp_LD_half, sites[0], N, d)
+                else:
+                    rho = apply_channel_pair(rho, exp_LD_half, sites, N, d)
+            for sites, exp_LD_half, kind in reversed(self._exact_channels_half):
+                if kind == "single":
+                    rho = apply_channel_single(rho, exp_LD_half, sites[0], N, d)
+                else:
+                    rho = apply_channel_pair(rho, exp_LD_half, sites, N, d)
         # Half Hamiltonian
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         return rho
@@ -201,11 +264,18 @@ class QuditGKSLSimulator:
 
         elapsed = time_module.time() - start
 
-        # Gate count estimate for qudit circuit (palindromic 2nd-order Trotter)
-        # Qutrit advantages: no encoding overhead, native 3-level operations
-        # 2 × N cu_one gates (H_0 diagonal, two half-steps)
-        # 2 × (N-1) cu_two gates (H_transfer, two half-steps)
-        # 2 × n_lindblad Stinespring cu_two/cu_multi gates (fwd + rev)
+        # Per-step *high-level* gate count for the qudit circuit
+        # (palindromic 2nd-order Trotter).  This is the number of high-level
+        # gate objects that would be appended to a MQT-Qudits QuantumCircuit
+        # by ``QuditGKSLKrausSimulator.build_*_circuit``:
+        #   * 2 × N cu_one gates (H_0 onsite, two half-steps)
+        #   * 2 × |neighbors| cu_two gates (H_transfer pairs, two half-steps)
+        #   * 2 × n_lindblad cu_two/cu_multi gates (Stinespring fwd + rev)
+        # It is **not** the output of an MQT-Qudits compiler pass.  For the
+        # actual native gate breakdown (VirtRz / R / Rh / Rz / CEx counts
+        # plus the residual undecomposable cu_multi count) call
+        # :meth:`compute_compiler_measured_gate_counts` — see A-3 in
+        # ``STATUS_HONEST_2026-05.md``.
         n_lindblad = len(self.lindblad_ops)
         gates_per_step = 2 * (self.n_system_qudits + len(self.params.neighbors)) + n_lindblad * 2
 
@@ -218,11 +288,74 @@ class QuditGKSLSimulator:
             "rho_final": rho,
             "elapsed_time": elapsed,
             "method": "qudit_gksl",
+            "algorithm": self.algorithm,
             "params": self.params.to_dict(),
             "n_system_qudits": self.n_system_qudits,
             "n_ancilla_qudits": self.n_ancilla_qudits,
             "n_total_qudits": self.n_total_qudits,
             "d_anc": self.d_anc,
             "estimated_gates_per_step": gates_per_step,
+            "n_high_level_gates_per_step": gates_per_step,
             "total_estimated_gates": gates_per_step * n_steps,
+            "gate_count_method": "high_level_count",
         }
+
+    # ------------------------------------------------------------------
+    # A-3: compiler-measured native gate counts
+    # ------------------------------------------------------------------
+
+    def compute_compiler_measured_gate_counts(
+        self,
+        dt: float,
+        optimization_level: int = 0,
+        backend_name: str = "faketraps2trits",
+    ) -> dict:
+        """Return the **MQT-Qudits compiler-measured** native gate counts.
+
+        Delegates to
+        :meth:`qudit_gksl_circuit_simulator.QuditGKSLKrausSimulator.compile_to_native_gates`,
+        which actually invokes ``compileO0`` / ``compileO1`` on the
+        per-block MQT-Qudits ``QuantumCircuit`` objects and counts the
+        resulting ``VirtRz`` / ``R`` / ``Rh`` / ``Rz`` / ``CEx`` gates.
+        The TTA-pair Stinespring uses a ``cu_multi`` gate which the
+        MQT-Qudits compiler does **not** currently decompose into 2-qudit
+        primitives — that count is reported separately as
+        ``per_step_summary['uncompiled_cu_multi']`` rather than being
+        masked by a heuristic estimate.
+
+        Parameters
+        ----------
+        dt:
+            Time step used to construct the per-block unitaries that
+            are then compiled.
+        optimization_level:
+            ``0`` for ``compileO0`` (baseline) or ``1`` for ``compileO1``
+            (optimised).
+        backend_name:
+            MQT-Qudits backend identifier passed to the compiler.
+
+        Returns
+        -------
+        dict
+            Same structure as
+            :meth:`QuditGKSLKrausSimulator.compile_to_native_gates`,
+            including ``per_step_summary['native_gates']`` and
+            ``per_step_summary['uncompiled_cu_multi']``.
+
+        Notes
+        -----
+        Imported lazily to keep ``QuditGKSLSimulator`` usable in
+        environments where the MQT-Qudits compiler stack is not
+        available; in that case this method will raise
+        ``ImportError``.
+        """
+        # Lazy import to avoid a hard dependency at simulator construction
+        # time and to make the import failure mode explicit.
+        from qudit_gksl_circuit_simulator import QuditGKSLKrausSimulator
+
+        kraus_sim = QuditGKSLKrausSimulator(self.params)
+        return kraus_sim.compile_to_native_gates(
+            dt=dt,
+            optimization_level=optimization_level,
+            backend_name=backend_name,
+        )

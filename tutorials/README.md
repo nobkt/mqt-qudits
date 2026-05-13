@@ -1,5 +1,14 @@
 # MQT Qudits Tutorials
 
+> **Notice (2026-05)**
+> As part of the E-1/E-2 cleanup, many per-PR completion reports and iteration
+> verification scripts have been moved out of `tutorials/` and `tutorials/doc/`
+> into `../docs_archive/`. Some links in this README therefore point at
+> archived locations. See [`../docs_archive/INDEX.md`](../docs_archive/INDEX.md)
+> for the archive index, and [`../STATUS_HONEST_2026-05.md`](../STATUS_HONEST_2026-05.md)
+> for an honest account of what is and is not solved in the current state of
+> the repository.
+
 This directory contains tutorial documentation for the MQT Qudits framework.
 
 ## Contents

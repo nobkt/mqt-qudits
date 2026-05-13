@@ -1,5 +1,12 @@
 # Quick Start: Testing the Optimized Qudit Implementation
 
+> **Notice (2026-05)**
+> Many `.md` files referenced below have been moved to `docs_archive/` as part of the
+> E-1/E-2 cleanup; some links in this file therefore point at archived locations.
+> See [`docs_archive/INDEX.md`](docs_archive/INDEX.md) for the index of archived
+> documents and [`STATUS_HONEST_2026-05.md`](STATUS_HONEST_2026-05.md) for an honest
+> account of what is and is not solved in the current state of the repository.
+
 ## TL;DR
 
 The qudit tutorial has been optimized to reduce gate count by 95% (6,182 → 326 gates).

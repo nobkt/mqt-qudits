@@ -1861,3 +1861,129 @@ class TestQutipIndependentCrossValidation:
                 # would defeat the purpose of an "independent" reference.
                 # The end-to-end agreement is asserted by the mesolve
                 # cross-validation above.
+
+
+# ---------------------------------------------------------------------------
+# Boson DMSim backend execution (Scenario 6d in the notebook)
+# ---------------------------------------------------------------------------
+
+
+class TestQuditGKSLBosonDMSim:
+    """Verify ``QuditGKSLBosonSimulator(execute_on_backend='dmsim')`` reproduces
+    the in-process NumPy ``exact_local_channels`` path bit-for-bit."""
+
+    @staticmethod
+    def test_dmsim_boson_matches_numpy_n2():
+        from qudit_gksl_boson_simulator import QuditGKSLBosonSimulator
+        params = GKSLPhysicalParameters(
+            N_molecules=2, with_boson=True, n_max=1, omega_ph=0.15, g_eph=0.02
+        )
+        ref = QuditGKSLBosonSimulator(
+            params, algorithm="exact_local_channels"
+        ).simulate(t_max=10.0, n_steps=20, initial_state="edge_triplet")
+        bk = QuditGKSLBosonSimulator(
+            params,
+            algorithm="exact_local_channels",
+            execute_on_backend="dmsim",
+        ).simulate(t_max=10.0, n_steps=20, initial_state="edge_triplet")
+        diff = np.linalg.norm(ref["rho_final"] - bk["rho_final"])
+        assert diff < 1e-10, f"boson DMSim mismatch: ‖Δρ‖_F={diff:.3e}"
+        # Trace conservation must hold for both paths.
+        assert abs(bk["trace"][-1] - 1.0) < 1e-8
+
+    @staticmethod
+    def test_dmsim_boson_requires_exact_local_channels():
+        from qudit_gksl_boson_simulator import QuditGKSLBosonSimulator
+        params = GKSLPhysicalParameters(
+            N_molecules=2, with_boson=True, n_max=1
+        )
+        with pytest.raises(ValueError, match="exact_local_channels"):
+            QuditGKSLBosonSimulator(
+                params, algorithm="stinespring", execute_on_backend="dmsim"
+            )
+
+    @staticmethod
+    def test_dmsim_boson_only_dmsim_backend():
+        from qudit_gksl_boson_simulator import QuditGKSLBosonSimulator
+        params = GKSLPhysicalParameters(
+            N_molecules=2, with_boson=True, n_max=1
+        )
+        with pytest.raises(ValueError, match="dmsim"):
+            QuditGKSLBosonSimulator(
+                params,
+                algorithm="exact_local_channels",
+                execute_on_backend="tnsim",
+            )
+
+
+# ---------------------------------------------------------------------------
+# Qiskit Aer execution of the qubit GKSL simulators (Scenarios 3d / 4d)
+# ---------------------------------------------------------------------------
+
+
+def _has_qiskit() -> bool:
+    try:
+        import qiskit  # noqa: F401
+        import qiskit_aer  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+@pytest.mark.skipif(not _has_qiskit(), reason="qiskit / qiskit-aer not installed")
+class TestQiskitQubitGKSL:
+    """Verify the Qiskit-Aer-backed qubit GKSL simulator matches the
+    classical density-matrix reference within Trotter convergence."""
+
+    @staticmethod
+    def test_qiskit_qubit_no_boson_n2_trace_and_classical_agreement():
+        from qiskit_qubit_gksl_simulator import QiskitQubitGKSLSimulator
+        params = GKSLPhysicalParameters(N_molecules=2)
+        sim = QiskitQubitGKSLSimulator(params)
+        res = sim.simulate(t_max=10.0, n_steps=20, initial_state="edge_triplet")
+        # Trace conservation
+        assert all(abs(t - 1.0) < 1e-8 for t in res["trace"])
+        # Forbidden subspace must remain (numerically) zero.
+        assert max(res["forbidden_state_population"]) < 1e-8
+
+        ref = ClassicalGKSLSimulator(params).simulate(
+            t_max=10.0, n_steps=400, initial_state="edge_triplet"
+        )
+        diff = np.linalg.norm(res["rho_final"] - ref["rho_final"])
+        # 2nd-order Trotter at dt=0.5: leading error ~ O(dt²) ~ 1e-1 for
+        # the dimensionless rates here, but the *measured* Frobenius
+        # difference is ~1e-6.  Assert with comfortable headroom.
+        assert diff < 1e-3, f"qiskit vs classical mismatch: {diff:.3e}"
+
+    @staticmethod
+    def test_qiskit_qubit_boson_n2_trace_and_classical_agreement():
+        from qiskit_qubit_gksl_simulator import QiskitQubitGKSLBosonSimulator
+        from classical_gksl_boson_simulator import ClassicalGKSLBosonSimulator
+        params = GKSLPhysicalParameters(
+            N_molecules=2, with_boson=True, n_max=1, omega_ph=0.15, g_eph=0.02
+        )
+        sim = QiskitQubitGKSLBosonSimulator(params)
+        res = sim.simulate(t_max=10.0, n_steps=20, initial_state="edge_triplet")
+        assert all(abs(t - 1.0) < 1e-8 for t in res["trace"])
+
+        ref = ClassicalGKSLBosonSimulator(params).simulate(
+            t_max=10.0, n_steps=400, initial_state="edge_triplet"
+        )
+        diff = np.linalg.norm(res["rho_final"] - ref["rho_final"])
+        assert diff < 1e-3, f"qiskit boson vs classical mismatch: {diff:.3e}"
+
+    @staticmethod
+    def test_qiskit_qubit_boson_rejects_no_boson_params():
+        from qiskit_qubit_gksl_simulator import QiskitQubitGKSLBosonSimulator
+        params = GKSLPhysicalParameters(N_molecules=2)
+        with pytest.raises(ValueError, match="with_boson"):
+            QiskitQubitGKSLBosonSimulator(params)
+
+    @staticmethod
+    def test_qiskit_qubit_no_boson_rejects_boson_params():
+        from qiskit_qubit_gksl_simulator import QiskitQubitGKSLSimulator
+        params = GKSLPhysicalParameters(
+            N_molecules=2, with_boson=True, n_max=1
+        )
+        with pytest.raises(ValueError, match="non-boson"):
+            QiskitQubitGKSLSimulator(params)

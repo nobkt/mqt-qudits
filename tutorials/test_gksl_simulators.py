@@ -1987,3 +1987,136 @@ class TestQiskitQubitGKSL:
         )
         with pytest.raises(ValueError, match="non-boson"):
             QiskitQubitGKSLSimulator(params)
+
+
+# ---------------------------------------------------------------------------
+# Backend-executed shot simulators (DMSim / Qiskit Aer + Born sampling)
+# ---------------------------------------------------------------------------
+class TestDMSimShotSimulators:
+    """Backend-executed replacements for the notebook's shot cells (5b/5c/3b/3c).
+
+    These tests verify that ``QuditDMSimShotSimulator`` /
+    ``QiskitQubitShotSimulator`` produce density-matrix trajectories
+    that match the underlying density-matrix backend simulators
+    *exactly* (no shot noise on intermediate ρ — only the final-state
+    counts are sampled), and that the depolarisation Kraus channels
+    are CPTP on the local space they act on.
+    """
+
+    @staticmethod
+    def test_depolarisation_kraus_are_cptp():
+        from dmsim_shot_simulator import (
+            depolarisation_kraus, pair_depolarisation_kraus,
+        )
+        for d in (2, 3, 4):
+            for p in (0.0, 1e-3, 0.5, 1.0):
+                Ks = depolarisation_kraus(d, p)
+                closure = sum(K.conj().T @ K for K in Ks)
+                assert np.allclose(closure, np.eye(d), atol=1e-10)
+                # E_p[|0><0|] should be (1-p)|0><0| + p I/d.
+                rho = np.zeros((d, d), dtype=complex)
+                rho[0, 0] = 1.0
+                out = sum(K @ rho @ K.conj().T for K in Ks)
+                expected = (1 - p) * rho + p * np.eye(d) / d
+                assert np.allclose(out, expected, atol=1e-12)
+                Kp = pair_depolarisation_kraus(d, p)
+                closure_p = sum(K.conj().T @ K for K in Kp)
+                assert np.allclose(closure_p, np.eye(d * d), atol=1e-10)
+
+    @staticmethod
+    def test_qudit_dmsim_ideal_matches_exact_local_channels_reference():
+        from dmsim_shot_simulator import QuditDMSimShotSimulator
+        params = GKSLPhysicalParameters(N_molecules=2)
+        sim = QuditDMSimShotSimulator(params, p_depol=0.0)
+        res = sim.simulate(t_max=5.0, n_steps=10, n_shots=500, seed=0)
+        ref = QuditGKSLSimulator(params, algorithm="exact_local_channels")
+        ref_res = ref.simulate(t_max=5.0, n_steps=10)
+        # backend ρ must match NumPy ρ to machine precision (same algorithm)
+        assert np.linalg.norm(res["rho_final"] - ref_res["rho_final"]) < 1e-10
+        # Born-sampled counts sum to n_shots
+        assert sum(res["counts"].values()) == 500
+        # No noise_params present in ideal mode
+        assert "noise_params" not in res
+        assert res["backend"] == "mqt_qudits:dmsim"
+
+    @staticmethod
+    def test_qudit_dmsim_noisy_changes_rho_and_preserves_trace():
+        from dmsim_shot_simulator import QuditDMSimShotSimulator
+        params = GKSLPhysicalParameters(N_molecules=2)
+        sim_i = QuditDMSimShotSimulator(params, p_depol=0.0)
+        sim_n = QuditDMSimShotSimulator(
+            params, p_depol=0.001, p_dephasing=0.0, depol_pair_only=True
+        )
+        ri = sim_i.simulate(t_max=5.0, n_steps=10, n_shots=200, seed=0)
+        rn = sim_n.simulate(t_max=5.0, n_steps=10, n_shots=200, seed=0)
+        # Noise produces a measurable ρ shift
+        assert np.linalg.norm(rn["rho_final"] - ri["rho_final"]) > 1e-4
+        # Qudit pair depolarisation stays inside d=3 — trace exactly preserved
+        assert max(abs(t - 1.0) for t in rn["trace"]) < 1e-10
+        assert rn["noise_params"]["noise_model"] == "pair_depolarisation_kraus"
+
+    @staticmethod
+    def test_qiskit_qubit_ideal_matches_aer_density_matrix_reference():
+        from dmsim_shot_simulator import QiskitQubitShotSimulator
+        from qiskit_qubit_gksl_simulator import QiskitQubitGKSLSimulator
+        params = GKSLPhysicalParameters(N_molecules=2)
+        sim = QiskitQubitShotSimulator(params, p_depol=0.0)
+        res = sim.simulate(t_max=5.0, n_steps=10, n_shots=500, seed=0)
+        ref = QiskitQubitGKSLSimulator(params)
+        ref_res = ref.simulate(t_max=5.0, n_steps=10)
+        assert np.linalg.norm(res["rho_final"] - ref_res["rho_final"]) < 1e-12
+        assert sum(res["counts"].values()) == 500
+        # No leakage with ideal Lindblad-only evolution
+        assert res["forbidden_count"] == 0
+        assert res["backend"] == "qiskit_aer:density_matrix"
+
+    @staticmethod
+    def test_qiskit_qubit_noisy_introduces_leakage():
+        from dmsim_shot_simulator import QiskitQubitShotSimulator
+        params = GKSLPhysicalParameters(N_molecules=2)
+        sim = QiskitQubitShotSimulator(
+            params, p_depol=0.001, p_dephasing=0.0, depol_pair_only=True
+        )
+        res = sim.simulate(t_max=5.0, n_steps=10, n_shots=2000, seed=0)
+        # 4-qubit pair Pauli noise leaks into forbidden |11⟩ states
+        assert res["trace"][-1] < 1.0
+        assert res["forbidden_count"] >= 1
+        assert sum(res["counts"].values()) == 2000
+
+    @staticmethod
+    def test_unsupported_noise_options_are_rejected_explicitly():
+        """Refuse silent semantic drift: dephasing/single-site noise raise."""
+        from dmsim_shot_simulator import (
+            QuditDMSimShotSimulator, QiskitQubitShotSimulator,
+        )
+        params = GKSLPhysicalParameters(N_molecules=2)
+        with pytest.raises(NotImplementedError, match="p_dephasing"):
+            QuditDMSimShotSimulator(params, p_depol=0.001, p_dephasing=0.001)
+        with pytest.raises(NotImplementedError, match="depol_pair_only"):
+            QuditDMSimShotSimulator(
+                params, p_depol=0.001, depol_pair_only=False
+            )
+        with pytest.raises(NotImplementedError, match="p_dephasing"):
+            QiskitQubitShotSimulator(params, p_depol=0.001, p_dephasing=0.001)
+        with pytest.raises(NotImplementedError, match="depol_pair_only"):
+            QiskitQubitShotSimulator(
+                params, p_depol=0.001, depol_pair_only=False
+            )
+
+    @staticmethod
+    def test_born_sampling_statistics_converge_to_diagonal():
+        """High-shot Born sampling matches diag(ρ_final) within 3σ."""
+        from dmsim_shot_simulator import (
+            QuditDMSimShotSimulator, sample_counts_from_density_matrix,
+        )
+        params = GKSLPhysicalParameters(N_molecules=2)
+        sim = QuditDMSimShotSimulator(params, p_depol=0.0)
+        res = sim.simulate(t_max=5.0, n_steps=10, n_shots=20000, seed=0)
+        diag = np.real(np.diag(res["rho_final"]))
+        diag = np.clip(diag, 0.0, None)
+        diag = diag / diag.sum()
+        empirical = np.zeros_like(diag)
+        for idx, c in res["counts"].items():
+            empirical[idx] = c / 20000
+        # 3σ binomial bound for n=20000 is ~3·sqrt(p(1-p)/n) ≤ 0.011
+        assert np.max(np.abs(empirical - diag)) < 0.02

@@ -154,11 +154,16 @@ class QuditGKSLBosonSimulator:
             with_boson=False,
         )
 
-        # Lazy initialisation for DMSim backend execution.
+        # DMSim backend — initialise eagerly when requested so that
+        # provider/backend lookup failures surface at construction time
+        # rather than at the first ``simulate`` call.
         self._dmsim_backend = None
         self._dmsim_kraus_half: list[
             tuple[tuple[int, ...], list[np.ndarray], str]
         ] | None = None
+        if self.execute_on_backend == "dmsim":
+            from mqt.qudits.simulation import MQTQuditProvider
+            self._dmsim_backend = MQTQuditProvider().get_backend("dmsim")
         # Phonon dimensions per mode (for KrausChannel mixed-dim register).
         self._phonon_dim = params.n_max + 1
         # Number of phonon qudits per electronic site = 1 here (we keep the
@@ -210,9 +215,6 @@ class QuditGKSLBosonSimulator:
                 kraus = kraus_from_local_superoperator(M_half, d_root)
                 kraus_list.append((sites, kraus, kind))
             self._dmsim_kraus_half = kraus_list
-
-            from mqt.qudits.simulation import MQTQuditProvider
-            self._dmsim_backend = MQTQuditProvider().get_backend("dmsim")
 
     def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
         """Symmetric Trotter step with palindromic Lindblad channel ordering.

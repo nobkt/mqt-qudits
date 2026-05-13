@@ -236,11 +236,9 @@ class QiskitQubitGKSLSimulator:
         if params.with_boson:
             msg = "QiskitQubitGKSLSimulator is for the non-boson model only"
             raise ValueError(msg)
-        # Lazy import: only require Qiskit when this class is instantiated.
-        from qiskit import QuantumCircuit  # noqa: F401
-        from qiskit.circuit.library import UnitaryGate  # noqa: F401
-        from qiskit.quantum_info import Kraus  # noqa: F401
-        from qiskit_aer import AerSimulator  # noqa: F401
+        # Eagerly import Qiskit so that import errors surface at
+        # construction time rather than at the first ``simulate`` call.
+        from qiskit_aer import AerSimulator
 
         self.params = params
         self.N = params.N_molecules
@@ -266,7 +264,6 @@ class QiskitQubitGKSLSimulator:
         self._local_ops_qt = get_local_lindblad_ops(params)
 
         # Cache Aer simulator instance.
-        from qiskit_aer import AerSimulator
         self._aer = AerSimulator(method="density_matrix")
 
         # Qubit indices for each molecule.
@@ -391,13 +388,6 @@ class QiskitQubitGKSLSimulator:
         # (the circuit's gate matrices do not depend on the input state).
         step_circ = self._build_trotter_circuit()
 
-        # Wrap into a stateful pipeline: set ρ → run gates → save ρ.
-        wrapped = QuantumCircuit(self.n_qubits)
-        wrapped.set_density_matrix(DensityMatrix(rho))
-        wrapped.compose(step_circ, inplace=True)
-        wrapped.save_density_matrix()
-        compiled = transpile(wrapped, self._aer)
-
         for step in range(n_steps):
             # Re-bind the initial-state instruction for this step's ρ.
             # We rebuild the small wrapper each step to update the
@@ -472,9 +462,6 @@ class QiskitQubitGKSLBosonSimulator:
         if not params.with_boson:
             msg = "QiskitQubitGKSLBosonSimulator requires with_boson=True"
             raise ValueError(msg)
-        from qiskit import QuantumCircuit  # noqa: F401
-        from qiskit.circuit.library import UnitaryGate  # noqa: F401
-        from qiskit.quantum_info import Kraus  # noqa: F401
         from qiskit_aer import AerSimulator
 
         self.params = params

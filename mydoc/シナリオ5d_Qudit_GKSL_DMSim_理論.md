@@ -648,3 +648,494 @@ $$
 | `src/mqt/qudits/simulation/backends/dmsim.py` | `DMSim` バックエンド本体、`apply_unitary_to_density`、`apply_kraus_to_density` |
 | `src/mqt/qudits/quantum_circuit/gates/kraus_channel.py` | `KrausChannel` 命令、CPTP_TOLERANCE=1e-9、`to_matrix` は NotImplementedError |
 | `tutorials/quantum_dynamics_gksl_comparison.ipynb` | Cell 2（パラメータ）、Cell 8/9（シナリオ5d 本体） |
+
+---
+
+# 付録 A: `cu_multi` と `KrausChannel` のゲート表現の完全分解と、もとの qutrit GKSL 方程式から時間発展演算子を構築・適用する導出（省略無し）
+
+本付録は、本文の §5・§6 で「Strang 分割」「パリンドロミック散逸子」「Choi–Jamiolkowski による Kraus 抽出」「DMSim による命令適用」と要約していた箇所を、**式の細部まで分解して**、出発点の GKSL 方程式から最終的な「`cu_multi` と `KrausChannel` の命令列を $\rho$ に掛ける」操作までを一行も省略せずに導出する。記号は本文と同じ。$D=d^N=3^4=81$、$N=4$、$d=3$、$n_\mathrm{Lin}=26$。
+
+## A.1 出発点：qutrit GKSL 方程式とその形式解
+
+物理層（§4）で立てた方程式は
+
+$$
+\dot{\hat\rho}(t) \;=\; \mathcal{L}\,\hat\rho(t),\qquad \mathcal{L} \;=\; \mathcal{L}_H + \mathcal{L}_D,
+$$
+
+$$
+\mathcal{L}_H(\hat\rho) \;=\; -\,i\,\big[\hat H_\mathrm{total},\,\hat\rho\big] \;=\; -\,i\,\hat H_\mathrm{total}\,\hat\rho \;+\; i\,\hat\rho\,\hat H_\mathrm{total},
+$$
+
+$$
+\mathcal{L}_D(\hat\rho) \;=\; \sum_{\alpha=1}^{n_\mathrm{Lin}} \mathcal{D}[\hat L_\alpha](\hat\rho) \;=\; \sum_{\alpha=1}^{26}\bigg(\hat L_\alpha\,\hat\rho\,\hat L_\alpha^\dagger \;-\; \tfrac12\,\hat L_\alpha^\dagger\hat L_\alpha\,\hat\rho \;-\; \tfrac12\,\hat\rho\,\hat L_\alpha^\dagger\hat L_\alpha\bigg).
+$$
+
+$\mathcal{L}$ は密度作用素の空間 $\mathcal{B}(\mathcal{H})$（$D\times D$ 行列の空間）の上の線形写像（**超演算子**）である。$\mathcal{L}$ は時間に陽に依らないので、形式解は
+
+$$
+\boxed{\;\hat\rho(t) \;=\; e^{\mathcal{L}\,t}\,\hat\rho(0).\;}\qquad(\star)
+$$
+
+ここで $e^{\mathcal{L}\,t}$ は超演算子の指数（$\mathcal{B}(\mathcal{H})\to\mathcal{B}(\mathcal{H})$ の線形写像）である。
+
+**注**：「時間発展演算子」というと閉系でしばしば使う $U(t) = e^{-i\hat H t}$ を指すが、開系 GKSL では時間発展は超演算子 $e^{\mathcal{L}\,t}: \rho\mapsto\rho(t)$ そのものであり、単一の Hilbert 空間ユニタリでは表せない。そのため以下では「時間発展演算子」を**超演算子** $\Lambda(t) := e^{\mathcal{L}\,t}$ の意味で用いる。
+
+## A.2 超演算子の vec 表現（直線化）
+
+$D\times D$ 行列の空間は次元 $D^2$ のベクトル空間と同型である。**列優先 (column-major)** vec 規約
+
+$$
+\mathrm{vec}(X)_{i + D\cdot j} \;=\; X_{ij},\qquad i,j\in\{0,\dots,D-1\}
+$$
+
+を採用する。次の3つの恒等式は本付録の中心道具である（標準的なテンソル代数）：
+
+$$
+\mathrm{vec}(A\,X\,B) \;=\; (B^\top \otimes A)\,\mathrm{vec}(X), \qquad(\dagger_1)
+$$
+
+$$
+\mathrm{vec}(A\,X) \;=\; (I \otimes A)\,\mathrm{vec}(X), \qquad(\dagger_2)
+$$
+
+$$
+\mathrm{vec}(X\,B) \;=\; (B^\top \otimes I)\,\mathrm{vec}(X). \qquad(\dagger_3)
+$$
+
+これらを用いて
+
+$$
+\mathrm{vec}\big(\mathcal{L}_H(\hat\rho)\big) \;=\; \big[-\,i\,(I\otimes \hat H_\mathrm{total}) \;+\; i\,(\hat H_\mathrm{total}^\top\otimes I)\big]\,\mathrm{vec}(\hat\rho),
+$$
+
+$$
+\mathrm{vec}\big(\mathcal{D}[\hat L_\alpha](\hat\rho)\big) \;=\; \Big[(\hat L_\alpha^*\otimes \hat L_\alpha) \;-\; \tfrac12(I\otimes \hat L_\alpha^\dagger\hat L_\alpha) \;-\; \tfrac12((\hat L_\alpha^\dagger\hat L_\alpha)^\top\otimes I)\Big]\,\mathrm{vec}(\hat\rho).
+$$
+
+すなわち $\mathcal{L}_H$ と $\mathcal{D}[L_\alpha]$ は $D^2\times D^2$ 行列として表現できる。$D^2=6561$、$D^4 \approx 4.3\times 10^7$ なので $e^{\mathcal{L}\,t}$ を `expm` で直接取るのは原理上可能だが、**コード（`exact_local_channels`）はあえてこの直接 expm を取らない**。理由は (i) 物理パラメータが変わるたびに大行列の expm を取り直す必要があり高価、(ii) より重要なのは「散逸子部分は局所（最大 9×9 部分空間）」という構造を活かして局所空間でだけ厳密化し、Hamiltonian と分割する方が桁違いに安い、という構造的選択である。
+
+このため「$\mathcal{L}$ の指数を取る」のではなく「$\mathcal{L}_H$ と各 $\mathcal{D}[L_\alpha]$ それぞれの指数を取って合成する」のが分割積分のアイディアであり、その合成の正確な構造が `cu_multi`／`KrausChannel` 命令列に対応する。
+
+## A.3 Strang H–D 分割の導出（BCH による誤差項の明示）
+
+### A.3.1 1次（Lie–Trotter）分割
+
+$$
+e^{(\mathcal{L}_H+\mathcal{L}_D)\,dt} \;=\; e^{\mathcal{L}_H\,dt}\,e^{\mathcal{L}_D\,dt}\,\exp\!\Big(-\tfrac{dt^2}{2}[\mathcal{L}_H,\mathcal{L}_D]+O(dt^3)\Big).
+$$
+
+これは $e^{A+B} = e^A e^B e^{-\frac12[A,B]+O(\|\cdot\|^3)}$ より。誤差はステップ毎 $O(dt^2)$、大域 $O(dt)$。
+
+### A.3.2 2次（Strang）分割
+
+対称化
+
+$$
+e^{(\mathcal{L}_H+\mathcal{L}_D)\,dt} \;=\; e^{\mathcal{L}_H\,dt/2}\;e^{\mathcal{L}_D\,dt}\;e^{\mathcal{L}_H\,dt/2} \;\cdot\; \exp\!\Big(\tfrac{dt^3}{24}\big([\mathcal{L}_H,[\mathcal{L}_H,\mathcal{L}_D]] - 2[\mathcal{L}_D,[\mathcal{L}_D,\mathcal{L}_H]]\big) + O(dt^5)\Big).
+$$
+
+導出は BCH を 3 段階に展開するだけ：まず
+
+$$
+e^{\mathcal{L}_H\,dt/2}\,e^{\mathcal{L}_D\,dt} \;=\; e^{\mathcal{L}_H\,dt/2 + \mathcal{L}_D\,dt + \tfrac12 \cdot \frac{dt}{2}\cdot dt\,[\mathcal{L}_H,\mathcal{L}_D] + \cdots},
+$$
+
+次にこの結果と $e^{\mathcal{L}_H\,dt/2}$ をさらに BCH で合成すると、$[\mathcal{L}_H,\mathcal{L}_D]$ の 1 次項が**前後で逆符号で相殺**し、残るのは 3 次の二重交換子だけになる。誤差はステップ毎 $O(dt^3)$、大域 $O(dt^2)$。これが本文の §5 の Strang 分割。
+
+## A.4 散逸子間のパリンドロミック分割の導出
+
+$\mathcal{L}_D = \sum_{\alpha=1}^{26}\mathcal{D}[\hat L_\alpha]$ をさらに各 $\alpha$ ごとに分割する。$\mathcal{D}_\alpha := \mathcal{D}[\hat L_\alpha]$ と略記。
+
+### A.4.1 forward だけの 1 次分割
+
+$$
+e^{\mathcal{L}_D\,(dt/2)} \;=\; \prod_{\alpha=1}^{26} e^{\mathcal{D}_\alpha\,(dt/2)} \;\cdot\; \exp\!\Big(-\tfrac{1}{2}\big(\tfrac{dt}{2}\big)^2\sum_{\alpha<\beta}[\mathcal{D}_\alpha,\mathcal{D}_\beta] + O(dt^3)\Big).
+$$
+
+ステップ毎 $O(dt^2)$ 誤差。
+
+### A.4.2 forward + reverse のパリンドロミック分割
+
+forward と reverse を続けて掛けると、
+
+$$
+\Big(\prod_{\alpha=1}^{26} e^{\mathcal{D}_\alpha\,(dt/2)}\Big)\Big(\prod_{\alpha=26}^{1} e^{\mathcal{D}_\alpha\,(dt/2)}\Big) \;=\; e^{\mathcal{L}_D\,dt} \;\cdot\; \exp\!\big(O(dt^3)\big),
+$$
+
+なぜなら BCH の最低次補正項 $\sum_{\alpha<\beta}[\mathcal{D}_\alpha,\mathcal{D}_\beta]$ が forward と reverse で**符号が反転して相殺**するから。具体的には、$X_\alpha := dt\cdot \mathcal{D}_\alpha/2$ と置いて
+
+$$
+\prod_{\alpha=1}^{n}e^{X_\alpha} \;=\; \exp\!\Big(\sum_\alpha X_\alpha + \tfrac12\sum_{\alpha<\beta}[X_\alpha,X_\beta] + O(X^3)\Big),
+$$
+
+$$
+\prod_{\alpha=n}^{1}e^{X_\alpha} \;=\; \exp\!\Big(\sum_\alpha X_\alpha + \tfrac12\sum_{\alpha>\beta}[X_\alpha,X_\beta] + O(X^3)\Big) \;=\; \exp\!\Big(\sum_\alpha X_\alpha - \tfrac12\sum_{\alpha<\beta}[X_\alpha,X_\beta] + O(X^3)\Big),
+$$
+
+両者をさらに BCH で合成すると、$\tfrac12\sum_{\alpha<\beta}[X_\alpha,X_\beta]$ の項が打ち消し、$\exp(2\sum_\alpha X_\alpha + O(X^3)) = \exp(\mathcal{L}_D\,dt + O(dt^3))$ となる。ステップ毎 $O(dt^3)$、大域 $O(dt^2)$。
+
+### A.4.3 結論
+
+$$
+\boxed{\;\Phi_\mathrm{pal}(dt) \;:=\; \Big(\bigcirc_{\alpha=1}^{26} e^{\mathcal{D}_\alpha\,dt/2}\Big)\circ\Big(\bigcirc_{\alpha=26}^{1} e^{\mathcal{D}_\alpha\,dt/2}\Big) \;=\; e^{\mathcal{L}_D\,dt} + O(dt^3).\;}
+$$
+
+これと A.3.2 を合成して、1 ステップの時間発展超演算子を
+
+$$
+\boxed{\;\Phi(dt) \;:=\; e^{\mathcal{L}_H\,dt/2}\,\circ\,\Phi_\mathrm{pal}(dt)\,\circ\,e^{\mathcal{L}_H\,dt/2} \;=\; e^{\mathcal{L}\,dt} + O(dt^3).\;}\qquad(\star\star)
+$$
+
+これが**実装が計算しているもの**の正確な定義。
+
+## A.5 各因子の超演算子表現とゲート命令への対応
+
+### A.5.1 ハミルトニアン半ステップ $e^{\mathcal{L}_H\,dt/2}$ ⇒ `cu_multi`
+
+$\hat H_\mathrm{total}$ は時間に依らないので
+
+$$
+e^{\mathcal{L}_H\,t}(\hat\rho) \;=\; e^{-i\hat H_\mathrm{total}\,t}\,\hat\rho\,e^{+i\hat H_\mathrm{total}\,t}. \qquad(\heartsuit_1)
+$$
+
+導出：$\dot\rho = -i[H,\rho]$ の解は $\rho(t) = U(t)\rho(0)U(t)^\dagger$, $U(t)=e^{-iHt}$。これは Heisenberg–Schrödinger の標準計算で、
+
+$$
+\frac{d}{dt}\big[U\rho(0) U^\dagger\big] = -iHU\rho(0)U^\dagger + iU\rho(0)U^\dagger H = -i[H, U\rho(0)U^\dagger].
+$$
+
+$t = dt/2$ を代入し、
+
+$$
+U_H \;:=\; U_H^{(\mathrm{half})} \;=\; e^{-i\hat H_\mathrm{total}\,dt/2} \;\in\; \mathbb{C}^{81\times 81},
+$$
+
+$$
+\boxed{\;e^{\mathcal{L}_H\,dt/2}(\hat\rho) \;=\; U_H\,\hat\rho\,U_H^\dagger.\;}\qquad(\heartsuit_2)
+$$
+
+vec 表現は $(\dagger_1)$ より
+
+$$
+\mathrm{vec}\big(U_H\,\hat\rho\,U_H^\dagger\big) \;=\; \big((U_H^\dagger)^\top \otimes U_H\big)\,\mathrm{vec}(\hat\rho) \;=\; \big(U_H^* \otimes U_H\big)\,\mathrm{vec}(\hat\rho), \qquad(\heartsuit_3)
+$$
+
+ここで $(U^\dagger)^\top = U^*$（$U^\dagger$ の転置 = $U$ の複素共役）を用いた。
+
+#### `cu_multi` への対応
+
+MQT-Qudits の API 呼び出し
+
+```
+circuit.cu_multi(qudits=[0,1,2,3], parameters=U_H)
+```
+
+は `CustomMulti(parent_circuit, name="CUm[3,3,3,3]", target_qudits=[0,1,2,3], parameters=U_H, dimensions=[3,3,3,3], controls=None)` を構築する。`CustomMulti.__init__` は `parameters`（複素行列 $U_H \in \mathbb{C}^{81\times 81}$）を `__array_storage` に保持するだけで、行列に**変更を加えない**。`CustomMulti.__array__` メソッドは `self.__array_storage` をそのまま返す（`src/mqt/qudits/quantum_circuit/gates/custom_multi.py`：43–44 行目）。
+
+DMSim 実行時、命令ループ（`DMSim.execute`：254–255 行目）が `self._apply_instruction(rho, instruction, dims, n)` を呼び、`KrausChannel` でないので unitary path（276 行目）に入り
+
+```
+u_matrix = instruction.to_matrix(identities=0)   # → __array__ 経由で U_H
+```
+
+を取得し、`apply_unitary_to_density(rho, u_matrix, qudits=(0,1,2,3), dims=[3,3,3,3])`（132–144 行目）が
+
+```
+rho_t = rho.reshape(3,3,3,3, 3,3,3,3)             # 8 軸テンソル
+rho_t = _apply_local_op_one_side(rho_t, U_H, [0,1,2,3], dims, "row")
+rho_t = _apply_local_op_one_side(rho_t, U_H.conj(), [0,1,2,3], dims, "col")
+return rho_t.reshape(81, 81)
+```
+
+を実行する。`_apply_local_op_one_side` は `np.tensordot` で
+
+$$
+\rho_{(s_0 s_1 s_2 s_3)(s_0' s_1' s_2' s_3')}^\text{new} \;=\; \sum_{t_0 t_1 t_2 t_3,\;t_0' t_1' t_2' t_3'} (U_H)_{(s_0 s_1 s_2 s_3),(t_0 t_1 t_2 t_3)}\,\rho_{(t_0 t_1 t_2 t_3)(t_0' t_1' t_2' t_3')}\,(U_H^*)_{(s_0' s_1' s_2' s_3'),(t_0' t_1' t_2' t_3')}
+$$
+
+を計算する。これは行列形式に戻すと $\rho^\text{new} = U_H\,\rho\,U_H^\dagger$ そのものである（注意：column 側は $U_H^*$ で、$U_H$ に対し $A B A^\dagger$ の $A^\dagger$ を行列要素で書くと $(A^\dagger)_{s't'} = A^*_{t's'}$、上の縮約の右側の和は $\sum_{t'} \rho_{tt'} (U_H^*)_{s't'} = \sum_{t'}\rho_{tt'}(U_H^\dagger)_{t's'} = (\rho U_H^\dagger)_{ts'}$、よって全体で $(U_H \rho U_H^\dagger)_{ss'}$）。すなわち
+
+$$
+\boxed{\;\texttt{cu\_multi}(\,[0,1,2,3],\,U_H\,) \;\;\text{は厳密に}\;\; \rho \mapsto U_H\,\rho\,U_H^\dagger\;\;\text{を実行する。}\;}
+$$
+
+これは $(\heartsuit_2)$ と数式上完全に一致し、$e^{\mathcal{L}_H\,dt/2}$ を**厳密に**実装している（近似なし）。
+
+### A.5.2 局所散逸子半ステップ $e^{\mathcal{D}_\alpha\,dt/2}$ ⇒ `KrausChannel`
+
+#### 段階 1：局所空間に縮約する
+
+$\hat L_\alpha$ は最大 2 サイトに非自明に作用する。サポートを $S_\alpha\subseteq\{0,1,2,3\}$（$|S_\alpha|\in\{1,2\}$）、補集合を $\bar S_\alpha$、局所次元を $d_\mathrm{loc} = 3^{|S_\alpha|}$ とすると、$\hat L_\alpha$ は
+
+$$
+\hat L_\alpha \;=\; L^\mathrm{loc}_\alpha \,\otimes\, I_{\bar S_\alpha},\qquad L^\mathrm{loc}_\alpha\in\mathbb{C}^{d_\mathrm{loc}\times d_\mathrm{loc}}, \qquad I_{\bar S_\alpha}\in\mathbb{C}^{d^{N-|S_\alpha|}\times d^{N-|S_\alpha|}}
+$$
+
+の形に書ける（テンソル積は適切に「サイトを並べ直して」の意味；§A.6 で厳密に書く）。$\mathcal{D}[L\otimes I] = \mathcal{D}[L]\otimes \mathrm{id}$（$\mathrm{id}$ は補空間上の恒等超演算子）が成り立つ：実際、$L = L^\mathrm{loc}\otimes I$ なら $L^\dagger L = (L^\mathrm{loc})^\dagger L^\mathrm{loc}\otimes I$ で、
+
+$$
+L\rho L^\dagger - \tfrac12\{L^\dagger L,\rho\} \;=\; (L^\mathrm{loc}\otimes I)\,\rho\,((L^\mathrm{loc})^\dagger\otimes I) - \tfrac12 \big\{(L^\mathrm{loc})^\dagger L^\mathrm{loc}\otimes I,\,\rho\big\},
+$$
+
+これは局所超演算子 $\mathcal{D}^\mathrm{loc}[L^\mathrm{loc}_\alpha]$ を $S_\alpha$ サイトに、補空間に恒等を作用させたものに等しい。よって**指数化も局所と恒等のテンソルになる**：
+
+$$
+e^{\mathcal{D}_\alpha\,dt/2} \;=\; e^{\mathcal{D}^\mathrm{loc}[L^\mathrm{loc}_\alpha]\,dt/2} \,\otimes\, \mathrm{id}_{\bar S_\alpha}. \qquad(\spadesuit_1)
+$$
+
+これが「散逸子の指数を局所空間でだけ取れば良い」ことの厳密な根拠（コードコメントの「local」の意味）。
+
+#### 段階 2：局所超演算子の vec 表現を作る（§5.2.1 の再確認）
+
+$L = L^\mathrm{loc}_\alpha \in \mathbb{C}^{d_\mathrm{loc}\times d_\mathrm{loc}}$ に対し $(\dagger_1)$–$(\dagger_3)$ を当てて
+
+$$
+\mathcal{L}^\mathrm{loc}_\alpha \;=\; (L^*\otimes L) \;-\; \tfrac12\,(I\otimes L^\dagger L) \;-\; \tfrac12\,((L^\dagger L)^\top\otimes I) \;\in\;\mathbb{C}^{d_\mathrm{loc}^2\times d_\mathrm{loc}^2}. \qquad(\spadesuit_2)
+$$
+
+#### 段階 3：局所半ステップ超演算子を厳密に取る
+
+```
+M_alpha_half = scipy.linalg.expm(L^loc_alpha * dt/2)        # 9×9 または 81×81
+```
+
+これは数値的に**厳密**（`expm` は scaling-and-squaring + Padé；二重精度 round-off 以外の近似なし）。
+
+#### 段階 4：Choi–Jamiolkowski 同型で Kraus 演算子を抽出
+
+CPTP 写像 $\mathcal{E}: X\mapsto \mathcal{E}(X)$、$X\in\mathbb{C}^{d_\mathrm{loc}\times d_\mathrm{loc}}$ の Choi 行列は
+
+$$
+C(\mathcal{E}) \;=\; (\mathcal{E}\otimes\mathrm{id})\big(|\Omega\rangle\langle\Omega|\big),\qquad |\Omega\rangle = \sum_{i=0}^{d_\mathrm{loc}-1}|i\rangle\otimes|i\rangle,
+$$
+
+成分表示は $C_{(ik)(jl)} = \mathcal{E}(|i\rangle\langle j|)_{kl}$（インデックスの組 $(ik)$ を行、$(jl)$ を列）。ここで $\mathcal{E}(|i\rangle\langle j|)_{kl} = T_{kilj}$ と置けば（$T$ は $\mathcal{E}$ のテンソル成分、$\mathrm{vec}$ 規約に整合する形で）、コード中の
+
+```
+t = M_half.reshape(d, d, d, d)             # M_half[k+d*l, i+d*j] = T_{klij}
+choi = t.transpose(0, 2, 1, 3).reshape(d*d, d*d)
+```
+
+がまさに $C_{(ki)(lj)} = T_{klij}$ を生成する。Choi 行列は CP 性により**半正定値**であり、固有分解
+
+$$
+C \;=\; \sum_{\beta=1}^{d_\mathrm{loc}^2} \lambda_\beta\,|v_\beta\rangle\langle v_\beta|,\qquad \lambda_\beta \in\mathbb{R}.
+$$
+
+物理性チェック：$\lambda_\beta < -10^{-12}$ なら CP 性違反 ⇒ `ValueError`（嘘禁止）。$|\lambda_\beta| < 10^{-12}$ は数値ノイズとして 0 扱い。
+
+各 $\lambda_\beta \geq 10^{-12}$ について、固有ベクトル $v_\beta\in\mathbb{C}^{d_\mathrm{loc}^2}$ を行優先 reshape で
+
+$$
+K_{\alpha,\beta} \;:=\; \sqrt{\lambda_\beta}\,\mathrm{reshape}(v_\beta,\,(d_\mathrm{loc},\,d_\mathrm{loc})),\qquad (K_{\alpha,\beta})_{kl} \;=\; \sqrt{\lambda_\beta}\,(v_\beta)_{k\,d_\mathrm{loc} + l}. \qquad(\spadesuit_3)
+$$
+
+このとき**任意の** $\rho_\mathrm{loc}\in\mathbb{C}^{d_\mathrm{loc}\times d_\mathrm{loc}}$ について
+
+$$
+\sum_\beta K_{\alpha,\beta}\,\rho_\mathrm{loc}\,K_{\alpha,\beta}^\dagger \;=\; \mathcal{E}(\rho_\mathrm{loc}) \;=\; e^{\mathcal{D}^\mathrm{loc}[L^\mathrm{loc}_\alpha]\,dt/2}(\rho_\mathrm{loc}). \qquad(\spadesuit_4)
+$$
+
+導出（細部）：$\sum_\beta (K_\beta)_{kl}\,(\rho)_{lm}\,(K_\beta^\dagger)_{mn} = \sum_\beta\sum_{lm}\lambda_\beta (v_\beta)_{kl}(v_\beta^*)_{nm}\rho_{lm}$。一方 $C_{(kn)(lm)} = \sum_\beta \lambda_\beta (v_\beta)_{(kn)}(v_\beta^*)_{(lm)} = \sum_\beta\lambda_\beta (v_\beta)_{k\cdot d+n}(v_\beta^*)_{l\cdot d+m}$（行優先 vec で読み直す）。$C_{(ki)(lj)} = T_{klij} = \mathcal{E}(|i\rangle\langle j|)_{kl}$ より $\mathcal{E}(\rho)_{kl} = \sum_{ij}T_{klij}\rho_{ij} = \sum_{ij}C_{(ki)(lj)}\rho_{ij}$。インデックスを揃えると上式と一致。
+
+#### 完全性条件 $\sum_\beta K_{\alpha,\beta}^\dagger K_{\alpha,\beta} = I_{d_\mathrm{loc}}$
+
+$\mathcal{E}$ がトレース保存 ⇔ $C$ の部分トレース $\mathrm{Tr}_1 C = I$、これは Kraus 表現で $\sum_\beta K^\dagger K = I$ と同値。`KrausChannel.__init__` がこれを Frobenius ノルム $10^{-9}$ で**実測**検証（`src/.../kraus_channel.py`：107–119 行目）。違反時は `ValueError`（嘘禁止）。
+
+#### 段階 5：局所 Kraus を全体空間に持ち上げる（テンソル化の細部）
+
+$K_{\alpha,\beta} \in\mathbb{C}^{d_\mathrm{loc}\times d_\mathrm{loc}}$ を、サポート $S_\alpha\subseteq\{0,1,2,3\}$ 上のサイトに作用し、補空間 $\bar S_\alpha$ には恒等で作用する $D\times D$ 行列 $\tilde K_{\alpha,\beta} := (K_{\alpha,\beta})_{S_\alpha}$ に持ち上げる。具体的に $S_\alpha = \{0,1\}$（pair channel TTA01）の場合、
+
+$$
+\tilde K_{\alpha,\beta} \;=\; K_{\alpha,\beta}\,\otimes\, I_3\,\otimes\, I_3,
+$$
+
+ここで一つ目の Kronecker 因子は qudit 0 と qudit 1 を合体した 9 次元空間に作用、残りは qudit 2、qudit 3 にそれぞれ作用。$S_\alpha = \{1,2\}$ の場合は
+
+$$
+\tilde K_{\alpha,\beta} \;=\; I_3\otimes K_{\alpha,\beta}\otimes I_3,
+$$
+
+など。$S_\alpha=\{i\}$ の単一サイトの場合は $\tilde K_{\alpha,\beta} = I^{\otimes i}\otimes K_{\alpha,\beta}\otimes I^{\otimes (3-i)}$。
+
+**コードでは陽には Kronecker 積を作らない**：DMSim の `apply_kraus_to_density`（147–162 行目）は $\rho$ をテンソル `rho.reshape(3,3,3,3, 3,3,3,3)` に変形し、`np.tensordot` で $K$ をターゲット脚にだけ縮約する。これは数学的に $\tilde K = K\otimes I_{\bar S}$ を作って $\tilde K \rho \tilde K^\dagger$ を計算するのと厳密に同じ（テンソル代数の標準恒等式 $(\mathrm{id}_{\bar S}\otimes K)\,\mathrm{vec}(\rho) = ...$）。
+
+#### `kraus_channel` への対応
+
+```
+circuit.kraus_channel(qudits=S_alpha, kraus_operators=[K_{alpha,1}, ..., K_{alpha,r_alpha}])
+```
+
+は `KrausChannel(parent_circuit, name="Kraus[...]", target_qudits=S_alpha, kraus_operators=[K_{α,β}], dimensions=[3,...])` を構築する（`circuit.py`：211–230 行目）。`KrausChannel.__init__` は (i) 各 $K$ の形状 $(d_\mathrm{loc}, d_\mathrm{loc})$ を検証、(ii) $\sum_\beta K^\dagger K = I$ を Frobenius $10^{-9}$ で検証、(iii) Kraus 列を `_kraus_operators` に保持（`kraus_channel.py`：96–123 行目）。`to_matrix()` および `__array__` は `NotImplementedError` を raise（148–159 行目）：「ユニタリ行列としては存在しない」が型レベルで保証される。
+
+DMSim 実行時、`_apply_instruction` で `isinstance(instruction, KrausChannel)` 分岐に入り（`dmsim.py`：272–273 行目）、
+
+```
+return apply_kraus_to_density(rho, instruction.kraus_operators, qudits=S_alpha, dims=[3,3,3,3])
+```
+
+`apply_kraus_to_density`（147–162 行目）は
+
+```
+acc = 0
+for k in [K_{alpha,1}, ..., K_{alpha,r_alpha}]:
+    rho_t = rho.reshape(3,3,3,3, 3,3,3,3)
+    rho_t = _apply_local_op_one_side(rho_t, k, S_alpha, dims, "row")
+    rho_t = _apply_local_op_one_side(rho_t, k.conj(), S_alpha, dims, "col")
+    acc += rho_t.reshape(81,81)
+return acc
+```
+
+これは数式で書くと
+
+$$
+\rho^\text{new} \;=\; \sum_{\beta=1}^{r_\alpha} \tilde K_{\alpha,\beta}\,\rho\,\tilde K_{\alpha,\beta}^\dagger \;=\; (e^{\mathcal{D}_\alpha\,dt/2})(\rho), \qquad(\spadesuit_5)
+$$
+
+となり、$(\spadesuit_1)$–$(\spadesuit_4)$ より $e^{\mathcal{D}_\alpha\,dt/2}$ を**厳密に**実装している。要するに
+
+$$
+\boxed{\;\texttt{kraus\_channel}(\,S_\alpha,\,\{K_{\alpha,\beta}\}\,) \;\;\text{は厳密に}\;\; \rho\mapsto \sum_\beta \tilde K_{\alpha,\beta}\,\rho\,\tilde K_{\alpha,\beta}^\dagger\;\;\text{を実行する。}\;}
+$$
+
+## A.6 1 ステップの時間発展演算子の完全な表式
+
+$(\heartsuit_2)$ と $(\spadesuit_5)$ を $(\star\star)$ に代入し、命令列の順序（`_trotter_step_dmsim` が append する順）を保つと、1 ステップの時間発展超演算子 $\Phi(dt)$ を $\rho$ に作用させた結果は
+
+$$
+\Phi(dt)(\rho) \;=\; \mathcal{U}_H\!\bigg(\;\sum_{\beta_{1}^{(L)}}\!\tilde K_{1,\beta_1^{(L)}}\!\cdots\sum_{\beta_{26}^{(L)}}\!\tilde K_{26,\beta_{26}^{(L)}}\;\sum_{\beta_{26}^{(R)}}\!\tilde K_{26,\beta_{26}^{(R)}}\!\cdots\sum_{\beta_{1}^{(R)}}\!\tilde K_{1,\beta_1^{(R)}}\;\mathcal{U}_H(\rho)\;\tilde K_{1,\beta_1^{(R)}}^\dagger\!\cdots\tilde K_{26,\beta_{26}^{(R)}}^\dagger\;\tilde K_{26,\beta_{26}^{(L)}}^\dagger\!\cdots \tilde K_{1,\beta_1^{(L)}}^\dagger\;\bigg)
+$$
+
+の形に書ける。ここで $\mathcal{U}_H(\rho) = U_H\,\rho\,U_H^\dagger$、forward 列の Kraus index $\beta_\alpha^{(R)}$ と reverse 列の Kraus index $\beta_\alpha^{(L)}$ は**独立**に和を取る（各 `KrausChannel` は独立な CPTP 写像）。**書き直すと**、外側に左から右に「ハミルトニアン半 → forward 26 個 → reverse 26 個 → ハミルトニアン半」という超演算子の合成
+
+$$
+\Phi(dt) \;=\; \mathcal{U}_H\,\circ\,\mathcal{E}_1^{(R)}\circ\cdots\circ\mathcal{E}_{26}^{(R)}\,\circ\,\mathcal{E}_{26}^{(L)}\circ\cdots\circ\mathcal{E}_1^{(L)}\,\circ\,\mathcal{U}_H
+$$
+
+ただし $\mathcal{E}_\alpha^{(R)} = \mathcal{E}_\alpha^{(L)} = e^{\mathcal{D}_\alpha\,dt/2}$（同じ局所超演算子；上付き $(R)$/$(L)$ は forward/reverse の位置を示すラベル）。
+
+注意：本文 §6.2.2 の式
+
+$$
+\Phi(dt) \;=\; \mathcal{U}_H\circ\Big(\bigcirc_{\alpha=1}^{26}\mathcal{E}_\alpha\Big)\circ\Big(\bigcirc_{\alpha=26}^{1}\mathcal{E}_\alpha\Big)\circ\mathcal{U}_H
+$$
+
+と完全に等価（$\circ$ の合成順序の規約：右の超演算子から先に作用する）。$\bigcirc_{\alpha=1}^{26}$ は $\mathcal{E}_{26}\circ\mathcal{E}_{25}\circ\cdots\circ\mathcal{E}_1$（左から右に書いた順、すなわち $\mathcal{E}_1$ が最初に適用される）の意味。
+
+### A.6.1 vec 表現での 1 ステップ
+
+$(\heartsuit_3)$ と $(\spadesuit_5)$ の vec 表現
+
+$$
+\mathrm{vec}\big(\sum_\beta \tilde K_{\alpha,\beta}\,\rho\,\tilde K_{\alpha,\beta}^\dagger\big) \;=\; \Big[\sum_\beta \tilde K_{\alpha,\beta}^*\otimes\tilde K_{\alpha,\beta}\Big]\,\mathrm{vec}(\rho)
+$$
+
+を組み合わせると、$\Phi(dt)$ の vec 行列表現（$D^2\times D^2 = 6561\times 6561$）は
+
+$$
+\boxed{\;\Phi(dt) \;\stackrel{\text{vec}}{=}\; (U_H^*\otimes U_H)\;\Big[\prod_{\alpha=1}^{26}\sum_\beta \tilde K_{\alpha,\beta}^*\otimes\tilde K_{\alpha,\beta}\Big]\;\Big[\prod_{\alpha=26}^{1}\sum_\beta \tilde K_{\alpha,\beta}^*\otimes\tilde K_{\alpha,\beta}\Big]\;(U_H^*\otimes U_H).\;}
+$$
+
+ただし行列積の左側が後から作用する。**コードはこの 6561×6561 行列を陽には作らない**（メモリと計算量のため）：上で示した通り、$\rho$ を $(3,3,3,3,3,3,3,3)$ テンソルとして保持し、各因子をテンソル脚に対して `tensordot` で逐次適用する。これは数学的に**厳密に同値**で、近似なし。
+
+## A.7 全シミュレーションの時間発展演算子（100 ステップ）
+
+メインループは
+
+```
+for n = 0, 1, ..., 99:
+    rho_{n+1} = Phi(dt)(rho_n)        ← 1 step circuit を DMSim で実行
+```
+
+なので
+
+$$
+\hat\rho(t_n) \;=\; \rho_n \;=\; \Phi(dt)^n(\rho_0),\qquad t_n = n\cdot dt = n. \qquad(\clubsuit_1)
+$$
+
+特に最終時刻 $t_{100}=100$ で
+
+$$
+\boxed{\;\hat\rho_\mathrm{final} \;=\; \rho_{100} \;=\; \big[\Phi(dt)\big]^{100}(\rho_0) \;=\; \underbrace{\Phi(dt)\circ\Phi(dt)\circ\cdots\circ\Phi(dt)}_{100\text{ 回}}(\rho_0).\;}\qquad(\clubsuit_2)
+$$
+
+これと $(\star)$（GKSL の真の解 $\hat\rho^\mathrm{true}(100) = e^{100\,\mathcal{L}}\hat\rho_0$）との関係は
+
+$$
+\Phi(dt)^{100} \;=\; \big(e^{\mathcal{L}\,dt} + O(dt^3)\big)^{100} \;=\; e^{\mathcal{L}\cdot 100\cdot dt} + 100\cdot O(dt^3) \;=\; e^{100\,\mathcal{L}} + O(t_\mathrm{max}\cdot dt^2)
+$$
+
+（ステップ毎 $O(dt^3)$ × ステップ数 $t_\mathrm{max}/dt$ ＝ 大域 $O(dt^2)$、$dt=1$ なので大域誤差は $O(1)\cdot t_\mathrm{max}$ オーダ；実測収束は §10 の通り `n_steps→∞` で 2 次収束）。
+
+### A.7.1 各ステップを「ゲート命令の積」に展開した最終形（省略無し）
+
+$\rho_n$ から $\rho_{n+1}$ への 1 ステップを、ゲート命令毎に$\rho$ がどう変化するかを**全 54 行**の代入として書き下すと（$\rho^{(k)}$ は $k$ 番目の命令適用後の状態）：
+
+$$
+\begin{aligned}
+\rho^{(0)}  &:= \rho_n \\[2pt]
+\rho^{(1)}  &= U_H\,\rho^{(0)}\,U_H^\dagger &&\text{(命令 a: cu\_multi[0,1,2,3])}\\[2pt]
+\rho^{(2)}  &= \sum_{\beta} \tilde K_{1,\beta}\,\rho^{(1)}\,\tilde K_{1,\beta}^\dagger &&\text{(命令 b1: kraus\_channel[0,1], TTA01-1)}\\
+\rho^{(3)}  &= \sum_{\beta} \tilde K_{2,\beta}\,\rho^{(2)}\,\tilde K_{2,\beta}^\dagger &&\text{(命令 b2: kraus\_channel[0,1], TTA01-2)}\\
+\rho^{(4)}  &= \sum_{\beta} \tilde K_{3,\beta}\,\rho^{(3)}\,\tilde K_{3,\beta}^\dagger &&\text{(命令 b3: kraus\_channel[1,2], TTA12-1)}\\
+\rho^{(5)}  &= \sum_{\beta} \tilde K_{4,\beta}\,\rho^{(4)}\,\tilde K_{4,\beta}^\dagger &&\text{(命令 b4: kraus\_channel[1,2], TTA12-2)}\\
+\rho^{(6)}  &= \sum_{\beta} \tilde K_{5,\beta}\,\rho^{(5)}\,\tilde K_{5,\beta}^\dagger &&\text{(命令 b5: kraus\_channel[2,3], TTA23-1)}\\
+\rho^{(7)}  &= \sum_{\beta} \tilde K_{6,\beta}\,\rho^{(6)}\,\tilde K_{6,\beta}^\dagger &&\text{(命令 b6: kraus\_channel[2,3], TTA23-2)}\\
+\rho^{(8)}  &= \sum_{\beta} \tilde K_{7,\beta}\,\rho^{(7)}\,\tilde K_{7,\beta}^\dagger &&\text{(命令 b7: kraus\_channel[0], 蛍光-0)}\\
+\rho^{(9)}  &= \sum_{\beta} \tilde K_{8,\beta}\,\rho^{(8)}\,\tilde K_{8,\beta}^\dagger &&\text{(命令 b8: kraus\_channel[1], 蛍光-1)}\\
+\rho^{(10)} &= \sum_{\beta} \tilde K_{9,\beta}\,\rho^{(9)}\,\tilde K_{9,\beta}^\dagger &&\text{(命令 b9: kraus\_channel[2], 蛍光-2)}\\
+\rho^{(11)} &= \sum_{\beta} \tilde K_{10,\beta}\,\rho^{(10)}\,\tilde K_{10,\beta}^\dagger &&\text{(命令 b10: kraus\_channel[3], 蛍光-3)}\\
+&\;\;\vdots &&\;\;\vdots\\
+\rho^{(27)} &= \sum_{\beta} \tilde K_{26,\beta}\,\rho^{(26)}\,\tilde K_{26,\beta}^\dagger &&\text{(命令 b26: kraus\_channel[3], ISC$_{T\to S}$-3)}\\[3pt]
+\rho^{(28)} &= \sum_{\beta} \tilde K_{26,\beta}\,\rho^{(27)}\,\tilde K_{26,\beta}^\dagger &&\text{(命令 c1 = b26 再適用)}\\
+&\;\;\vdots &&\;\;\vdots\\
+\rho^{(53)} &= \sum_{\beta} \tilde K_{1,\beta}\,\rho^{(52)}\,\tilde K_{1,\beta}^\dagger &&\text{(命令 c26 = b1 再適用)}\\[3pt]
+\rho^{(54)} &= U_H\,\rho^{(53)}\,U_H^\dagger &&\text{(命令 d: cu\_multi[0,1,2,3])}\\[2pt]
+\rho_{n+1} &:= \rho^{(54)} &&
+\end{aligned}
+$$
+
+ここで $\tilde K_{\alpha,\beta}$ は §A.5.2 段階 5 で定義した「局所 Kraus を $S_\alpha$ サイトに作用させ、$\bar S_\alpha$ には恒等で作用させた $81\times 81$ 行列」。$\beta$ 和の上限 $r_\alpha$ は省略しているが、各 $\alpha$ ごとに固定（pair なら $\leq 81$、single なら $\leq 9$）。
+
+DMSim の実装は **$\tilde K$ を陽に組まずに** 上の代入を `np.tensordot` で実行する（A.5.2 段階 5 の通り）が、数学的にはこの 54 行が DMSim が行っている全部であり、これ以上の隠れた処理は無い（コードを `_apply_instruction` まで辿れば確認できる）。
+
+### A.7.2 100 ステップの完全展開
+
+A.7.1 の代入を 100 回繰り返したものが $\rho_{100}$ であり、これは $\rho_0$ から開始して合計 $54\times 100 = 5400$ 個の超演算子作用（各々が 1 個の `cu_multi` か 1 個の `kraus_channel`）を順に施すことに等しい。
+
+## A.8 まとめ：もとの GKSL から `cu_multi`／`KrausChannel` 列までの導出経路（一行不漏れ）
+
+```
+[1] 物理層         dot ρ = -i [H_total, ρ] + Σ_α D[L_α](ρ),   ρ(0) = |ψ_0><ψ_0|
+        ↓ (形式解、超演算子の指数)
+[2] 形式解         ρ(t) = e^{L · t}(ρ_0),  L = L_H + L_D
+        ↓ (Strang 2 次分割: A.3)
+[3] H–D 分割       e^{L · dt} = e^{L_H · dt/2} · e^{L_D · dt} · e^{L_H · dt/2}  + O(dt^3)
+        ↓ (パリンドロミック散逸子分割: A.4)
+[4] 散逸子分割     e^{L_D · dt} = (∏↑ e^{D_α · dt/2})·(∏↓ e^{D_α · dt/2})  + O(dt^3)
+        ↓ (各 D_α の局所性: A.5.2 段階 1)
+[5] 局所化         e^{D_α · dt/2} = e^{D^loc[L^loc_α] · dt/2} ⊗ id_{barS_α}
+        ↓ (vec 表現: A.5.2 段階 2)
+[6] 局所超演算子   L^loc_α = L*⊗L − ½(I⊗L†L) − ½((L†L)^T⊗I)   (L = L^loc_α)
+        ↓ (scipy.linalg.expm: A.5.2 段階 3)
+[7] 局所半 ch.     M^half_α = expm(L^loc_α · dt/2)         (9×9 または 81×81)
+        ↓ (Choi–Jamiolkowski 同型: A.5.2 段階 4)
+[8] Choi 行列      C_α = reshape&transpose(M^half_α);  C_α = Σ_β λ_β |v_β><v_β|
+        ↓ (CPTP 検証 + 非物理は ValueError)
+[9] Kraus          K_{α,β} = sqrt(λ_β) · reshape(v_β, (d_loc, d_loc))
+        ↓ (テンソル化: A.5.2 段階 5)
+[10] 全空間 Kraus  tilde{K}_{α,β} = K_{α,β} ⊗ I_{barS_α}
+        ↓ (MQT-Qudits API)
+[11] 命令          circuit.cu_multi([0,1,2,3], U_H)              ← e^{L_H · dt/2} を厳密実装
+                  circuit.kraus_channel(S_α, [K_{α,β}])         ← e^{D_α · dt/2} を厳密実装
+        ↓ (1 ステップ回路の構築: A.6, A.7.1)
+[12] 1 step 回路   54 命令: a, b1..b26, c1..c26, d
+        ↓ (DMSim 実行: A.5.1, A.5.2 段階 5)
+[13] DMSim         各命令に対し ρ <- U_H ρ U_H†   または   ρ <- Σ_β tilde{K}_{α,β} ρ tilde{K}_{α,β}†
+        ↓ (100 step ループ: A.7.2)
+[14] 最終          ρ_final = Φ(dt)^{100}(ρ_0) = e^{100·L}(ρ_0) + O(t_max · dt^2)
+```
+
+これがシナリオ5dで「もとの qutrit GKSL 方程式の時間発展演算子を `cu_multi` と `KrausChannel` でどう構築・適用しているか」の**省略無しの完全な導出鎖**である。各段階で行われている近似は段階 [3]・[4] の Strang 分割／パリンドロミック分割（合算で大域 $O(dt^2)$）のみであり、それ以外は**厳密**（vec 同型は数学的恒等式、`expm` は機械精度、Choi–Jamiolkowski は同型、Kraus 適用は数学的恒等式、命令列の合成は超演算子合成と一致）。ヒューリスティック処理は段階 [8]・[9]・[11] のいずれにも入っておらず、CPTP 違反や負固有値はすべて `ValueError` で停止する設計（`KrausChannel.__init__` の CPTP_TOLERANCE=1e-9、`kraus_from_local_superoperator` の CHOI_EIG_TOL=1e-12）。
+

@@ -548,6 +548,260 @@ class QuditGKSLKrausSimulator:
         }
 
     # ------------------------------------------------------------------
+    # A-1 残課題: backend-executable per-step circuit (fresh ancilla per channel)
+    # ------------------------------------------------------------------
+
+    def build_executable_per_step_circuit_fresh_ancillas(
+        self, dt: float, palindromic: bool = True
+    ) -> dict:
+        """Build a per-step circuit that **does** run on MQT-Qudits backends.
+
+        The combined circuit returned by
+        :meth:`build_combined_trotter_step_circuit` re-uses *one* ancilla
+        across every Stinespring channel.  That requires mid-circuit
+        ancilla reset, which ``tnsim`` / ``misim`` do not implement, so
+        that combined circuit cannot be executed on a backend in its
+        current form (this is the residual A-1 item in
+        ``STATUS_HONEST_2026-05.md``).
+
+        This method builds an alternative whose physics is **identical**
+        but which is backend-executable: every Stinespring channel gets
+        its **own fresh ancilla** initialised in ``|0⟩``.  No reset is
+        needed because no ancilla is ever re-used.  Tracing out all the
+        ancillas at the end yields exactly the composition of channels
+        applied to ``ρ_sys``, which is the same map produced by
+        :meth:`simulate_kraus` for one Trotter step.
+
+        Cost
+        ----
+        ``n_ancilla = (2 if palindromic else 1) × len(self.lindblad_local_info)``.
+        For ``N_molecules = 2``:
+
+        * ``palindromic = False``: 12 ancillas → 14 qudits (3¹⁴ ≈ 4.8 M
+          basis states; runs fine on ``tnsim`` and even on a plain
+          state-vector backend).
+        * ``palindromic = True``:  24 ancillas → 26 qudits (3²⁶ ≈ 2.5e12
+          basis states; **out of reach** of state-vector simulation;
+          ``tnsim`` may or may not handle it depending on entanglement
+          growth — measured separately).
+
+        The cost growth is intrinsic to the "fresh ancilla per
+        Stinespring channel" construction.  No heuristic compression is
+        applied here.
+
+        Parameters
+        ----------
+        dt:
+            Step size.  When ``palindromic=False`` the Stinespring
+            unitaries use full ``dt``; when ``palindromic=True`` they
+            use ``dt/2`` (forward) and again ``dt/2`` (reverse), exactly
+            matching :meth:`build_combined_trotter_step_circuit`.
+        palindromic:
+            ``True`` reproduces the Strang+palindromic structure of
+            :meth:`build_combined_trotter_step_circuit`.
+            ``False`` produces a single forward sweep
+            ``H(dt) → D_1(dt) → … → D_n(dt)``, which is 1st-order in
+            ``dt`` (matching the Stinespring channel approximation
+            order) and is the practical choice for backend execution.
+
+        Returns
+        -------
+        dict with keys
+            ``"circuit"``: the constructed ``mqt.qudits.quantum_circuit.QuantumCircuit``.
+            ``"n_system_qudits"``: ``self.N``.
+            ``"n_ancilla_qudits"``: number of ancilla qudits allocated.
+            ``"n_total_qudits"``: ``n_system_qudits + n_ancilla_qudits``.
+            ``"system_indices"``: ``list[int]`` — qudit indices of the system register.
+            ``"ancilla_indices_per_channel"``: ``list[list[int]]`` — for every
+                Stinespring gate appended (in append order), the ancilla
+                qudit indices it uses (length 1 for both single and pair
+                Stinespring; the local unitary is what carries the
+                multi-qudit structure).
+            ``"gate_sequence"``: ``list[dict]`` — for every gate appended,
+                ``{"kind": "cu_one"|"cu_two"|"cu_multi", "qudits": [...],
+                "tag": str}`` where ``tag`` is one of
+                ``"H_onsite"``, ``"H_pair"``, ``"stinespring_single_fwd"``,
+                ``"stinespring_pair_fwd"``, ``"stinespring_single_rev"``,
+                ``"stinespring_pair_rev"``.  Sufficient to reproduce the
+                circuit's action in pure NumPy for verification.
+            ``"local_unitaries"``: ``list[np.ndarray]`` — the gate
+                matrices, one per ``gate_sequence`` entry, in the same
+                order.  Allows the caller to compute the same evolution
+                in process without re-deriving anything.
+            ``"palindromic"``: ``bool`` — echoes the input.
+        """
+        from mqt.qudits.quantum_circuit import QuantumCircuit
+
+        N = self.N
+        d = self.d
+        d_anc = self.d_anc
+
+        n_lindblad = len(self.lindblad_local_info)
+        n_anc = (2 if palindromic else 1) * n_lindblad
+        n_total = N + n_anc
+
+        dims = [d] * N + [d_anc] * n_anc
+        circuit = QuantumCircuit(n_total, dims, 0)
+
+        gate_sequence: list[dict] = []
+        local_unitaries: list[np.ndarray] = []
+        ancilla_indices_per_channel: list[list[int]] = []
+        next_anc = N  # qudit indices [N, N+1, ..., N+n_anc-1] are ancillas
+
+        # Pre-compute Hamiltonian local unitaries
+        ham_dt = (dt / 2.0) if palindromic else dt
+        U_onsite = expm(-1j * self.h_local * ham_dt)
+        U_pairs = {
+            (ip, jp): expm(-1j * self.h_transfer_pairs[(ip, jp)] * ham_dt)
+            for (ip, jp) in self.params.neighbors
+        }
+
+        def _append_hamiltonian_block() -> None:
+            for i in range(N):
+                circuit.cu_one(i, U_onsite)
+                gate_sequence.append({"kind": "cu_one", "qudits": [i], "tag": "H_onsite"})
+                local_unitaries.append(U_onsite)
+            for (ip, jp) in self.params.neighbors:
+                circuit.cu_two([ip, jp], U_pairs[(ip, jp)])
+                gate_sequence.append({"kind": "cu_two", "qudits": [ip, jp], "tag": "H_pair"})
+                local_unitaries.append(U_pairs[(ip, jp)])
+
+        def _append_lindblad_pass(direction: str, dt_st: float) -> None:
+            nonlocal next_anc
+            iterator = (
+                enumerate(self.lindblad_local_info)
+                if direction == "fwd"
+                else reversed(list(enumerate(self.lindblad_local_info)))
+            )
+            for _idx, (op_type, sites, L_local, _gamma) in iterator:
+                U_local = self._build_local_stinespring_unitary(L_local, dt_st)
+                anc = next_anc
+                next_anc += 1
+                if op_type == "single":
+                    circuit.cu_two([sites[0], anc], U_local)
+                    tag = f"stinespring_single_{direction}"
+                    gate_sequence.append({"kind": "cu_two", "qudits": [sites[0], anc], "tag": tag})
+                elif op_type == "pair":
+                    circuit.cu_multi([sites[0], sites[1], anc], U_local)
+                    tag = f"stinespring_pair_{direction}"
+                    gate_sequence.append({"kind": "cu_multi", "qudits": [sites[0], sites[1], anc], "tag": tag})
+                else:
+                    msg = f"Unexpected op_type: {op_type!r}"
+                    raise ValueError(msg)
+                local_unitaries.append(U_local)
+                ancilla_indices_per_channel.append([anc])
+
+        # --- Hamiltonian (ham_dt) ---
+        _append_hamiltonian_block()
+
+        # --- Forward Lindblad pass ---
+        st_dt = (dt / 2.0) if palindromic else dt
+        _append_lindblad_pass("fwd", st_dt)
+
+        if palindromic:
+            # --- Reverse Lindblad pass ---
+            _append_lindblad_pass("rev", st_dt)
+            # --- Hamiltonian half-step 2 ---
+            _append_hamiltonian_block()
+
+        if next_anc != N + n_anc:
+            msg = f"ancilla bookkeeping bug: next_anc={next_anc}, expected {N + n_anc}"
+            raise AssertionError(msg)
+
+        return {
+            "circuit": circuit,
+            "n_system_qudits": N,
+            "n_ancilla_qudits": n_anc,
+            "n_total_qudits": n_total,
+            "system_indices": list(range(N)),
+            "ancilla_indices_per_channel": ancilla_indices_per_channel,
+            "gate_sequence": gate_sequence,
+            "local_unitaries": local_unitaries,
+            "palindromic": palindromic,
+        }
+
+    def evolve_pure_state_in_process(
+        self,
+        psi0: np.ndarray,
+        gate_sequence: list[dict],
+        local_unitaries: list[np.ndarray],
+        n_total_qudits: int,
+    ) -> np.ndarray:
+        """Apply the same gate sequence in NumPy to ``psi0`` and return ``ψ``.
+
+        This is the in-process reference for the executable per-step
+        circuit: it consumes the ``gate_sequence`` / ``local_unitaries``
+        produced by
+        :meth:`build_executable_per_step_circuit_fresh_ancillas` and
+        applies each gate to a state vector indexed in **MSB-first**
+        order (qudit 0 is the most significant index), matching the
+        ordering returned by ``tnsim``'s ``get_state_vector``.
+
+        For ``cu_two`` and ``cu_multi`` we permute the involved qudit
+        legs to the front, contract with the local unitary, then
+        permute back.  No full ``dim × dim`` operator is materialised.
+        """
+        d = self.d
+        n = n_total_qudits
+
+        if psi0.shape != (d ** n,):
+            msg = f"psi0 must have shape ({d ** n},), got {psi0.shape}"
+            raise ValueError(msg)
+
+        psi = psi0.astype(np.complex128, copy=True).reshape((d,) * n)
+
+        for gate, U in zip(gate_sequence, local_unitaries):
+            qudits = gate["qudits"]
+            k = len(qudits)
+            d_local = d ** k
+            if U.shape != (d_local, d_local):
+                msg = (
+                    f"local unitary shape {U.shape} does not match "
+                    f"({d_local},{d_local}) for {k}-qudit gate"
+                )
+                raise ValueError(msg)
+
+            # Move the involved legs to the front, in the order given.
+            other_legs = [a for a in range(n) if a not in qudits]
+            perm = list(qudits) + other_legs
+            psi = psi.transpose(perm)
+
+            # Contract: psi has shape (d,)*k + (d,)*(n-k); reshape to (d_local, d_rest)
+            d_rest = d ** (n - k)
+            psi = psi.reshape(d_local, d_rest)
+            psi = U @ psi
+            psi = psi.reshape((d,) * n)
+
+            # Restore original leg order
+            inv = [0] * n
+            for new_pos, orig in enumerate(perm):
+                inv[orig] = new_pos
+            psi = psi.transpose(inv)
+
+        return psi.reshape(d ** n)
+
+    def reduced_density_matrix_on_system(
+        self, psi: np.ndarray, n_system_qudits: int, n_total_qudits: int
+    ) -> np.ndarray:
+        """Trace out ancillas (qudits ``n_system..n_total-1``) from a pure state.
+
+        The state vector is indexed in **MSB-first** order (qudit 0 is
+        the most significant index), so ancilla legs are the trailing
+        legs after a ``(d,)*n`` reshape.  Returns ``ρ_sys`` as a
+        ``(d^N, d^N)`` complex array.
+        """
+        d = self.d
+        n = n_total_qudits
+        N = n_system_qudits
+        if psi.shape != (d ** n,):
+            msg = f"psi must have shape ({d ** n},), got {psi.shape}"
+            raise ValueError(msg)
+        psi_t = psi.reshape((d,) * n)
+        # Combine system legs into one index, ancilla legs into another.
+        psi_mat = psi_t.reshape(d ** N, d ** (n - N))
+        return psi_mat @ psi_mat.conj().T
+
+    # ------------------------------------------------------------------
     # Kraus operator extraction from local Stinespring unitaries
     # ------------------------------------------------------------------
 

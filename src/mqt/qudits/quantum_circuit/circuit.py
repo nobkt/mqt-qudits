@@ -18,6 +18,7 @@ from .gates import (
     CustomTwo,
     GellMann,
     H,
+    KrausChannel,
     NoiseX,
     NoiseY,
     Perm,
@@ -205,6 +206,28 @@ class QuantumCircuit:
             [self.dimensions[i] for i in qudits],
             controls,
         )
+
+    @add_gate_decorator
+    def kraus_channel(
+        self,
+        qudits: list[int] | int,
+        kraus_operators: Sequence[NDArray],
+    ) -> KrausChannel:
+        """Append a non-unitary Kraus channel instruction to the circuit.
+
+        The instruction represents a CPTP map ``ρ → Σ_k K_k ρ K_k†`` acting
+        on the specified qudits.  See :class:`KrausChannel` for details.
+        Only density-matrix backends (e.g. ``dmsim``) can execute circuits
+        containing this instruction; unitary backends will raise
+        :class:`NotImplementedError`.
+        """
+        if isinstance(qudits, int):
+            dims: list[int] | int = self.dimensions[qudits]
+            name = "Kraus" + str(dims)
+        else:
+            dims = [self.dimensions[i] for i in qudits]
+            name = "Kraus" + str(dims)
+        return KrausChannel(self, name, qudits, kraus_operators, dims)
 
     @add_gate_decorator
     def cx(self, qudits: list[int], parameters: list[int | float] | None = None) -> CEx:

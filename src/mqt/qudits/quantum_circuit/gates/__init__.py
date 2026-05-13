@@ -11,6 +11,7 @@ from .custom_two import CustomTwo
 from .cx import CEx
 from .gellmann import GellMann
 from .h import H
+from .kraus_channel import KrausChannel
 from .ls import LS
 from .ms import MS
 from .noise_x import NoiseX
@@ -37,6 +38,7 @@ __all__ = [
     "GateTypes",
     "GellMann",
     "H",
+    "KrausChannel",
     "NoiseX",
     "NoiseY",
     "Perm",

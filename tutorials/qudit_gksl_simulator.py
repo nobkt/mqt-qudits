@@ -52,6 +52,7 @@ from exact_local_channels import (
     apply_channel_single,
     precompute_exact_channels_half,
 )
+from dmsim_kraus_helpers import kraus_from_local_superoperator
 from gksl_physical_parameters import GKSLPhysicalParameters
 from stinespring_utils import (
     apply_stinespring_to_density_matrix,
@@ -93,6 +94,7 @@ class QuditGKSLSimulator:
         self,
         params: GKSLPhysicalParameters,
         algorithm: str = "stinespring",
+        execute_on_backend: str | None = None,
     ) -> None:
         if params.with_boson:
             raise ValueError("QuditGKSLSimulator is for non-boson model only")
@@ -103,7 +105,29 @@ class QuditGKSLSimulator:
                 f"{algorithm!r}"
             )
             raise ValueError(msg)
+        if execute_on_backend is not None:
+            if execute_on_backend != "dmsim":
+                msg = (
+                    "execute_on_backend currently only supports 'dmsim' "
+                    "(MQT-Qudits density-matrix backend); got "
+                    f"{execute_on_backend!r}.  state-vector backends "
+                    "(tnsim/misim) cannot run the fresh-ancilla per-step "
+                    "circuit at N>=3 due to state-vector capacity limits "
+                    "(see STATUS_HONEST_2026-05.md A-1)."
+                )
+                raise ValueError(msg)
+            if algorithm != "exact_local_channels":
+                msg = (
+                    "execute_on_backend='dmsim' requires "
+                    "algorithm='exact_local_channels' so that each Lindblad "
+                    "channel has an exact Kraus representation that can be "
+                    "fed to MQT-Qudits as a KrausChannel instruction.  "
+                    "Stinespring dilation has no Kraus representation on "
+                    "the system alone (it requires ancillas)."
+                )
+                raise ValueError(msg)
         self.algorithm = algorithm
+        self.execute_on_backend = execute_on_backend
         self.params = params
         self.n_system_qudits = params.N_molecules
         self.d_anc = params.d  # ancilla dimension matches system qudit dimension
@@ -119,6 +143,10 @@ class QuditGKSLSimulator:
 
         # System dimension (qutrit space)
         self.dim = params.d ** params.N_molecules  # 81
+
+        # Lazy initialisation for DMSim backend execution.
+        self._dmsim_backend = None
+        self._dmsim_kraus_half: list[tuple[tuple[int, ...], list[np.ndarray], str]] | None = None
 
     # ------------------------------------------------------------------
     # Trotter step primitives
@@ -137,6 +165,13 @@ class QuditGKSLSimulator:
         channels then realises ``exp(L_D · dt)`` exactly up to the
         ``O(dt³)`` Lie-product commutator error among local channels —
         which is the whole point of the palindromic ordering.
+
+        For ``execute_on_backend="dmsim"`` we additionally extract the
+        Kraus operators of every cached half-step local superoperator
+        (Choi-Jamiolkowski decomposition,
+        :func:`dmsim_kraus_helpers.kraus_from_local_superoperator`) so
+        that each Lindblad channel can be issued as a MQT-Qudits
+        :class:`KrausChannel` instruction.
         """
         self._U_H_half = expm(-1j * self.H_total * dt / 2)
         if self.algorithm == "stinespring":
@@ -151,6 +186,19 @@ class QuditGKSLSimulator:
             self._exact_channels_half = precompute_exact_channels_half(
                 self.params, dt
             )
+
+        if self.execute_on_backend == "dmsim":
+            # Extract Kraus operators for every half-step local channel.
+            kraus_list: list[tuple[tuple[int, ...], list[np.ndarray], str]] = []
+            for sites, M_half, kind in self._exact_channels_half:
+                d_root = self.params.d if kind == "single" else self.params.d ** 2
+                kraus = kraus_from_local_superoperator(M_half, d_root)
+                kraus_list.append((sites, kraus, kind))
+            self._dmsim_kraus_half = kraus_list
+
+            # Lazily acquire the DMSim backend.
+            from mqt.qudits.simulation import MQTQuditProvider
+            self._dmsim_backend = MQTQuditProvider().get_backend("dmsim")
 
     def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
         """Symmetric Trotter step with palindromic Lindblad channel ordering.
@@ -167,6 +215,9 @@ class QuditGKSLSimulator:
         :mod:`exact_local_channels` (``algorithm="exact_local_channels"``,
         exact → global O(dt²)).
         """
+        if self.execute_on_backend == "dmsim":
+            return self._trotter_step_dmsim(rho)
+
         # Half Hamiltonian
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         if self.algorithm == "stinespring":
@@ -194,6 +245,68 @@ class QuditGKSLSimulator:
         # Half Hamiltonian
         rho = self._U_H_half @ rho @ self._U_H_half.conj().T
         return rho
+
+    # ------------------------------------------------------------------
+    # DMSim backend Trotter step (one MQT-Qudits backend run per step)
+    # ------------------------------------------------------------------
+
+    def _trotter_step_dmsim(self, rho: np.ndarray) -> np.ndarray:
+        """Run one Trotter step as a single MQT-Qudits DMSim backend run.
+
+        Builds an N-qutrit :class:`mqt.qudits.quantum_circuit.QuantumCircuit`
+        containing:
+
+        1. A ``cu_multi`` unitary on all system qudits implementing
+           ``expm(-i H_total dt/2)``.
+        2. Each Lindblad half-step channel as a
+           :class:`~mqt.qudits.quantum_circuit.gates.KrausChannel` instruction
+           in the **forward** order from
+           :func:`exact_local_channels.precompute_exact_channels_half`,
+           then again in the **reverse** order — preserving the palindromic
+           structure that makes the dissipator pass 2nd-order in ``dt``.
+        3. A second ``cu_multi`` for the closing ``expm(-i H_total dt/2)``.
+
+        The circuit is then executed on the ``dmsim`` backend with the
+        previous step's ρ as ``initial_density_matrix``; the returned
+        density matrix is the input for the next step.
+
+        This is genuine MQT-Qudits backend execution: each step's circuit
+        is a real :class:`QuantumCircuit` whose instructions are
+        dispatched by :class:`~mqt.qudits.simulation.backends.DMSim` —
+        no NumPy ``expm`` is called inside the simulation loop, only at
+        the once-per-simulation pre-compute stage (which is a property
+        of the Hamiltonian Trotter step itself, identical for any
+        backend choice).
+        """
+        from mqt.qudits.quantum_circuit import QuantumCircuit
+        from mqt.qudits.quantum_circuit.components.quantum_register import (
+            QuantumRegister,
+        )
+
+        n = self.n_system_qudits
+        d = self.params.d
+
+        qreg = QuantumRegister("sys", n, [d] * n)
+        circuit = QuantumCircuit(qreg)
+
+        # 1. Hamiltonian half-step (full N-qudit unitary).
+        circuit.cu_multi(list(range(n)), self._U_H_half.astype(np.complex128))
+
+        # 2. Forward palindromic pass.
+        for sites, kraus_ops, kind in self._dmsim_kraus_half:
+            target = sites[0] if kind == "single" else list(sites)
+            circuit.kraus_channel(target, kraus_ops)
+
+        # 3. Reverse palindromic pass.
+        for sites, kraus_ops, kind in reversed(self._dmsim_kraus_half):
+            target = sites[0] if kind == "single" else list(sites)
+            circuit.kraus_channel(target, kraus_ops)
+
+        # 4. Closing Hamiltonian half-step.
+        circuit.cu_multi(list(range(n)), self._U_H_half.astype(np.complex128))
+
+        job = self._dmsim_backend.run(circuit, initial_density_matrix=rho)
+        return job.result().get_density_matrix()
 
     # ------------------------------------------------------------------
     # Initial state

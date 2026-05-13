@@ -286,13 +286,13 @@ $$
 
 **1 命令、$81\times 81$ 黒箱**。これが実コード `qudit_gksl_simulator.py:296,309` の本体。
 
-### 4.2 ケース II：$H_0$ と $H_\mathrm{transfer}$ を分離（Strang、ハードウェア向け）
+### 4.2 ケース II：$H_0$ と $H_\mathrm{transfer}$ を分離（ハードウェア向け）
 
-$\hat H_0$ と $\hat H_\mathrm{transfer}$ も非可換（$\hat H_0$ は $|1\rangle\langle 1|, |2\rangle\langle 2|$ を含み、$\hat H_\mathrm{transfer}$ は $|0\rangle\langle 1|, |1\rangle\langle 0|$ を含むので $[\hat H_0,\hat H_\mathrm{transfer}]\neq 0$）。Strang 分割：
+**訂正（補遺 H で証明）**：本節初版は「$[\hat H_0,\hat H_\mathrm{transfer}]\neq 0$」と書いたが、これは **誤り**。$h_\mathrm{loc}=\mathrm{diag}(0,E_T,E_S)$、$\hat A^{(i,j)}=a_ia_j^\dagger$（$|0\rangle\leftrightarrow|1\rangle$ 遷移）の場合、サイト $i,j$ の局所エネルギー差はペア両端で打ち消され $[\hat H_0,\hat H_\mathrm{transfer}]=0$ が成り立つ（補遺 H で完全に演算子代数で証明）。よって Strang 分割は不要、**厳密に分離**：
 
 $$
-e^{-i\hat H_\mathrm{total}\,dt/2}\;\overset{\mathrm{Strang}}{\approx}\;
-e^{-i\hat H_0\,dt/4}\cdot e^{-i\hat H_\mathrm{transfer}\,dt/2}\cdot e^{-i\hat H_0\,dt/4}.
+e^{-i\hat H_\mathrm{total}\,dt/2}\;=\;
+e^{-i\hat H_0\,dt/2}\cdot e^{-i\hat H_\mathrm{transfer}\,dt/2}\quad\text{（厳密、補遺 H）}.
 $$
 
 §2.3 で $e^{-i\hat H_0\,dt/4}$ は **VirtRz 8 個（厳密）**、§3.5 で $e^{-i\hat H_\mathrm{transfer}\,dt/2}$ は **CustomTwo 5 個（Strang 近似）**。よって $U_H$ 半ステップは
@@ -500,4 +500,8 @@ TTA チャンネル 2（前文書 §6.2、$K_1 = \sqrt{p_1}|02\rangle\langle 11|
 * **§6 で 1 Trotter ステップ全体を 62 命令で完全に列挙**（ケース II、forward + reverse 含む）。
 * **§7 で実コードとの差分を表で正直に明示**：実コードは黒箱 `cu_multi` / `kraus_channel` のみで、ネイティブ qutrit ゲート分解は持たない。本文書 §2–§5 はそれを補完する**理論的分解**である。
 
-残存近似（ケース II）：(a) $H_0$ vs $H_\mathrm{transfer}$ の Strang 分割（$O(dt^3)$）、(b) $H_\mathrm{transfer}$ ペア間の Strang 分割（$O(dt^3)$）、(c) Stinespring ダイレーションの leading-order（前文書 §0 の "1st-order in dt" の通り、半ステップで $O(\sqrt{dt}^2) = O(dt)$ 残差を生成、ただしパリンドロミック化で交換子部分は相殺）。これら以外（VirtRz の厳密性、CustomTwo の行列、Stinespring ユニタリの行列、tensordot 適用）は厳密。
+本文書の記述：「§6 表で示した 62 命令」「§4.2 で $H_0$ と $H_\mathrm{transfer}$ の Strang 分割」については、**補遺 `mydoc/シナリオ5d_TTAと蛍光のみ_Qudit量子ゲート展開_補遺.md` 補遺 H・補遺 L で厳密化・修正した**。具体的には：
+
+* **補遺 H**：$[\hat H_0,\hat H_\mathrm{transfer}]=0$ を演算子代数で証明 → ケース II は厳密に分離可能、Strang 不要、誤差なし。
+* **補遺 L**：1 Trotter ステップは正しくは **46 命令**（VirtRz 16 + CustomTwo 10 + Stinespring KrausChannel 20）。本文書 §6 の「62 命令」は H_0/H_transfer Strang を仮定した過剰集計で、補遺 H で不要と判明。
+* **補遺 A〜J**：本文書で省略していた行列（GellMann、$X_3^k$、$\mathrm{CSum}^\dagger$、$h_\mathrm{loc}^\mathrm{tr}$、$E_\mathrm{loc}^\mathrm{tr}$、$U_\mathrm{Stine}^\mathrm{(TTA1,TTA2)}$）を全成分・全 27/9 列で完全展開。

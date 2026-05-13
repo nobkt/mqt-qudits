@@ -272,32 +272,156 @@ $$
 
 ### 6.2 1 Trotter ステップの MQT-Qudits 回路（`_trotter_step_dmsim`）
 
-各 Trotter ステップで、$N=4$ qutrit の `QuantumCircuit`（量子レジスタ次元 $[3,3,3,3]$）を**新規構築**して `DMSim` で実行する：
+各 Trotter ステップで、$N=4$ qutrit の `QuantumCircuit`（量子レジスタ `QuantumRegister("sys", 4, [3,3,3,3])`）を**新規構築**して `DMSim` で実行する。命令は MQT-Qudits の `mqt.qudits.quantum_circuit.QuantumCircuit` API を介して `circuit.cu_multi(...)` および `circuit.kraus_channel(...)` で append される。**回路全体としての命令列は次の通り**（コード `_trotter_step_dmsim` がまさにこの順で append している）：
 
 ```
-[システム量子レジスタ：4 qutrit]
+[QuantumRegister "sys" : 4 qutrit, dimensions = [3, 3, 3, 3]]
 
-  cu_multi(全4 qutrit, U_H_half)                           ← (a) ハミルトニアン半ステップ
+(a)  cu_multi(target=[0,1,2,3], parameters=U_H_half)                      ← ハミルトニアン半ステップ前段
+(b1) kraus_channel(target=[0,1], kraus_operators={K_{1,β}})               ← TTA pair (0,1) チャネル1
+(b2) kraus_channel(target=[0,1], kraus_operators={K_{2,β}})               ← TTA pair (0,1) チャネル2
+(b3) kraus_channel(target=[1,2], kraus_operators={K_{3,β}})               ← TTA pair (1,2) チャネル1
+(b4) kraus_channel(target=[1,2], kraus_operators={K_{4,β}})               ← TTA pair (1,2) チャネル2
+(b5) kraus_channel(target=[2,3], kraus_operators={K_{5,β}})               ← TTA pair (2,3) チャネル1
+(b6) kraus_channel(target=[2,3], kraus_operators={K_{6,β}})               ← TTA pair (2,3) チャネル2
+(b7..b10)  kraus_channel(target=[i], kraus_operators={K_{6+1+i,β}})  i=0..3 ← 蛍光 (4個)
+(b11..b14) kraus_channel(target=[i], kraus_operators={K_{10+1+i,β}}) i=0..3 ← 燐光 (4個)
+(b15..b18) kraus_channel(target=[i], kraus_operators={K_{14+1+i,β}}) i=0..3 ← IC (4個)
+(b19..b22) kraus_channel(target=[i], kraus_operators={K_{18+1+i,β}}) i=0..3 ← ISC S→T (4個)
+(b23..b26) kraus_channel(target=[i], kraus_operators={K_{22+1+i,β}}) i=0..3 ← ISC T→S (4個)
+                                                                            ↑ ここまで forward 列（26 命令）
 
-  for (sites, K_α^(half), kind) in _dmsim_kraus_half:      ← (b) 散逸子 forward 列
-      kraus_channel(target=sites, K_α^(half))                  （26個、構築順）
+(c1..c26) (b1..b26) を完全に逆順で再 append                                  ← reverse 列（26 命令）
 
-  for (sites, K_α^(half), kind) in reversed(_dmsim_kraus_half):← (c) 散逸子 reverse 列
-      kraus_channel(target=sites, K_α^(half))                  （26個、逆順）
-
-  cu_multi(全4 qutrit, U_H_half)                           ← (d) ハミルトニアン半ステップ
+(d)  cu_multi(target=[0,1,2,3], parameters=U_H_half)                      ← ハミルトニアン半ステップ後段
 ```
 
-合計命令数 ＝ $2 + 26 + 26 + 2 = 56$。各 `KrausChannel` の Kraus 演算子は §6.1 で構築した $\{K_\alpha\}$ そのもの。`cu_multi` は `mqt.qudits.quantum_circuit.gates.CustomMulti` でユニタリ $U_H = \exp(-i\hat H_\mathrm{total}\,dt/2)$ を全 4 qutrit に作用させる命令。
+**合計命令数 = $1 + 26 + 26 + 1 = 54$**（前回の文書で「56」「`cu_multi` × 2 + `KrausChannel` × 52」と書いた箇所は、より正確には「`cu_multi` × 2 + `KrausChannel` × 52、計 54 命令」である。`cu_multi` は 1 命令で全 4 qutrit に作用する 1 つの $81\times 81$ 行列である）。
 
-実行は
+実行：
 
 ```
 job = self._dmsim_backend.run(circuit, initial_density_matrix=ρ_prev)
 ρ_next = job.result().get_density_matrix()
 ```
 
-ここで `initial_density_matrix` は前ステップの $\rho$（最初のステップは §7 の初期状態）。
+`initial_density_matrix` は前ステップの $\rho$（最初のステップは §7 の初期状態）。
+
+### 6.2.1 ゲート命令の正確な定義（型・行列・作用）
+
+#### (i) `cu_multi`（`CustomMulti` ゲート）
+
+`mqt.qudits.quantum_circuit.gates.CustomMulti` は `GateTypes.MULTI` のユーザ定義ユニタリゲートで、コンストラクタ引数 `parameters` に渡された複素行列をそのまま自分の行列として保持する（`__array__` メソッドが `self.__array_storage` を返す）。シナリオ5dでは
+
+$$
+\boxed{\;\texttt{cu\_multi}(\,[0,1,2,3],\;U_H^{(\mathrm{half})}\,)\;,\qquad U_H^{(\mathrm{half})} \;=\; \exp\!\big(-i\,\hat H_\mathrm{total}\,dt/2\big)\;\in\;\mathbb{C}^{81\times 81}\;}
+$$
+
+を 1 ステップにつき 2 回（前段・後段）使う。$U_H^{(\mathrm{half})}$ は `_precompute_unitaries(dt)` で `scipy.linalg.expm(-1j * H_total * dt / 2)` により**シミュレーション開始時に1度だけ**計算される（`self._U_H_half`）。
+
+**重要な真実**：この `cu_multi` は **MQT-Qudits の compiler を通していない**。すなわち native gate 集合 (`VirtRz`, `R`, `Rh`, `Rz`, `CEx`) への分解は**行わない**。DMSim は §6.3.1 の通り `instruction.to_matrix(identities=0)` で $81\times 81$ 行列を取り出してそのまま $\rho$ の両側から掛ける。これは「量子回路の **論理レベル** での実行」であり、**物理2量子ビットゲート列としての実行ではない**。シナリオ5d は「density-matrix backend に正しい数学を委ねた」状態であり、native gate decomposition の誤差や CEx の物理ノイズは**この経路には入っていない**（compiler 経由の native 分解は別経路 `compute_compiler_measured_gate_counts`／`QuditGKSLKrausSimulator` でのみ行われる）。
+
+`cu_multi` 命令の DMSim における代数的作用は
+
+$$
+\rho \;\longmapsto\; U_H^{(\mathrm{half})}\,\rho\,(U_H^{(\mathrm{half})})^\dagger,
+$$
+
+これは Liouvillian の Hamiltonian 部分に対する**厳密な**半ステップ伝播 $e^{\mathcal{L}_H\,dt/2}$ である。
+
+#### (ii) `kraus_channel`（`KrausChannel` 命令）
+
+`mqt.qudits.quantum_circuit.gates.KrausChannel` は **非ユニタリ** 命令（`GateTypes.SINGLE` または `GateTypes.TWO`、ターゲット qudit 数で決まる）で、コンストラクタ時に
+
+$$
+\Big\|\sum_\beta K_{\alpha,\beta}^\dagger K_{\alpha,\beta} \;-\; I_{d_\mathrm{loc}}\Big\|_F \;\leq\; 10^{-9}
+$$
+
+を Frobenius ノルムで実測検証する（違反時 `ValueError`、ヒューリスティック補正なし）。`to_matrix()` および `__array__` は
+
+> "KrausChannel has no unitary matrix representation. Use a density-matrix backend (e.g. DMSim) instead."
+
+として `NotImplementedError` を raise する（=「ユニタリ行列としては存在しない」ことが型レベルで保証されており、嘘がつけない設計）。
+
+シナリオ5d の 1 Trotter ステップで使う $\alpha = 1, \dots, 26$ の各チャネルは、§6.1 の Choi–Jamiolkowski 同型から厳密に抽出された半ステップ Kraus 集合 $\{K_{\alpha,\beta}\}_{\beta=1}^{r_\alpha}$（$r_\alpha \leq d_{\mathrm{loc},\alpha}^2$、Choi 行列の数値的 rank）であり、その**作用は**
+
+$$
+\boxed{\;\rho \;\longmapsto\; \sum_{\beta=1}^{r_\alpha} \big(K_{\alpha,\beta}\big)_{S_\alpha}\;\rho\;\big(K_{\alpha,\beta}^\dagger\big)_{S_\alpha}\;}
+$$
+
+ここで $S_\alpha$ はターゲット qudit 集合（pair チャネルなら 2 qudit、single チャネルなら 1 qudit）。これは厳密に局所散逸子チャネル $e^{\mathcal{D}[\hat L_\alpha]\,dt/2}$ そのものである（§5.2.2 と §6.1 から $\sum_\beta K_{\alpha,\beta} \rho K_{\alpha,\beta}^\dagger = M_\alpha^{(\mathrm{half})}(\rho)$ が解析的恒等式として成立）。
+
+#### (iii) Kraus 演算子の数（rank）の上限
+
+* TTA ペアチャネル ($d_\mathrm{loc}=9$): $r_\alpha \leq 81$
+* 単一サイトチャネル ($d_\mathrm{loc}=3$): $r_\alpha \leq 9$
+
+実際の rank はチャネルごとに Choi 行列の固有値分布で決まる（数値的に $|\lambda| < 10^{-12}$ は捨てられる、§6.1）。チャネルの「Kraus rank」は GKSL チャネルの構造で決まる物理量であり、隠さずそのまま使う。
+
+### 6.2.2 1 Trotter ステップに対応する数学的命題
+
+上の命令列を順に DMSim で実行することは、$\rho$ に対し
+
+$$
+\rho \;\longmapsto\; \mathcal{U}_H^{(\mathrm{half})} \;\circ\; \overbrace{\mathcal{E}_{26}^{(\mathrm{half})}\circ\cdots\circ\mathcal{E}_1^{(\mathrm{half})}}^{\text{forward 列}} \;\circ\; \overbrace{\mathcal{E}_1^{(\mathrm{half})}\circ\cdots\circ\mathcal{E}_{26}^{(\mathrm{half})}}^{\text{reverse 列}} \;\circ\; \mathcal{U}_H^{(\mathrm{half})} \;(\rho)
+$$
+
+を作用させることと**完全に同値**である。ここで
+
+$$
+\mathcal{U}_H^{(\mathrm{half})}(\rho) := U_H^{(\mathrm{half})}\rho (U_H^{(\mathrm{half})})^\dagger,\qquad \mathcal{E}_\alpha^{(\mathrm{half})}(\rho) := \sum_\beta K_{\alpha,\beta}\rho K_{\alpha,\beta}^\dagger \;=\; e^{\mathcal{D}[\hat L_\alpha]\,dt/2}(\rho).
+$$
+
+（命令列が左から右に append され、`DMSim.execute` が `for instruction in circuit.instructions: rho = ...` で**順次** $\rho$ を更新する、という DMSim の実装の単純な帰結である。回路慣習で「左から書いた命令が**最初に**作用する」のと同じ。）
+
+forward 列と reverse 列を併せた散逸子作用は、§5 のパリンドロミック構造により $e^{\mathcal{L}_D\,dt} + O(dt^3)$ と一致し、Hamiltonian 半ステップ 2 個と合わせると Strang 分割により全体として $e^{\mathcal{L}\,dt} + O(dt^3)$（ステップ毎）になる。これがシナリオ5d の 1 ステップで「量子ゲート列として」実装している時間発展そのものである。
+
+### 6.2.3 全シミュレーションの**等価な量子回路図**
+
+$n_\mathrm{steps}=100$ ステップ全体は、上記 1 ステップ回路 $\mathcal{C}_{1\text{step}}$ を 100 回直列に並べたもの（毎ステップで $\rho$ を引き継ぎながら実行）と等価で、概念的には次のような巨大回路になる：
+
+```
+  q[0] ─┬───[U_H/2]───┬─Kraus(TTA01,1)─Kraus(TTA01,2)─Kraus(Fl0)─Kraus(Ph0)─Kraus(IC0)─Kraus(IST0)─Kraus(ITS0)─...─[reverse]─...─[U_H/2]─┬─...
+  q[1] ─┤             ├─Kraus(TTA01,1)─Kraus(TTA01,2)─Kraus(TTA12,1)─Kraus(TTA12,2)─Kraus(Fl1)...                                       │
+  q[2] ─┤  cu_multi   ├─                Kraus(TTA12,1)─Kraus(TTA12,2)─Kraus(TTA23,1)─Kraus(TTA23,2)─...                                  │ cu_multi
+  q[3] ─┴─────────────┴─                                              Kraus(TTA23,1)─Kraus(TTA23,2)─Kraus(Fl3)...                       │
+        │←─ ステップ 1 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────→│ ステップ 2 →…
+```
+
+ここで `Kraus(TTA01,1)` は target=[0,1] の `KrausChannel` 命令（`K_{1,β}` 集合）、`Kraus(Fl0)` は target=[0] の `KrausChannel` 命令（蛍光チャネルの Kraus 集合）等である。`cu_multi` は 4 qutrit すべてを横断する単一の論理ゲート命令で、Hamiltonian の半ステップ伝播 $U_H^{(\mathrm{half})}$（$81\times 81$）そのものを表す。
+
+**注（嘘禁止のための明示）**：上図の `cu_multi` は MQT-Qudits の論理ゲート命令そのものであり、ハードウェアレベルの「2 qudit native gate（CEx 等）の分解結果」ではない。シナリオ5d の DMSim 経路では、この `cu_multi` を **そのまま $81\times 81$ ユニタリとして** $\rho$ に作用させているのであって、CEx + 単一 qudit 回転の連鎖に展開してから実行しているのではない。`KrausChannel` は同様に「非ユニタリ命令」そのものとして DMSim が実行しており、これも native gate 列としては存在しない（`to_matrix` が `NotImplementedError` を raise することで型レベルで保証されている）。
+
+### 6.2.4 1 ステップ回路の**意味論的時間発展**
+
+1 ステップ回路 $\mathcal{C}_{1\text{step}}$ を $\rho$ に作用させるとは、上記命令列の合成超演算子 $\Phi(dt)$ を作用させることと同じである：
+
+$$
+\rho(t+dt) \;=\; \Phi(dt)\big(\rho(t)\big),\qquad \Phi(dt) \;=\; \mathcal{U}_H^{(\mathrm{half})}\circ\Phi_\mathrm{pal}(dt)\circ\mathcal{U}_H^{(\mathrm{half})},
+$$
+
+$$
+\Phi_\mathrm{pal}(dt) \;=\; \Big(\bigcirc_{\alpha=1}^{26} \mathcal{E}_\alpha^{(\mathrm{half})}\Big) \;\circ\; \Big(\bigcirc_{\alpha=26}^{1} \mathcal{E}_\alpha^{(\mathrm{half})}\Big).
+$$
+
+これと §10 の Strang + パリンドロミック誤差解析の合成より、
+
+$$
+\Phi(dt) \;=\; e^{(\mathcal{L}_H+\mathcal{L}_D)\,dt} \;+\; O(dt^3)\quad(\text{ステップ毎}),
+$$
+
+すなわち**この回路命令列を 100 回繰り返すことが、4 分子 qutrit GKSL 方程式 $\dot\rho = \mathcal{L}\rho$ の Strang+パリンドロミック離散化の数値解そのものである**。これがシナリオ5d で「量子回路を作って計算した」ことの内容である。
+
+### 6.2.5 1 ステップに含まれる「量子ゲート」と「量子チャネル」の正確な内訳
+
+| 種別 | MQT-Qudits 命令 | ターゲット | 個数（1 ステップあたり） | 行列 / Kraus 集合 |
+|---|---|---|---|---|
+| ユニタリ | `cu_multi`（`CustomMulti`） | $[0,1,2,3]$ | 2 | $U_H^{(\mathrm{half})} = e^{-i\hat H_\mathrm{total}\,dt/2}\in\mathbb{C}^{81\times 81}$ |
+| 非ユニタリ（ペア） | `kraus_channel`（`KrausChannel`） | $[0,1]$, $[1,2]$, $[2,3]$ | $2\times 3\times 2=12$（forward 6 + reverse 6） | TTA $\{K_{\alpha,\beta}\}$、各 $K\in\mathbb{C}^{9\times 9}$ |
+| 非ユニタリ（単一） | `kraus_channel`（`KrausChannel`） | $[0],[1],[2],[3]$ | $2\times 5\times 4=40$（forward 20 + reverse 20） | 蛍光・燐光・IC・ISC$_{S\to T}$・ISC$_{T\to S}$ の $\{K_{\alpha,\beta}\}$、各 $K\in\mathbb{C}^{3\times 3}$ |
+| **合計** | | | **54 命令** | |
+
+100 ステップ全体では $54 \times 100 = 5400$ 命令の回路を、`DMSim.execute` がステップ毎に構築・実行する（計 100 個の独立な `QuantumCircuit` オブジェクトが生成される；`initial_density_matrix` で $\rho$ を引き継ぐ）。
 
 ### 6.3 DMSim バックエンドが各命令に対して実行する厳密な代数
 

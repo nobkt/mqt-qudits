@@ -551,8 +551,154 @@ class QuditGKSLKrausSimulator:
     # A-1 残課題: backend-executable per-step circuit (fresh ancilla per channel)
     # ------------------------------------------------------------------
 
+    def _compute_fresh_ancilla_layout(
+        self, ancilla_layout: str, palindromic: bool
+    ) -> tuple[list[int], list[list[int]]]:
+        """Compute (system_positions, ancilla_positions_per_pass) for a given layout.
+
+        ``ancilla_positions_per_pass[pass_idx]`` is a list of length
+        ``len(self.lindblad_local_info)`` whose ``k``-th entry is the
+        qudit position used as the ancilla for the ``k``-th Lindblad
+        channel in that pass.  ``pass_idx`` is 0 for the (only) forward
+        pass when ``palindromic=False``, and 0 (forward) / 1 (reverse)
+        when ``palindromic=True``.
+
+        The returned positions are a permutation of ``range(n_total)``,
+        where ``n_total = N + (2 if palindromic else 1) * n_lindblad``.
+        Permuting qudit indices does **not** change the physics of the
+        circuit: any consistent permutation produces a circuit whose
+        reduced density matrix on the system register (under partial
+        trace over the ancilla register) is identical to bit precision.
+        See the ``ancilla_layout`` argument to
+        :meth:`build_executable_per_step_circuit_fresh_ancillas` for
+        why this is useful in practice.
+        """
+        N = self.N
+        n_lindblad = len(self.lindblad_local_info)
+        n_passes = 2 if palindromic else 1
+
+        if ancilla_layout == "sequential":
+            # Existing behaviour: system at positions 0..N-1; ancillas
+            # appended sequentially in append-order across passes.
+            # For palindromic, the reverse pass iterates channels in
+            # reverse order, but each gets its own fresh ancilla — the
+            # ancilla-positions list mirrors that channel-iteration
+            # order so callers get an entry per channel index k in
+            # increasing k, regardless of pass direction.
+            sys_pos = list(range(N))
+            anc_per_pass: list[list[int]] = []
+            cursor = N
+            for p in range(n_passes):
+                # ``ancilla_positions_per_pass[p][k]`` = position used for
+                # the channel with index ``k`` (in lindblad_local_info)
+                # during pass ``p``.  Forward pass iterates k=0..n-1,
+                # reverse pass iterates k=n-1..0; positions are assigned
+                # in iteration order, so for the reverse pass position
+                # ``cursor + (n-1-k)`` ends up under index k.
+                pass_positions = [0] * n_lindblad
+                if p == 0:
+                    for k in range(n_lindblad):
+                        pass_positions[k] = cursor + k
+                else:
+                    for j, k in enumerate(reversed(range(n_lindblad))):
+                        pass_positions[k] = cursor + j
+                anc_per_pass.append(pass_positions)
+                cursor += n_lindblad
+            return sys_pos, anc_per_pass
+
+        if ancilla_layout == "interleaved_n2":
+            # N=2-specific layout that places each ancilla close to its
+            # target site.  This minimises the ``[min..max]`` qudit range
+            # of every Stinespring gate, which is what tnsim materialises
+            # as a per-gate intermediate matrix (see
+            # ``src/mqt/qudits/simulation/backends/tnsim.py``, lines
+            # 110-118).  The construction is **purely a relabelling** of
+            # qudit indices and is therefore exactly equivalent to the
+            # ``"sequential"`` layout in physics; only tnsim's memory
+            # cost differs.
+            #
+            # For ``palindromic=False`` (forward-only, 12 ancillas, N=2):
+            #
+            #     positions:  0  1  2  3  4  5  6  7  8  9 10 11 12 13
+            #     content  : a a a a a S0 a a S1 a a a a a
+            #     where the 5 first and 5 last 'a' are single-site
+            #     ancillas for sites 0 and 1 respectively, and the
+            #     2 'a' between S0 and S1 are pair-channel ancillas.
+            #
+            # The resulting worst gate range is 6 (a single@0 channel
+            # whose ancilla sits at position 0, paired with S0 at
+            # position 5), corresponding to a tnsim intermediate matrix
+            # of 3^6 × 3^6 ≈ 8 MB — well within memory.
+            if N != 2:
+                msg = (
+                    f"ancilla_layout='interleaved_n2' requires N_molecules=2, "
+                    f"but self.N={N}.  An analogous N>2 layout is not yet "
+                    "implemented."
+                )
+                raise NotImplementedError(msg)
+            if palindromic:
+                # With palindromic + fresh ancillas, N=2 needs 24
+                # ancillas → 26 qudits, and a state vector of size
+                # 3^26 ≈ 2.5e12 is infeasible regardless of layout.
+                # Refuse rather than pretend it works.
+                msg = (
+                    "ancilla_layout='interleaved_n2' with palindromic=True "
+                    "would require 26 qudits (3^26 ≈ 2.5e12 amplitudes), "
+                    "which exceeds tnsim and any state-vector backend.  "
+                    "Use palindromic=False for backend execution."
+                )
+                raise NotImplementedError(msg)
+
+            # Categorise each channel
+            cat: list[str] = []
+            for op_type, sites, _L, _g in self.lindblad_local_info:
+                if op_type == "single":
+                    cat.append(f"single@{sites[0]}")
+                elif op_type == "pair":
+                    cat.append("pair")
+                else:
+                    raise ValueError(op_type)
+
+            n_single_at0 = sum(1 for c in cat if c == "single@0")
+            n_single_at1 = sum(1 for c in cat if c == "single@1")
+            n_pair = sum(1 for c in cat if c == "pair")
+
+            # Slot layout
+            slot_lists = {
+                "single@0": list(range(0, n_single_at0)),
+                # system 0 at position n_single_at0
+                "pair": list(
+                    range(n_single_at0 + 1, n_single_at0 + 1 + n_pair)
+                ),
+                # system 1 at position n_single_at0 + 1 + n_pair
+                "single@1": list(
+                    range(
+                        n_single_at0 + 1 + n_pair + 1,
+                        n_single_at0 + 1 + n_pair + 1 + n_single_at1,
+                    )
+                ),
+            }
+            sys_pos = [n_single_at0, n_single_at0 + 1 + n_pair]
+
+            pass_positions = [0] * n_lindblad
+            next_slot = {k: 0 for k in slot_lists}
+            for k, c in enumerate(cat):
+                pass_positions[k] = slot_lists[c][next_slot[c]]
+                next_slot[c] += 1
+
+            return sys_pos, [pass_positions]
+
+        msg = (
+            f"Unknown ancilla_layout: {ancilla_layout!r}.  Supported: "
+            "'sequential', 'interleaved_n2'."
+        )
+        raise ValueError(msg)
+
     def build_executable_per_step_circuit_fresh_ancillas(
-        self, dt: float, palindromic: bool = True
+        self,
+        dt: float,
+        palindromic: bool = True,
+        ancilla_layout: str = "sequential",
     ) -> dict:
         """Build a per-step circuit that **does** run on MQT-Qudits backends.
 
@@ -579,11 +725,12 @@ class QuditGKSLKrausSimulator:
 
         * ``palindromic = False``: 12 ancillas → 14 qudits (3¹⁴ ≈ 4.8 M
           basis states; runs fine on ``tnsim`` and even on a plain
-          state-vector backend).
+          state-vector backend, **provided ``ancilla_layout`` keeps
+          per-gate qudit ranges small** — see below).
         * ``palindromic = True``:  24 ancillas → 26 qudits (3²⁶ ≈ 2.5e12
-          basis states; **out of reach** of state-vector simulation;
-          ``tnsim`` may or may not handle it depending on entanglement
-          growth — measured separately).
+          basis states; **out of reach** of state-vector simulation
+          regardless of layout; tnsim is also infeasible due to state
+          size, not just per-gate intermediate size).
 
         The cost growth is intrinsic to the "fresh ancilla per
         Stinespring channel" construction.  No heuristic compression is
@@ -603,6 +750,31 @@ class QuditGKSLKrausSimulator:
             ``H(dt) → D_1(dt) → … → D_n(dt)``, which is 1st-order in
             ``dt`` (matching the Stinespring channel approximation
             order) and is the practical choice for backend execution.
+        ancilla_layout:
+            ``"sequential"`` (default): system qudits occupy positions
+            ``0..N-1`` and ancillas are appended sequentially in
+            channel-iteration order at positions ``N, N+1, ...``.  This
+            is the original layout; **its only drawback** is that
+            ``tnsim`` materialises a ``[min..max]`` intermediate matrix
+            for every multi-qudit gate, and a Stinespring gate on
+            system site 0 with ancilla index ``N+11`` forces a 3¹² × 3¹²
+            (≈ 38 GB) intermediate.  For ``N=2``, the full forward-only
+            per-step circuit therefore exceeds available memory on
+            ``tnsim``.
+
+            ``"interleaved_n2"``: ``N=2``-specific layout that places
+            each ancilla adjacent to (or near) its target site.  This
+            is **a pure permutation of qudit indices** — the gate
+            sequence and local unitaries are unchanged, and the
+            reduced density matrix on the system register (after
+            partial trace over ancillas) is bit-identical to the
+            ``"sequential"`` layout.  It reduces the worst per-gate
+            qudit range from 13 to 6 for the full forward-only N=2
+            circuit, dropping the tnsim intermediate matrix from
+            ≈ 38 TB to ≈ 8 MB and making the circuit executable on
+            ``tnsim``.  Requires ``palindromic=False`` (for
+            ``palindromic=True`` the state-vector size itself is
+            infeasible regardless of layout).
 
         Returns
         -------
@@ -611,7 +783,11 @@ class QuditGKSLKrausSimulator:
             ``"n_system_qudits"``: ``self.N``.
             ``"n_ancilla_qudits"``: number of ancilla qudits allocated.
             ``"n_total_qudits"``: ``n_system_qudits + n_ancilla_qudits``.
-            ``"system_indices"``: ``list[int]`` — qudit indices of the system register.
+            ``"system_indices"``: ``list[int]`` of length ``self.N`` —
+                qudit indices (positions in the circuit) of the system
+                register.  For ``ancilla_layout="sequential"`` this is
+                ``[0, 1, ..., N-1]``; for ``ancilla_layout="interleaved_n2"``
+                with ``N=2`` this is ``[5, 8]``.
             ``"ancilla_indices_per_channel"``: ``list[list[int]]`` — for every
                 Stinespring gate appended (in append order), the ancilla
                 qudit indices it uses (length 1 for both single and pair
@@ -629,6 +805,7 @@ class QuditGKSLKrausSimulator:
                 order.  Allows the caller to compute the same evolution
                 in process without re-deriving anything.
             ``"palindromic"``: ``bool`` — echoes the input.
+            ``"ancilla_layout"``: ``str`` — echoes the input.
         """
         from mqt.qudits.quantum_circuit import QuantumCircuit
 
@@ -640,13 +817,30 @@ class QuditGKSLKrausSimulator:
         n_anc = (2 if palindromic else 1) * n_lindblad
         n_total = N + n_anc
 
-        dims = [d] * N + [d_anc] * n_anc
+        sys_pos, anc_per_pass = self._compute_fresh_ancilla_layout(
+            ancilla_layout=ancilla_layout, palindromic=palindromic
+        )
+
+        # Sanity: positions form a permutation of range(n_total)
+        all_positions = list(sys_pos)
+        for pp in anc_per_pass:
+            all_positions.extend(pp)
+        if sorted(all_positions) != list(range(n_total)):
+            msg = (
+                f"layout bug: positions {sorted(all_positions)} != "
+                f"range({n_total}) for ancilla_layout={ancilla_layout!r}, "
+                f"palindromic={palindromic}"
+            )
+            raise AssertionError(msg)
+
+        # dims[position] is d for system positions, d_anc otherwise
+        sys_set = set(sys_pos)
+        dims = [d if p in sys_set else d_anc for p in range(n_total)]
         circuit = QuantumCircuit(n_total, dims, 0)
 
         gate_sequence: list[dict] = []
         local_unitaries: list[np.ndarray] = []
         ancilla_indices_per_channel: list[list[int]] = []
-        next_anc = N  # qudit indices [N, N+1, ..., N+n_anc-1] are ancillas
 
         # Pre-compute Hamiltonian local unitaries
         ham_dt = (dt / 2.0) if palindromic else dt
@@ -658,33 +852,35 @@ class QuditGKSLKrausSimulator:
 
         def _append_hamiltonian_block() -> None:
             for i in range(N):
-                circuit.cu_one(i, U_onsite)
-                gate_sequence.append({"kind": "cu_one", "qudits": [i], "tag": "H_onsite"})
+                pos_i = sys_pos[i]
+                circuit.cu_one(pos_i, U_onsite)
+                gate_sequence.append({"kind": "cu_one", "qudits": [pos_i], "tag": "H_onsite"})
                 local_unitaries.append(U_onsite)
             for (ip, jp) in self.params.neighbors:
-                circuit.cu_two([ip, jp], U_pairs[(ip, jp)])
-                gate_sequence.append({"kind": "cu_two", "qudits": [ip, jp], "tag": "H_pair"})
+                qd = [sys_pos[ip], sys_pos[jp]]
+                circuit.cu_two(qd, U_pairs[(ip, jp)])
+                gate_sequence.append({"kind": "cu_two", "qudits": qd, "tag": "H_pair"})
                 local_unitaries.append(U_pairs[(ip, jp)])
 
-        def _append_lindblad_pass(direction: str, dt_st: float) -> None:
-            nonlocal next_anc
+        def _append_lindblad_pass(direction: str, dt_st: float, pass_idx: int) -> None:
             iterator = (
                 enumerate(self.lindblad_local_info)
                 if direction == "fwd"
                 else reversed(list(enumerate(self.lindblad_local_info)))
             )
-            for _idx, (op_type, sites, L_local, _gamma) in iterator:
+            for k, (op_type, sites, L_local, _gamma) in iterator:
                 U_local = self._build_local_stinespring_unitary(L_local, dt_st)
-                anc = next_anc
-                next_anc += 1
+                anc = anc_per_pass[pass_idx][k]
                 if op_type == "single":
-                    circuit.cu_two([sites[0], anc], U_local)
+                    qd = [sys_pos[sites[0]], anc]
+                    circuit.cu_two(qd, U_local)
                     tag = f"stinespring_single_{direction}"
-                    gate_sequence.append({"kind": "cu_two", "qudits": [sites[0], anc], "tag": tag})
+                    gate_sequence.append({"kind": "cu_two", "qudits": qd, "tag": tag})
                 elif op_type == "pair":
-                    circuit.cu_multi([sites[0], sites[1], anc], U_local)
+                    qd = [sys_pos[sites[0]], sys_pos[sites[1]], anc]
+                    circuit.cu_multi(qd, U_local)
                     tag = f"stinespring_pair_{direction}"
-                    gate_sequence.append({"kind": "cu_multi", "qudits": [sites[0], sites[1], anc], "tag": tag})
+                    gate_sequence.append({"kind": "cu_multi", "qudits": qd, "tag": tag})
                 else:
                     msg = f"Unexpected op_type: {op_type!r}"
                     raise ValueError(msg)
@@ -696,28 +892,25 @@ class QuditGKSLKrausSimulator:
 
         # --- Forward Lindblad pass ---
         st_dt = (dt / 2.0) if palindromic else dt
-        _append_lindblad_pass("fwd", st_dt)
+        _append_lindblad_pass("fwd", st_dt, pass_idx=0)
 
         if palindromic:
             # --- Reverse Lindblad pass ---
-            _append_lindblad_pass("rev", st_dt)
+            _append_lindblad_pass("rev", st_dt, pass_idx=1)
             # --- Hamiltonian half-step 2 ---
             _append_hamiltonian_block()
-
-        if next_anc != N + n_anc:
-            msg = f"ancilla bookkeeping bug: next_anc={next_anc}, expected {N + n_anc}"
-            raise AssertionError(msg)
 
         return {
             "circuit": circuit,
             "n_system_qudits": N,
             "n_ancilla_qudits": n_anc,
             "n_total_qudits": n_total,
-            "system_indices": list(range(N)),
+            "system_indices": list(sys_pos),
             "ancilla_indices_per_channel": ancilla_indices_per_channel,
             "gate_sequence": gate_sequence,
             "local_unitaries": local_unitaries,
             "palindromic": palindromic,
+            "ancilla_layout": ancilla_layout,
         }
 
     def evolve_pure_state_in_process(
@@ -781,14 +974,34 @@ class QuditGKSLKrausSimulator:
         return psi.reshape(d ** n)
 
     def reduced_density_matrix_on_system(
-        self, psi: np.ndarray, n_system_qudits: int, n_total_qudits: int
+        self,
+        psi: np.ndarray,
+        n_system_qudits: int,
+        n_total_qudits: int,
+        system_positions: list[int] | None = None,
     ) -> np.ndarray:
-        """Trace out ancillas (qudits ``n_system..n_total-1``) from a pure state.
+        """Trace out ancillas from a pure state and return ``ρ_sys``.
 
         The state vector is indexed in **MSB-first** order (qudit 0 is
-        the most significant index), so ancilla legs are the trailing
-        legs after a ``(d,)*n`` reshape.  Returns ``ρ_sys`` as a
-        ``(d^N, d^N)`` complex array.
+        the most significant index).
+
+        Parameters
+        ----------
+        psi: shape ``(d ** n_total,)``
+            Pure-state vector over all qudits.
+        n_system_qudits: ``self.N``.
+        n_total_qudits:
+            Total number of qudits (system + ancillas).
+        system_positions: optional ``list[int]`` of length ``n_system_qudits``
+            Positions (qudit indices) occupied by the system register.
+            Defaults to ``[0, 1, ..., n_system_qudits - 1]`` for backward
+            compatibility with circuits that use the ``"sequential"``
+            ancilla layout.  For circuits built with
+            ``ancilla_layout="interleaved_n2"`` this **must** be set to
+            the ``"system_indices"`` returned by
+            :meth:`build_executable_per_step_circuit_fresh_ancillas`,
+            because the system register is no longer at the leading
+            positions.
         """
         d = self.d
         n = n_total_qudits
@@ -796,9 +1009,30 @@ class QuditGKSLKrausSimulator:
         if psi.shape != (d ** n,):
             msg = f"psi must have shape ({d ** n},), got {psi.shape}"
             raise ValueError(msg)
+
+        if system_positions is None:
+            system_positions = list(range(N))
+        if len(system_positions) != N:
+            msg = (
+                f"system_positions length {len(system_positions)} != "
+                f"n_system_qudits {N}"
+            )
+            raise ValueError(msg)
+        if len(set(system_positions)) != len(system_positions):
+            msg = f"system_positions must be unique: {system_positions}"
+            raise ValueError(msg)
+        for p in system_positions:
+            if not 0 <= p < n:
+                msg = f"system position {p} out of range [0, {n})"
+                raise ValueError(msg)
+
         psi_t = psi.reshape((d,) * n)
-        # Combine system legs into one index, ancilla legs into another.
-        psi_mat = psi_t.reshape(d ** N, d ** (n - N))
+        # Move system legs to the front, in the given order, then the
+        # remaining (ancilla) legs in increasing position order.
+        ancilla_positions = [p for p in range(n) if p not in set(system_positions)]
+        perm = list(system_positions) + ancilla_positions
+        psi_perm = np.transpose(psi_t, perm)
+        psi_mat = psi_perm.reshape(d ** N, d ** (n - N))
         return psi_mat @ psi_mat.conj().T
 
     # ------------------------------------------------------------------

@@ -10,7 +10,7 @@ This script targets the residual A-1 item recorded in
     not implement.  Hence the combined circuit is not executable on a
     MQT-Qudits backend in its current form.
 
-Two independent honest contributions are reported below:
+Three independent honest contributions are reported below:
 
 A. Mathematical equivalence (always runs, no backend involvement).
    We construct an alternative per-step circuit using
@@ -22,8 +22,8 @@ A. Mathematical equivalence (always runs, no backend involvement).
    applied to the same initial system state with the same gate
    sequence.  The two ρ_sys must agree to floating-point precision.
 
-B. Backend feasibility probe (always runs, may report negative results
-   honestly).  We attempt to execute progressively larger fresh-ancilla
+B. Backend feasibility probe with the **default** (sequential) ancilla
+   layout.  We attempt to execute progressively larger fresh-ancilla
    circuits on ``tnsim`` for ``N=2``:
 
      - 1 single-site Stinespring channel  ( 3 qudits)
@@ -38,18 +38,41 @@ B. Backend feasibility probe (always runs, may report negative results
    compare the traced-out ρ_sys against the in-process Kraus result),
    or fails with a backend-side memory error and exactly how much
    memory the backend tried to allocate.  The reason the backend
-   ultimately can't run the **full** N=2 per-step circuit is **not**
-   "missing reset" — it is that ``tnsim`` expands every long-range or
-   multi-qudit gate to a contiguous ``[min(qudits) … max(qudits)]``
-   intermediate matrix (see ``src/mqt/qudits/simulation/backends/tnsim.py``,
-   lines 110-118), and that intermediate matrix exceeds available
-   memory once the qudit range crosses ~9 qutrits.  This is a
-   different, separately documented obstacle.
+   ultimately can't run the **full** N=2 per-step circuit *under the
+   sequential layout* is **not** "missing reset" — it is that ``tnsim``
+   expands every long-range or multi-qudit gate to a contiguous
+   ``[min(qudits) … max(qudits)]`` intermediate matrix (see
+   ``src/mqt/qudits/simulation/backends/tnsim.py``, lines 110-118), and
+   that intermediate matrix exceeds available memory once the qudit
+   range crosses ~9 qutrits.
 
-Exit status: ``0`` on success of part (A) and on either success or
-"honestly reported memory failure" of part (B).  ``1`` only if part
-(A) fails (the mathematical equivalence is non-negotiable) or if part
-(B) exhibits a *correctness* error (mismatch in traced ρ_sys).
+C. Backend execution of the FULL per-step circuit with
+   ``ancilla_layout="interleaved_n2"``.  Because qudit indices are
+   labels (not physical addresses), permuting them does not change the
+   physics: the gate sequence and local unitaries are unchanged, and
+   the reduced density matrix on the system register is bit-identical.
+   The ``"interleaved_n2"`` layout places each ancilla close to its
+   target system site, dropping the worst per-gate qudit range from 13
+   to 6 (per-gate tnsim intermediate from ≈ 38 TB to ≈ 8 MB).  This is
+   **not a heuristic compression** — it is a pure relabelling.  Under
+   this layout the full forward-only N=2 per-step circuit MUST execute
+   on tnsim and produce the same ρ_sys as the in-process Kraus
+   reference.
+
+Out of scope (honest residual items):
+
+* The ``palindromic=True`` fresh-ancilla circuit needs 24 ancillas →
+  26 qudits, whose state vector has 3²⁶ ≈ 2.5e12 amplitudes — beyond
+  any state-vector simulator regardless of layout.  Not addressed
+  here.
+* ``N > 2``: an analogous interleaved layout for general ``N`` is not
+  implemented in this PR.
+
+Exit status: ``0`` on success of part (A) and (C) and on either
+success or "honestly reported memory failure" of part (B).  ``1`` only
+if (A) fails (the mathematical equivalence is non-negotiable), if (B)
+exhibits a *correctness* error (mismatch in traced ρ_sys), or if (C)
+fails to execute or produces a wrong ρ_sys.
 """
 
 from __future__ import annotations
@@ -331,8 +354,102 @@ def part_b_backend_probe(dt: float = 0.5) -> list[dict]:
     return results
 
 
+# ---------------------------------------------------------------------------
+# Part C: backend probe with `ancilla_layout="interleaved_n2"` for the FULL
+#          forward-only per-step circuit (12 channels).  This is a pure
+#          permutation of qudit indices relative to Part A; the physics
+#          and ρ_sys are bit-identical to Part B's last (failing) probe.
+#          The only thing that changes is the per-gate `[min..max]` range
+#          tnsim materialises, which drops from 13 (≈ 38 TB) to 6 (≈ 8 MB).
+#          See QuditGKSLKrausSimulator.build_executable_per_step_circuit_fresh_ancillas
+#          docstring for the details of the `interleaved_n2` layout.
+# ---------------------------------------------------------------------------
+
+
+def part_c_full_step_interleaved(dt: float = 0.5) -> dict:
+    """Probe the FULL forward-only N=2 per-step circuit with interleaved layout.
+
+    * Builds the per-step circuit via
+      ``build_executable_per_step_circuit_fresh_ancillas(palindromic=False,
+      ancilla_layout="interleaved_n2")``.
+    * Runs it on tnsim.
+    * Traces out ancillas (using ``system_indices`` returned by the
+      builder) to obtain ρ_sys.
+    * Compares ρ_sys against the in-process Kraus reference applied to
+      the same initial system state with the same gate sequence (the
+      same reference Part A uses).
+
+    Returns a structured record; correctness is asserted in
+    :func:`test_a1_fresh_ancilla_circuit`.
+    """
+    params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+    sim = QuditGKSLKrausSimulator(params)
+
+    info = sim.build_executable_per_step_circuit_fresh_ancillas(
+        dt=dt, palindromic=False, ancilla_layout="interleaved_n2"
+    )
+    n_total = info["n_total_qudits"]
+    sys_pos = info["system_indices"]
+
+    # Worst per-gate range under the new layout.
+    max_range = 0
+    for g in info["gate_sequence"]:
+        qd = g["qudits"]
+        if len(qd) >= 2:
+            rng = max(qd) - min(qd) + 1
+            if rng > max_range:
+                max_range = rng
+    worst_intermediate_size = sim.d ** max_range
+    worst_intermediate_bytes = (worst_intermediate_size ** 2) * 16  # complex128
+
+    ok, msg, sv = _try_tnsim(info["circuit"])
+    gc.collect()
+
+    record = {
+        "label": "full forward-only per-step, interleaved_n2 layout",
+        "ancilla_layout": "interleaved_n2",
+        "n_channels": len(sim.lindblad_local_info),
+        "n_total_qudits": n_total,
+        "system_positions": sys_pos,
+        "worst_qudit_range_in_gate": max_range,
+        "worst_intermediate_matrix_bytes": int(worst_intermediate_bytes),
+        "tnsim_ok": ok,
+        "tnsim_msg": msg,
+    }
+
+    if ok:
+        rho_sys_circ = sim.reduced_density_matrix_on_system(
+            sv, sim.N, n_total, system_positions=sys_pos
+        )
+        rho_sys0 = np.zeros((sim.d ** sim.N, sim.d ** sim.N), dtype=np.complex128)
+        rho_sys0[0, 0] = 1.0
+        rho_sys_ref = _kraus_forward_step_on_system(sim, rho_sys0, dt)
+        diff = float(np.linalg.norm(rho_sys_circ - rho_sys_ref, ord="fro"))
+        record["frob_diff_vs_kraus_ref"] = diff
+        record["tr_circuit"] = float(np.real(np.trace(rho_sys_circ)))
+        record["tr_ref"] = float(np.real(np.trace(rho_sys_ref)))
+        record["correctness_match"] = diff < TOL
+    return record
+
+
 def test_a1_fresh_ancilla_circuit() -> None:
-    """pytest entry: math equivalence MUST pass; backend probe records facts."""
+    """pytest entry: math equivalence MUST pass; backend probe records facts.
+
+    Asserted invariants:
+
+    * Part A: the fresh-ancilla per-step circuit (sequential layout) is
+      mathematically equivalent to the in-process Kraus channel
+      composition (||Δρ_sys||_F = 0 to floating-point).
+    * Part B: every tnsim execution that *does* succeed must produce
+      the correct ρ_sys (Kraus reference); tnsim is allowed to fail
+      with a memory error, but it is not allowed to produce a wrong
+      density matrix.  We also require ≥ 3 of the subset probes to
+      succeed (otherwise the residual A-1 result would be empty).
+    * Part C: with ``ancilla_layout="interleaved_n2"``, the **full**
+      forward-only N=2 per-step circuit (12 channels) MUST execute on
+      tnsim AND produce ρ_sys equal to the Kraus reference to
+      floating-point.  This is the layout-permutation result.
+    """
     a = part_a_math_equivalence(dt=0.5)
     assert a["match"], (
         f"Part A failed: ||Δρ_sys||_F = {a['frob_diff']:.3e} (tol {TOL:g})\n"
@@ -340,20 +457,12 @@ def test_a1_fresh_ancilla_circuit() -> None:
     )
 
     probes = part_b_backend_probe(dt=0.5)
-    # For every tnsim execution that *did* succeed, the traced ρ_sys
-    # must match the Kraus reference (this is a correctness invariant —
-    # tnsim is allowed to fail with a memory error, but it is not
-    # allowed to produce a wrong density matrix).
     for r in probes:
         if r["tnsim_ok"]:
             assert r["correctness_match"], (
                 f"tnsim ran on {r['label']} but ρ_sys mismatch: "
                 f"||Δρ||_F = {r['frob_diff_vs_kraus_ref']:.3e}"
             )
-    # We also require at least *some* non-trivial channel subset to
-    # successfully execute on tnsim — otherwise the residual A-1 result
-    # would be empty.  Measured (see _main below): the 1, 2, 5 channel
-    # subsets all succeed.
     n_ok = sum(1 for r in probes if r["tnsim_ok"])
     assert n_ok >= 3, (
         f"Expected at least 3 tnsim successes among the probes, got {n_ok}.\n"
@@ -361,6 +470,20 @@ def test_a1_fresh_ancilla_circuit() -> None:
             f"  {r['label']}: {'OK' if r['tnsim_ok'] else 'FAIL'} ({r['tnsim_msg']})"
             for r in probes
         )
+    )
+
+    # Part C: interleaved layout MUST run the full per-step on tnsim.
+    c = part_c_full_step_interleaved(dt=0.5)
+    assert c["tnsim_ok"], (
+        f"Part C: tnsim failed on the full forward-only per-step "
+        f"circuit with interleaved_n2 layout: {c['tnsim_msg']}\n"
+        f"  worst gate range = {c['worst_qudit_range_in_gate']}, "
+        f"intermediate matrix ≈ "
+        f"{c['worst_intermediate_matrix_bytes'] / 1024 / 1024:.1f} MB"
+    )
+    assert c["correctness_match"], (
+        f"Part C: ρ_sys mismatch under interleaved_n2 layout: "
+        f"||Δρ||_F = {c['frob_diff_vs_kraus_ref']:.3e} (tol {TOL:g})"
     )
 
 
@@ -412,14 +535,55 @@ def _main() -> int:
         else:
             print(f"    -> tnsim msg: {r['tnsim_msg'][:120]}")
     print()
+    print("Part C — Full forward-only per-step, ancilla_layout='interleaved_n2'")
+    print("---------------------------------------------------------------------")
+    c = part_c_full_step_interleaved(dt=0.5)
+    print(
+        f"  full forward-only per-step (12 channels), interleaved_n2 layout"
+    )
+    print(
+        f"    n_total_qudits = {c['n_total_qudits']}, "
+        f"system_positions = {c['system_positions']}"
+    )
+    inter_mb = c["worst_intermediate_matrix_bytes"] / 1024 / 1024
+    if inter_mb >= 1024:
+        size_h = f"{inter_mb / 1024:.2f} GB"
+    else:
+        size_h = f"{inter_mb:.2f} MB"
+    print(
+        f"    worst gate range = {c['worst_qudit_range_in_gate']}, "
+        f"per-gate intermediate ≈ {size_h}"
+    )
+    print(f"    tnsim: {'OK' if c['tnsim_ok'] else 'FAIL'} ({c['tnsim_msg']})")
+    if c["tnsim_ok"]:
+        print(
+            f"    -> ||ρ_sys(tnsim) - ρ_sys(Kraus)||_F = "
+            f"{c['frob_diff_vs_kraus_ref']:.3e}  "
+            f"(tol {TOL:g})  -> {'OK' if c['correctness_match'] else 'MISMATCH'}"
+        )
+        print(
+            f"    Tr(ρ_sys_tnsim) = {c['tr_circuit']:.12f}, "
+            f"Tr(ρ_sys_ref) = {c['tr_ref']:.12f}"
+        )
+    print()
     if not a["match"]:
         print("FAILURE (Part A correctness)")
         return 1
     n_ok = sum(1 for r in probes if r["tnsim_ok"])
     if n_ok < 3:
-        print(f"FAILURE (only {n_ok} tnsim successes; expected ≥3)")
+        print(f"FAILURE (Part B: only {n_ok} tnsim successes; expected ≥3)")
         return 1
-    print(f"SUCCESS (Part A: math equivalence OK; Part B: {n_ok}/{len(probes)} probes ran on tnsim)")
+    if not c["tnsim_ok"]:
+        print("FAILURE (Part C: interleaved_n2 layout did not run on tnsim)")
+        return 1
+    if not c["correctness_match"]:
+        print("FAILURE (Part C: interleaved_n2 layout produced wrong ρ_sys)")
+        return 1
+    print(
+        f"SUCCESS  (Part A: math equivalence OK; "
+        f"Part B: {n_ok}/{len(probes)} subset probes ran on tnsim; "
+        f"Part C: full forward-only per-step ran on tnsim and matches Kraus reference)"
+    )
     return 0
 
 

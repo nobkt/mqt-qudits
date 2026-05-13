@@ -196,33 +196,9 @@ class TestDMSimMixedCircuit(TestCase):
         # Random 3x3 unitary
         b = rng.standard_normal((d, d)) + 1j * rng.standard_normal((d, d))
         u3, _ = np.linalg.qr(b)
-        u3 = u3.astype(np.complex128)
-
-        # Pick a CPTP set: dephasing on qutrit 0
-        # K_0 = sqrt(1-p) I, K_1..K_{d-1} = sqrt(p/(d-1)) |k⟩⟨k|
-        p = 0.25
-        kraus = [np.sqrt(1.0 - p) * np.eye(d, dtype=np.complex128)]
-        for kk in range(d):
-            proj = np.zeros((d, d), dtype=np.complex128)
-            proj[kk, kk] = 1.0
-            kraus.append(np.sqrt(p / d) * proj)
-        # Verify completeness ourselves before passing to channel:
-        completeness = sum(k.conj().T @ k for k in kraus)
-        # Σ = (1-p)I + (p/d)*Σ_k |k⟩⟨k| = (1-p)I + (p/d)*I = (1 - p + p/d)I
-        # → Not CPTP unless we adjust. Recompute:
-        kraus = [np.sqrt(1.0 - p) * np.eye(d, dtype=np.complex128)]
-        for kk in range(d):
-            proj = np.zeros((d, d), dtype=np.complex128)
-            proj[kk, kk] = 1.0
-            kraus.append(np.sqrt(p / (d)) * proj)
-        # Σ K† K = (1-p)I + Σ_k (p/d) |k⟩⟨k| = (1-p)I + (p/d)·I
-        # = (1 - p + p/d)I ≠ I unless we set the dephasing differently.
-        # Use the standard d-level depolarising channel form:
-        # K_0 = sqrt(1 - (d^2-1)/d^2 * λ) I with appropriate Pauli-like ops.
-        # Simpler: take the trivial CPTP set [I] and compose with unitaries.
+        # Trivial CPTP set: identity (compose with unitaries to test the
+        # plumbing through DMSim with a non-empty Kraus-channel instruction).
         kraus = [np.eye(d, dtype=np.complex128)]
-        completeness = sum(k.conj().T @ k for k in kraus)
-        assert np.allclose(completeness, np.eye(d, dtype=np.complex128), atol=1e-14)
 
         circuit.cu_two([0, 1], u9)
         circuit.kraus_channel(0, kraus)

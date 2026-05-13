@@ -13,12 +13,13 @@
 | 初版 | PR#257 | D-1 / A-2 (正直化) / A-4 / E-1・E-2 を解決、A-1 / A-3 / B-1 を未解決として記録 |
 | 第 2 版 | PR#258 | A-1 を「N=2 部品回路を tnsim で実測検証 (||Δsv||=0)」、A-3 を「コンパイラ実測値 API 追加」、B-1 を「`exact_local_channels` で rate=2 実測」に更新 |
 | 第 3 版 | 本セッション (2026-05-13) | PR#259 (QuTiP 独立リファレンス) と PR#260 (fresh-ancilla per-step + `interleaved_n2` で N=2 full per-step を tnsim 実行成功) を反映、本セッションで再実測した全数値を追記、N>2 の interleaved 拡張は state-vector 自体が infeasible で実装しても無効である事実を追記 |
+| 第 4 版 | 本セッション (2026-05-13) | **A-1 を density-matrix backend `DMSim` 新設で N=4 ボソン無し backend 実行可能に更新**。`mqt.qudits.simulation.backends.DMSim` と `mqt.qudits.quantum_circuit.gates.KrausChannel` を MQT-Qudits 本体に新規追加、`QuditGKSLSimulator(execute_on_backend="dmsim")` で N=4, t_max=100, n_steps=100 を実測 (NumPy ref 0.88s vs DMSim backend 2.68s, ‖Δρ‖_F = 8.55e-14)。state-vector backend (tnsim/misim) では N=4 が依然不可能であること、ボソン付きと qubit 側は未対応であることを honest に併記 |
 
 ## 累積対応状況一覧
 
 | ID | 内容 | 状況 | 詳細 |
 |---|---|---|---|
-| **A-1** | MQT-Qudits を実際には使っていない（NumPy `expm` のみで計算） | ⚠️ **大幅前進・但し根本未解決** | (i) 6 シナリオの本体時間発展は依然 `scipy.linalg.expm` 直接計算。(ii) **PR#258**: `tutorials/run_n2_tnsim_verification.py` で N=2 の Trotter ステップ全 13 サブ回路（Hamiltonian 半ステップ + 単一 Stinespring×10 + TTA-pair Stinespring×2）を `tnsim` で実行し ‖Δsv‖=0.0 (tol 1e-10) を確認 (`test_gksl_simulators.py::TestN2TnsimVerification` パス)。(iii) **PR#259**: `QuditGKSLKrausSimulator.build_executable_per_step_circuit_fresh_ancillas` を新設し、各 Stinespring チャネルに新規 ancilla を割当てて mid-circuit reset を不要化。Part A (math equivalence) で ‖Δρ_sys‖_F = 0.0 を確認 (`run_n2_full_step_fresh_ancilla_verification.py`)。(iv) **PR#260**: `ancilla_layout="interleaved_n2"` を追加（**qudit 添字の純粋な permutation のみ**でヒューリスティック圧縮ではない）、worst gate range を 13→6 に削減。これにより **N=2 forward-only full per-step (14 qudits, 12 channels) を tnsim 上で実行成功**。本セッションで end-to-end 再実測：Part A 1.2s ✓ (‖Δρ‖_F=0.0)、Part C 1.3s ✓ (‖ρ_sys(tnsim) − ρ_sys(Kraus)‖_F = 0.0、Tr=1.0)、Part B 11 分・5 中 3 成功 + 残り 2 は MemoryError (sequential layout の 12-/14-qudit 中間行列 468 GiB)。**根本的な未解決**: `palindromic=True` fresh-ancilla は state-vector が 3^26≈2.5e12 amplitudes (76 TB) で全 state-vector backend で infeasible、組合せ Strang 半ステップ済 backend 実行は依然 mid-circuit ancilla reset 不在で不可能。N>2 の interleaved 拡張は forward-only でも state-vector が N=3:3^22≈500GB / N=4:3^30≈3PB で **layout を変えても tnsim 実行不可**（本セッションで定量確認）であり、A-1 の根本解決には backend 側 mid-circuit ancilla reset の実装か、新たな量子回路化アルゴリズムが必要。 |
+| **A-1** | MQT-Qudits を実際には使っていない（NumPy `expm` のみで計算） | ⚠️ **大幅前進・density-matrix backend で N=4 ボソン無し は backend 実行可能、ただし state-vector backend では依然 infeasible** | (i) 6 シナリオの本体時間発展は**従来は** `scipy.linalg.expm` 直接計算。(ii) **PR#258**: `tutorials/run_n2_tnsim_verification.py` で N=2 の Trotter ステップ全 13 サブ回路（Hamiltonian 半ステップ + 単一 Stinespring×10 + TTA-pair Stinespring×2）を `tnsim` で実行し ‖Δsv‖=0.0 (tol 1e-10) を確認 (`test_gksl_simulators.py::TestN2TnsimVerification` パス)。(iii) **PR#259**: `QuditGKSLKrausSimulator.build_executable_per_step_circuit_fresh_ancillas` を新設し、各 Stinespring チャネルに新規 ancilla を割当てて mid-circuit reset を不要化。Part A (math equivalence) で ‖Δρ_sys‖_F = 0.0 を確認 (`run_n2_full_step_fresh_ancilla_verification.py`)。(iv) **PR#260**: `ancilla_layout="interleaved_n2"` を追加（**qudit 添字の純粋な permutation のみ**でヒューリスティック圧縮ではない）、worst gate range を 13→6 に削減。これにより **N=2 forward-only full per-step (14 qudits, 12 channels) を tnsim 上で実行成功**。本セッションで end-to-end 再実測：Part A 1.2s ✓ (‖Δρ‖_F=0.0)、Part C 1.3s ✓ (‖ρ_sys(tnsim) − ρ_sys(Kraus)‖_F = 0.0、Tr=1.0)、Part B 11 分・5 中 3 成功 + 残り 2 は MemoryError (sequential layout の 12-/14-qudit 中間行列 468 GiB)。(v) **本セッション・本 PR**: density-matrix backend `mqt.qudits.simulation.backends.DMSim` と CPTP instruction `mqt.qudits.quantum_circuit.gates.KrausChannel` を MQT-Qudits 本体に新規追加。`QuditGKSLSimulator(execute_on_backend="dmsim")` モードで、N=4 ボソン無し（ノートブック Cell 6 のシナリオ 5 と同一物理パラメータ、t_max=100, n_steps=100）を **MQT-Qudits backend で実行成功**。実測: NumPy reference 0.88s, DMSim backend 2.68s, ‖ρ_ref − ρ_dmsim‖_F = 8.55e-14（round-off level）、trace deviation 1.7e-14。テスト `TestDMSimBackendExecution`（4 件）と `test/python/simulation/test_dmsim.py`（9 件）が全パス。**根本的な未解決（依然残る制約）**: state-vector backend (tnsim/misim) では N=4 は依然不可能 (palindromic fresh-ancilla で state vector 3³⁰≈3 PB)。`palindromic=True` fresh-ancilla は state-vector が 3^26≈2.5e12 amplitudes (76 TB) で全 state-vector backend で infeasible、組合せ Strang 半ステップ済 backend 実行は依然 mid-circuit ancilla reset 不在で不可能。N>2 の interleaved 拡張は forward-only でも state-vector が N=3:3^22≈500GB / N=4:3^30≈3PB で **layout を変えても tnsim 実行不可**（本セッションで定量確認）。ボソン付きシナリオ (Cell 11/13/15) と qubit 経路 (Cell 9) も backend 化未対応で、qubit 側はそもそも qudit シミュレータからの埋込み変換に依存しているため (memory: qubit/qudit independence) qubit 経路のみで独立に backend 実行する意味は小さい。 |
 | **A-2** | Qudit/Qubit 比較に独立性が無い | ✅ **解決（独立リファレンスを追加）** | (i) **PR#257**: docstring と NB Cell 7/13/25/35 に「Qubit/Qudit 両シミュレータは同一 `stinespring_utils`/Trotter コア共有、独立検証ではない」を明記。(ii) **PR#259**: `tutorials/qutip_gksl_reference.py` を新設し、in-tree GKSL スタックとコード共有なしの `qutip.mesolve` (適応 Adams/BDF ODE) を独立リファレンスとして導入。同じ物理 Hamiltonian と 5N+2|neighbors| Lindblad collapse operator を QuTiP プリミティブから独立に再構築。(iii) `tutorials/run_qutip_cross_validation.py` で実測。**本セッションで再実測**: N=2/n_steps=200/t_max=10 で `Tr|ρ_qutip − ρ_exact_local|/2 = 1.786e-08`、N=4 同条件で `7.683e-07`（PR#260 主張値 1.79e-08, 7.68e-07 と一致）。`exact_local_channels` の妥当性を独立スタックで確認。 |
 | **A-3** | ゲート数が `2*(N+pairs)+...` のハードコード式 | ✅ **解決（コンパイラ実測値を提供）** | `qudit_gksl_simulator.py` のハードコード式は backward-compat で残るが、`simulate()` 戻り値に `n_high_level_gates_per_step` と `gate_count_method="high_level_count"` を追加し「これは高レベルゲートのオブジェクト数であってコンパイラ計測値ではない」ことを honestly に明示。新規メソッド `QuditGKSLSimulator.compute_compiler_measured_gate_counts(dt, optimization_level)` が MQT-Qudits の `compileO0/compileO1` を実際に呼んでネイティブゲート (VirtRz/R/Rh/Rz/CEx) の内訳を返す。**本セッションで再実測** (N=2, dt=0.5, opt=0): `per_step_summary = {'native_gates': 10836, 'uncompiled_cu_multi': 4, 'optimization_level': 0, 'backend': 'faketraps2trits'}`（ハードコード値 30 と 360 倍以上の乖離が実測で示される）。`cu_multi` (TTA-pair Stinespring, 27×27) は MQT-Qudits compiler が現状 decompose 不可という制約を `per_step_summary['uncompiled_cu_multi']` として正直に記録（ヒューリスティック推定では埋めない）。テスト: `TestCompilerMeasuredGateCounts` パス。 |
 | **A-4** | ノイズ比較の根拠不足・非対称（qubit 側だけ `cx_per_pair_gate=46`） | ✅ **解決** | NB Cell 38 から CX 倍率を撤去し、qubit と qudit を**同一規約**（ペアゲート 1 つあたり `p_depol` を 1 回適用）で比較するよう変更。Cell 37 markdown に「片側だけの増幅は qudit 有利の結論を恣意的に作り出すバイアス」と明記。`cx_per_pair_gate` パラメータ自体は API として残し、明示的にオプトインで利用可能。 |
@@ -109,6 +110,9 @@ PR 説明にある数値が現コードベース上で再現可能であるこ�
 | A-3 compiler-measured gates | `QuditGKSLSimulator.compute_compiler_measured_gate_counts(0.5, 0)` | `native_gates=10836, uncompiled_cu_multi=4` | PR#258 (10836, +cu_multi) | ✓ |
 | B-1 `exact_local_channels` rate=2 | `pytest TestExactLocalChannelsConvergence` | 6/6 パス | PR#258 | ✓ |
 | その他テスト | `pytest TestCompilerMeasuredGateCounts`, `TestN2TnsimVerification` | 各 1/1 パス | PR#258 | ✓ |
+| **A-1 DMSim N=4 backend exec** | `pytest TestDMSimBackendExecution::test_dmsim_matches_numpy_n4_notebook_settings` | NumPy 0.88s vs DMSim 2.68s, ‖Δρ‖_F = 8.55e-14, trace dev 1.7e-14 | 本 PR (新規) | ✓ |
+| **A-1 DMSim/KrausChannel ユニット** | `pytest test/python/simulation/test_dmsim.py` | 9/9 パス（CPTP 検証, to_matrix raise, 振幅減衰解析解一致, etc.） | 本 PR (新規) | ✓ |
+| **A-1 Kraus 抽出の数値同値** | `dmsim_kraus_helpers.kraus_from_local_superoperator` を N=4 全 26 channel で再構成 | 全 channel で再構成誤差 ≤ 1.22e-15 | 本 PR (新規) | ✓ |
 
 PR 説明と実環境の挙動はすべて一致した。PR#260 が「本ツリー統合後の verification
 完走は時間切れで未確認」と記録した Part C は、本セッションで Part C 単体 1.3s で
@@ -120,12 +124,28 @@ Part C 自体の問題ではない。
 
 - **`palindromic=True` fresh-ancilla N=2**：state vector 3^26 ≈ 76 TB。state-vector
   backend の根本的容量制約。Density-matrix backend や Kraus-channel backend の
-  導入が必要。
+  導入が必要。**本セッション・本 PR で `DMSim` density-matrix backend を新設して N=4
+  ボソン無しに対する解決を提供したが、state-vector backend (tnsim/misim) 自体の
+  この制約は解消されておらず、今後 state-vector backend で同シナリオを動かしたい
+  場合は依然解決が必要**。
 - **N≥3 の fresh-ancilla forward-only**：state vector が N=3 で 500 GB を越える。
-  layout 工夫では救えない。
+  layout 工夫では救えない。**density-matrix backend に切り替えることでのみ回避可能**
+  （density matrix サイズは ancilla qudit と無関係に system Hilbert 空間のみで
+  決まるため、N=4 でも 81×81 = ~100 KB）。
 - **`cu_multi` (3-qudit Stinespring) の compiler decompose**：MQT-Qudits 本体の
   compiler が現状 `cu_multi` を 2-qudit gate に分解できない。本フォーク tutorials
-  からは制御できない（compiler 側の改修が必要）。
-- **6 シナリオ本体の量子回路化**：上記 A-1 セクションの通り、backend 側に
+  からは制御できない（compiler 側の改修が必要）。DMSim backend は `cu_multi` を
+  そのまま `U ρ U†` として適用するため、この制約に**影響されない**。
+- **6 シナリオ本体の量子回路化（state-vector backend での実行）**：上記 A-1 セクションの通り、backend 側に
   mid-circuit ancilla reset または Kraus-aware API が無いと根本的に不可能。
   ヒューリスティックで「動いているふり」をすることは本ファイルの方針上禁止。
+- **本 PR の DMSim backend で対応していない範囲（明示）**：
+    - **ボソン付きシナリオ (Cell 11/13/15)**：density matrix サイズが Hilbert 空間
+      と共に増加する (N=2, n_max=1 で 36×36 = ~10 KB は trivial、それ以上は
+      個別検討)。`QuditGKSLBosonSimulator` への DMSim 経路追加は別 work。
+    - **qubit シミュレータ (Cell 9 等)**：qubit 経路は qutrit シミュレータからの
+      埋め込み変換に依存しており (memory: qubit/qudit independence)、qubit 経路
+      のみで独立に DMSim backend 化する意味は小さい。本 PR では未対応。
+    - **Stinespring 経路**：`exact_local_channels` の Kraus 表示と数学的に同値で
+      あるため、Stinespring を Kraus 化した backend execution は意味のある独立
+      情報を提供せず、本 PR では rejection する (`ValueError`)。

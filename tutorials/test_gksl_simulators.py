@@ -1667,6 +1667,98 @@ class TestExactLocalChannelsConvergence:
         )
 
 
+class TestDMSimBackendExecution:
+    """Verify that ``execute_on_backend='dmsim'`` reproduces the NumPy
+    direct path bit-for-bit (up to round-off).
+
+    The DMSim backend executes one MQT-Qudits ``QuantumCircuit`` per
+    Trotter step (using ``cu_multi`` for the Hamiltonian half-steps and
+    :class:`KrausChannel` for every Lindblad channel).  Mathematically
+    it computes the same density matrix as the in-process NumPy path —
+    this test asserts that as a regression guard.
+
+    *No heuristic correction* is performed: the only difference between
+    the two paths is whether the local channels are dispatched through
+    DMSim (Kraus) or applied via :func:`apply_channel_*` (column-major
+    superoperator).  Both representations are exact (Choi-Jamiolkowski)
+    so agreement up to ``1e-12`` is expected for ``N=4, 100`` steps.
+    """
+
+    @staticmethod
+    def test_dmsim_matches_numpy_n2_t10_20_steps():
+        """N=2, short run: agreement at round-off."""
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        ref = QuditGKSLSimulator(
+            params, algorithm="exact_local_channels"
+        ).simulate(t_max=10.0, n_steps=20, initial_state="edge_triplet")
+        bk = QuditGKSLSimulator(
+            params,
+            algorithm="exact_local_channels",
+            execute_on_backend="dmsim",
+        ).simulate(t_max=10.0, n_steps=20, initial_state="edge_triplet")
+        diff = np.linalg.norm(ref["rho_final"] - bk["rho_final"])
+        assert diff < 1e-12, f"N=2 DMSim mismatch: ‖Δρ‖_F={diff:.3e}"
+
+    @staticmethod
+    def test_dmsim_matches_numpy_n4_notebook_settings():
+        """N=4, t_max=100, n_steps=100 (matches the notebook scenario).
+
+        This is the case that is *impossible* to run on the state-vector
+        backends (tnsim/misim) — see STATUS_HONEST_2026-05.md A-1.
+        With DMSim it runs in seconds and matches the in-process NumPy
+        path at round-off level.
+        """
+        params = GKSLPhysicalParameters(N_molecules=4, with_boson=False)
+        ref = QuditGKSLSimulator(
+            params, algorithm="exact_local_channels"
+        ).simulate(t_max=100.0, n_steps=100, initial_state="edge_triplet")
+        bk = QuditGKSLSimulator(
+            params,
+            algorithm="exact_local_channels",
+            execute_on_backend="dmsim",
+        ).simulate(t_max=100.0, n_steps=100, initial_state="edge_triplet")
+        diff = np.linalg.norm(ref["rho_final"] - bk["rho_final"])
+        # 100 steps × 26 channels per step × Choi eigendecomposition
+        # round-off propagates to ~1e-13 in our measurements; assert 1e-10
+        # to leave headroom.
+        assert diff < 1e-10, (
+            f"N=4 DMSim backend disagrees with NumPy reference: "
+            f"‖Δρ‖_F={diff:.3e}"
+        )
+        # Trace conservation must hold for both paths.
+        assert abs(bk["trace"][-1] - 1.0) < 1e-8
+
+    @staticmethod
+    def test_dmsim_requires_exact_local_channels_algorithm():
+        """Stinespring + DMSim is rejected at construction time."""
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        try:
+            QuditGKSLSimulator(
+                params, algorithm="stinespring", execute_on_backend="dmsim"
+            )
+        except ValueError as exc:
+            assert "exact_local_channels" in str(exc)
+        else:
+            msg = "Expected ValueError for stinespring + dmsim combination"
+            raise AssertionError(msg)
+
+    @staticmethod
+    def test_dmsim_only_dmsim_is_recognised():
+        """Only 'dmsim' is accepted (state-vector backends would silently fail)."""
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        try:
+            QuditGKSLSimulator(
+                params,
+                algorithm="exact_local_channels",
+                execute_on_backend="tnsim",
+            )
+        except ValueError as exc:
+            assert "dmsim" in str(exc)
+        else:
+            msg = "Expected ValueError for non-dmsim execute_on_backend"
+            raise AssertionError(msg)
+
+
 class TestCompilerMeasuredGateCounts:
     """A-3: ``compute_compiler_measured_gate_counts`` returns real numbers
     from the MQT-Qudits compiler, not from a hard-coded formula.

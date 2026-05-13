@@ -145,6 +145,9 @@ class QuditGKSLSimulator:
         self.dim = params.d ** params.N_molecules  # 81
 
         # Lazy initialisation for DMSim backend execution.
+        # _dmsim_kraus_half holds, for each Lindblad channel, a tuple of
+        #   (target_sites, [K_α], "single" | "pair")
+        # in the same order as exact_local_channels.precompute_exact_channels_half.
         self._dmsim_backend = None
         self._dmsim_kraus_half: list[tuple[tuple[int, ...], list[np.ndarray], str]] | None = None
 

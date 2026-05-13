@@ -1,18 +1,41 @@
-"""Qudit GKSL simulator using actual MQT-Qudits QuantumCircuit API.
+"""Qudit GKSL Kraus simulator (constructs MQT-Qudits circuits, but does NOT execute them).
 
-Scenario 5c: Circuit-based Qudit GKSL-Lindblad (no boson).
+NAMING NOTICE (D-1)
+-------------------
+This module was historically named ``qudit_gksl_circuit_simulator`` and the
+class was named ``QuditGKSLCircuitSimulator``.  That name was misleading: the
+simulator does **not** run a quantum circuit on a MQT-Qudits backend.  What
+it actually does is:
 
-This simulator constructs actual MQT-Qudits quantum circuits for each building
-block of the Trotter step, replacing matrix-level computations with gate-level
-circuit operations verified against the MQT-Qudits framework.
+  1. Construct MQT-Qudits ``QuantumCircuit`` objects for each Trotter
+     building block (on-site phase, pair transfer, single-site Stinespring,
+     TTA-pair Stinespring) — these objects are real and can be inspected /
+     drawn for documentation purposes.
+  2. Take the gate matrices out of those circuits and apply them to a NumPy
+     density matrix as Kraus operators.
 
-Circuit decomposition:
-  - Hamiltonian step: cu_one (on-site phases, 3x3) + cu_two (pair transfer, 9x9)
-  - Stinespring channels: cu_two (single-site, 6x6) or cu_multi (TTA pair, 18x18)
+The combined per-step circuit produced by ``build_combined_trotter_step_circuit``
+contains mid-circuit ancilla reuse (each Stinespring dilation needs its
+ancilla returned to ``|0⟩`` before the next channel).  MQT-Qudits backends
+(``tnsim``/``misim``) currently do **not** implement mid-circuit reset, so
+that combined circuit is a *visualization artefact* and is not executable on
+a MQT-Qudits backend in its current form.
 
-Density matrix evolution uses circuit-derived local Kraus operators, which is
-mathematically equivalent to executing the full circuit with ancilla reset
-between channels, but is computationally tractable for open-system dynamics.
+Therefore the honest name of this class is :class:`QuditGKSLKrausSimulator`.
+The old name :class:`QuditGKSLCircuitSimulator` is kept as a backward-
+compatible alias at the bottom of this file so existing imports continue to
+work.
+
+Mathematical content
+--------------------
+- Hamiltonian step: per-site ``exp(-i h_local dt)`` (3x3) + per-pair
+  ``exp(-i H_pair dt)`` (9x9) applied as exact unitaries.
+- Each Lindblad channel is realised by a Stinespring dilation, with the
+  resulting Kraus set obtained by tracing out the ancilla.  This is a
+  first-order (O(dt)) approximation of ``exp(L_α dt)``; see
+  :mod:`qudit_gksl_simulator` for the convergence note.
+
+Scenario label in the comparison notebook: 5c (qudit GKSL, no boson).
 """
 
 from __future__ import annotations
@@ -35,28 +58,36 @@ from gksl_math_utils import (
 from gksl_physical_parameters import GKSLPhysicalParameters
 
 
-class QuditGKSLCircuitSimulator:
-    """Qudit GKSL simulator using MQT-Qudits QuantumCircuit API.
+class QuditGKSLKrausSimulator:
+    """Qudit GKSL simulator that builds MQT-Qudits circuits but applies them as Kraus maps.
 
-    Constructs real MQT-Qudits quantum circuits for each Trotter step component.
-    Each unitary (Hamiltonian gates, Stinespring dilations) is built as a
-    quantum circuit object, verified via MQT-Qudits state-vector simulation,
-    and then used in density-matrix evolution via local Kraus operators.
+    For each Trotter building block this class constructs an actual
+    ``mqt.qudits.quantum_circuit.QuantumCircuit`` (so the circuits can be
+    drawn / inspected and the gate matrices are verified against the
+    MQT-Qudits gate library).  However, **time evolution itself is performed
+    by extracting the gate matrices from those circuits and applying them to
+    a NumPy density matrix as Kraus operators** — there is no execution on
+    a MQT-Qudits simulator backend (``tnsim``/``misim``).
+
+    The combined per-step circuit returned by
+    :meth:`build_combined_trotter_step_circuit` requires mid-circuit ancilla
+    reset between Stinespring channels.  MQT-Qudits backends do not currently
+    implement mid-circuit reset, so that combined circuit is a documentation
+    / visualization artefact and is not executable end-to-end on a MQT-Qudits
+    backend in its current form.
+
+    Reported gate counts (e.g. "Total: 66 gates per Trotter step") are the
+    *number of high-level gate objects appended to the circuit*, not the
+    output of an MQT-Qudits compiler pass.  See A-3 in the project STATUS
+    document for the planned replacement with compiler-measured counts.
 
     Since this targets qudit quantum computers, all registers — including
     Stinespring ancillas — are native d-level qudits.
-
-    Quantum resources per Trotter step (palindromic 2nd-order):
-      - 4 cu_one gates (on-site Hamiltonian phases, half step) x 2 = 8
-      - 3 cu_two gates (pair transfer, half step) x 2 = 6
-      - 20 cu_two gates (single-site Stinespring) x 2 (fwd+rev) = 40
-      - 6 cu_multi gates (TTA pair Stinespring) x 2 (fwd+rev) = 12
-      Total: 66 gates per Trotter step
     """
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
         if params.with_boson:
-            msg = "QuditGKSLCircuitSimulator is for non-boson model only"
+            msg = "QuditGKSLKrausSimulator is for non-boson model only"
             raise ValueError(msg)
         self.params = params
         self.d = params.d
@@ -1104,3 +1135,14 @@ class QuditGKSLCircuitSimulator:
                 "cu_multi_stinespring_pair": 2 * n_stinespring_pair,
             },
         }
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible alias (D-1: honest naming).
+# ``QuditGKSLCircuitSimulator`` was the historical name; it implied execution
+# on a quantum-circuit backend, which this class does not perform.  The class
+# was renamed to ``QuditGKSLKrausSimulator``; the old name is retained as an
+# alias so existing imports (tests, notebooks, external scripts) keep working.
+# Prefer importing ``QuditGKSLKrausSimulator`` in new code.
+# ---------------------------------------------------------------------------
+QuditGKSLCircuitSimulator = QuditGKSLKrausSimulator

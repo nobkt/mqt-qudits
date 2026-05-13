@@ -1,20 +1,18 @@
-"""Qudit GKSL circuit simulator with boson (phonon) interaction.
+"""Qudit GKSL Kraus simulator with boson (phonon) — builds circuits but does NOT execute them.
 
-Scenario 6c: Circuit-based Qudit GKSL-Lindblad with boson.
+NAMING NOTICE (D-1)
+-------------------
+Historically named ``QuditGKSLCircuitBosonSimulator``.  As with
+:class:`qudit_gksl_circuit_simulator.QuditGKSLKrausSimulator`, this class
+constructs MQT-Qudits ``QuantumCircuit`` objects for each Trotter building
+block but performs the actual time evolution by applying the gate matrices
+to a NumPy density matrix as Kraus operators in the extended
+electronic⊗phonon Hilbert space.  There is no execution on a MQT-Qudits
+backend, and the combined per-step circuit requires mid-circuit ancilla
+reset.  The honest class name is therefore
+:class:`QuditGKSLKrausBosonSimulator`; the old name is kept as an alias.
 
-Extends QuditGKSLCircuitSimulator to support phonon degrees of freedom,
-adding phonon qutrit registers and electron-phonon coupling gates.
-
-Circuit decomposition:
-  - Electronic Hamiltonian: cu_one (on-site phases) + cu_two (pair transfer)
-  - Phonon Hamiltonian: cu_one (phonon on-site) per phonon qutrit
-  - Electron-phonon coupling: cu_two (el-ph coupling) per molecule
-  - Stinespring channels: cu_two (single-site) or cu_multi (TTA pair)
-    acting on electronic qutrits only (Lindblad operators act on electronic
-    subspace with identity on phonon subspace)
-
-The density matrix evolution uses circuit-derived local Kraus operators in
-the extended electron⊗phonon Hilbert space.
+Scenario label in the comparison notebook: 6c.
 """
 
 from __future__ import annotations
@@ -40,31 +38,25 @@ from gksl_physical_parameters import GKSLPhysicalParameters
 from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
 
 
-class QuditGKSLCircuitBosonSimulator:
-    """Qudit GKSL circuit simulator with boson (phonon) interaction.
+class QuditGKSLKrausBosonSimulator:
+    """Qudit GKSL boson simulator that builds MQT-Qudits circuits but applies them as Kraus maps.
 
-    Constructs MQT-Qudits quantum circuits for each Trotter step component
-    in the extended electronic⊗phonon Hilbert space.
+    Constructs MQT-Qudits ``QuantumCircuit`` objects for each Trotter step
+    component in the extended electronic⊗phonon Hilbert space.  Time
+    evolution is performed by extracting gate matrices from those circuits
+    and applying them to a NumPy density matrix as Kraus operators — there
+    is no execution on a MQT-Qudits backend.
+
+    Reported gate counts are the number of high-level gate objects appended
+    to the circuit, not compiler-measured counts.
 
     Since this targets qudit quantum computers, all registers — including
     Stinespring ancillas — are native d-level qudits.
-
-    Quantum resources:
-      - N electronic qutrits (d=3)
-      - N phonon qutrits (d=n_max+1, typically d=3 for n_max=2)
-      - 26 ancilla qudits (d=3, Stinespring channels)
-      Total: 2N qutrits + 26 ancilla qudits
-
-    Gate types per Trotter step (palindromic 2nd-order):
-      - cu_one: electronic on-site (N) + phonon on-site (N)   [x2 half-steps]
-      - cu_two: electronic transfer (N-1 pairs) + el-ph coupling (N) [x2]
-               + single-site Stinespring (20 x 2 fwd+rev = 40)
-      - cu_multi: TTA pair Stinespring (6 x 2 fwd+rev = 12)
     """
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
         if not params.with_boson:
-            msg = "QuditGKSLCircuitBosonSimulator requires with_boson=True"
+            msg = "QuditGKSLKrausBosonSimulator requires with_boson=True"
             raise ValueError(msg)
         self.params = params
         self.d = params.d
@@ -863,3 +855,9 @@ class QuditGKSLCircuitBosonSimulator:
                 "cu_multi_stinespring_pair": 2 * n_stinespring_pair,
             },
         }
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible alias (D-1: honest naming).
+# ---------------------------------------------------------------------------
+QuditGKSLCircuitBosonSimulator = QuditGKSLKrausBosonSimulator

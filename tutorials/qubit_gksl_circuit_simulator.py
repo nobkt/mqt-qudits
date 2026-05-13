@@ -1,25 +1,40 @@
-"""Qubit GKSL simulator using Qiskit QuantumCircuit API.
+"""Qubit GKSL Kraus simulator (constructs Qiskit circuits, but does NOT execute them).
 
-Scenario 3c: Circuit-based Qubit GKSL-Lindblad (no boson).
+NAMING NOTICE (D-1)
+-------------------
+This module was historically named ``qubit_gksl_circuit_simulator`` and the
+class was named ``QubitGKSLCircuitSimulator``.  That name was misleading:
+the simulator does **not** run a quantum circuit on a Qiskit backend.  What
+it actually does is:
 
-This simulator constructs actual Qiskit quantum circuits for each building
-block of the Trotter step, encoding each 3-level molecule using 2 qubits
-(|S0>->|00>, |T1>->|01>, |S1>->|10>, |11> forbidden).
+  1. Construct Qiskit ``QuantumCircuit`` objects for each Trotter building
+     block, with each unitary embedded from qutrit space into 2-qubit-per-
+     molecule space and inserted as a ``UnitaryGate``.  These circuits are
+     real and can be drawn / inspected.
+  2. Take the embedded gate matrices and apply them to a NumPy density
+     matrix in the 81-dim qutrit subspace as Kraus operators.
 
-Circuit decomposition:
-  - Hamiltonian step: UnitaryGate (4x4, on-site) + UnitaryGate (16x16, pair transfer)
-  - Stinespring channels: UnitaryGate (8x8, single-site) or UnitaryGate (32x32, TTA pair)
-
-Density matrix evolution uses circuit-derived local Kraus operators (in
-81-dim qutrit space), which is mathematically equivalent to executing the
-full qubit circuit with ancilla reset between channels, but computationally
-tractable for open-system dynamics.
+There is no execution on a Qiskit Aer / IBM Quantum backend, and the
+combined per-step circuit requires mid-circuit ancilla reset that is not
+realised end-to-end by this code.  Therefore the honest class name is
+:class:`QubitGKSLKrausSimulator`; the old name is retained as an alias.
 
 Qutrit-to-qubit embedding:
   |0> (S0) -> |00>  (index 0)
   |1> (T1) -> |01>  (index 1)
   |2> (S1) -> |10>  (index 2)
   forbidden  -> |11> (index 3)
+
+Independence note (A-2)
+-----------------------
+The Stinespring dilation unitaries used here are produced by exactly the
+same routine as the qutrit simulator (:mod:`stinespring_utils`); only the
+embedding into the 4-per-molecule qubit basis differs.  Agreement between
+the qudit and qubit GKSL simulators is therefore a check of the
+qutrit→qubit embedding, **not** an independent cross-implementation
+verification of the open-system dynamics.
+
+Scenario label in the comparison notebook: 3c (qubit GKSL, no boson).
 """
 
 from __future__ import annotations
@@ -46,26 +61,30 @@ _QT_TO_QB = {0: 0b00, 1: 0b01, 2: 0b10}
 _QB_TO_QT = {v: k for k, v in _QT_TO_QB.items()}
 
 
-class QubitGKSLCircuitSimulator:
-    """Qubit GKSL simulator using Qiskit QuantumCircuit API.
+class QubitGKSLKrausSimulator:
+    """Qubit GKSL simulator that builds Qiskit circuits but applies them as Kraus maps.
 
-    Constructs real Qiskit quantum circuits for each Trotter step component.
-    Each unitary is embedded from qutrit space into qubit space and applied
-    as a ``UnitaryGate``.  The density matrix evolution itself uses the
-    same Kraus-operator machinery as the qutrit circuit simulator, operating
-    in the 81-dim qutrit space.
+    Constructs Qiskit ``QuantumCircuit`` objects for each Trotter step
+    component (with each unitary embedded into the 4-per-molecule qubit
+    space and inserted as a ``UnitaryGate``).  However, **time evolution
+    itself is performed by extracting the embedded gate matrices and
+    applying them to a NumPy density matrix in the 81-dim qutrit subspace
+    as Kraus operators** — there is no execution on a Qiskit backend.
 
-    Quantum resources per Trotter step (palindromic 2nd-order):
-      - 4 UnitaryGate (4x4 on-site Hamiltonian, per molecule) x 2 = 8
-      - 3 UnitaryGate (16x16 pair transfer) x 2 = 6
-      - 20 UnitaryGate (8x8 single-site Stinespring) x 2 (fwd+rev) = 40
-      - 6 UnitaryGate (32x32 TTA pair Stinespring) x 2 (fwd+rev) = 12
-      Total: 66 gates per Trotter step
+    Reported gate counts (e.g. "Total: 66 gates per Trotter step") are the
+    *number of high-level gate objects appended to the circuit*, not the
+    output of a Qiskit / MQT-Qudits transpilation pass.  See A-3 in the
+    project STATUS document.
+
+    The Stinespring unitaries are produced by the same routine as
+    :class:`qudit_gksl_simulator.QuditGKSLSimulator`; agreement between the
+    qudit and qubit results is a check of the embedding, not an independent
+    cross-implementation verification (A-2).
     """
 
     def __init__(self, params: GKSLPhysicalParameters) -> None:
         if params.with_boson:
-            msg = "QubitGKSLCircuitSimulator is for non-boson model only"
+            msg = "QubitGKSLKrausSimulator is for non-boson model only"
             raise ValueError(msg)
         self.params = params
         self.d = params.d  # 3 (qutrit)
@@ -1182,3 +1201,13 @@ class QubitGKSLCircuitSimulator:
                 "unitary_32x32_stinespring_pair": 2 * n_stinespring_pair,
             },
         }
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible alias (D-1: honest naming).
+# ``QubitGKSLCircuitSimulator`` was the historical name; it implied execution
+# on a quantum-circuit backend, which this class does not perform.  The class
+# was renamed to ``QubitGKSLKrausSimulator``; the old name is retained as an
+# alias so existing imports keep working.
+# ---------------------------------------------------------------------------
+QubitGKSLCircuitSimulator = QubitGKSLKrausSimulator

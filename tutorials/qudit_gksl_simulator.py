@@ -7,6 +7,15 @@ so there are NO forbidden states (unlike the qubit encoding which wastes |11>).
 The simulation uses the same 81-dim qutrit Hilbert space and Stinespring+Trotter
 approach as the qubit simulator, but corresponds to a qudit circuit with fewer gates.
 
+Independence note (A-2)
+-----------------------
+The qubit GKSL simulator (:mod:`qubit_gksl_simulator`) is **not** an
+algorithmically independent re-implementation of this class.  It shares the
+same Hamiltonian generators, the same Stinespring dilation routine and the
+same Trotter step structure; the qubit simulator only adds a qutrit→qubit
+embedding of every operator.  Cross-checks between the two simulators
+therefore validate the embedding, not the underlying open-system dynamics.
+
 Convergence note
 ----------------
 The Hamiltonian–Dissipator splitting uses Strang (symmetric) splitting, which

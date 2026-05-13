@@ -11,6 +11,27 @@ The physical subspace is the 81-dim qutrit subspace embedded in the 256-dim qubi
 space. In the noiseless case, the operators are embedded to preserve this subspace,
 so results match the native qutrit simulation up to floating-point precision.
 
+Independence note (A-2)
+-----------------------
+This class is **not** an algorithmically independent re-implementation of
+the qudit GKSL simulator.  The Hamiltonian generators, the Stinespring
+dilation unitaries (via :mod:`stinespring_utils`) and the Trotter step
+structure are all shared with :class:`qudit_gksl_simulator.QuditGKSLSimulator`;
+the only differences in this module are
+
+  * the qubit-pair embedding of each operator into the 256-dim space
+    (:func:`embed_operator_in_qubit_space`),
+  * the use of single-qubit and two-qubit Pauli noise instead of
+    Weyl–Heisenberg noise on the qutrit space.
+
+Consequently, a near-perfect agreement between the noiseless qubit and
+qudit GKSL simulators (e.g. ``Fidelity (Qubit vs Qudit) ≈ 1`` in the
+comparison notebook) is a check that the qutrit→qubit embedding is
+faithful — not an independent cross-implementation verification of the
+open-system dynamics.  Treat the two simulators as a single physical
+implementation in two coordinate systems for the purposes of validating
+correctness.
+
 Convergence note
 ----------------
 The Hamiltonian–Dissipator splitting uses Strang (symmetric) splitting, which

@@ -1491,6 +1491,86 @@ class TestExactLocalChannelsConvergence:
         eigenvalues = np.linalg.eigvalsh(delta)
         return float(0.5 * np.sum(np.abs(eigenvalues)))
 
+    def test_local_lindblad_ops_match_global_ones(self):
+        """Local-form Lindblad ops, embedded into the full system, must
+        equal the full-system ops returned by build_lindblad_operators
+        in the same order and with the same sqrt(gamma) prefactor.
+
+        This pins down the consistency between
+        :func:`gksl_math_utils.build_lindblad_operators` and
+        :func:`exact_local_channels.get_local_lindblad_ops`, so that
+        the two algorithms in :class:`QuditGKSLSimulator` apply the
+        same physical channels.
+        """
+        from exact_local_channels import get_local_lindblad_ops
+        from gksl_math_utils import (
+            build_lindblad_operators,
+            build_single_site_operator,
+        )
+        from functools import reduce
+
+        params = GKSLPhysicalParameters(N_molecules=3, with_boson=False)
+        d = params.d
+        N = params.N_molecules
+
+        global_ops = build_lindblad_operators(params)
+        local_ops = get_local_lindblad_ops(params)
+        assert len(global_ops) == len(local_ops)
+
+        eye = np.eye(d, dtype=np.complex128)
+        for (L_global, _gamma), (sites, L_local, kind) in zip(
+            global_ops, local_ops
+        ):
+            if kind == "single":
+                expected = build_single_site_operator(L_local, sites[0], N, d)
+            else:
+                # For pair channels, L_local = kron(A_i, A_j) sits on two
+                # arbitrary sites (i, j); we verify equivalence between the
+                # local and global routes by exponentiating each route's
+                # dissipator superoperator and applying it to the same
+                # fiducial PSD density matrix.
+                from exact_local_channels import (
+                    apply_channel_pair,
+                    build_local_dissipator_super,
+                )
+                from scipy.linalg import expm as _expm
+                from stinespring_utils import build_gksl_superoperator
+
+                rng = np.random.default_rng(123)
+                rho = (
+                    rng.standard_normal((d**N, d**N))
+                    + 1j * rng.standard_normal((d**N, d**N))
+                )
+                rho = rho @ rho.conj().T  # PSD
+                rho = rho / np.trace(rho)
+
+                # Local route: build local dissipator on d²×d² space and
+                # apply via einsum embedding.
+                LD_local = build_local_dissipator_super(L_local, d * d)
+                exp_LD = _expm(LD_local * 0.01)
+                rho_local = apply_channel_pair(rho, exp_LD, sites, N, d)
+
+                # Global route: build full-system dissipator and exponentiate.
+                LD_global = build_gksl_superoperator(
+                    np.zeros_like(L_global), [L_global]
+                )
+                exp_LD_g = _expm(LD_global * 0.01)
+                vec_rho = rho.flatten(order="F")
+                rho_global = exp_LD_g.dot(vec_rho).reshape(
+                    d**N, d**N, order="F"
+                )
+
+                assert np.allclose(rho_local, rho_global, atol=1e-10), (
+                    f"pair channel at sites={sites} disagrees between "
+                    f"local and global routes"
+                )
+                continue
+            assert np.allclose(L_global, expected, atol=1e-12), (
+                f"single-site channel #{sites} disagrees: order or "
+                f"sqrt(gamma) mismatch between get_local_lindblad_ops "
+                f"and build_lindblad_operators"
+            )
+
     def test_constructor_rejects_unknown_algorithm(self):
         params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
         with pytest.raises(ValueError, match="algorithm"):

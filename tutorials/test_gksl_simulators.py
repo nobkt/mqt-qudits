@@ -1729,18 +1729,63 @@ class TestDMSimBackendExecution:
         assert abs(bk["trace"][-1] - 1.0) < 1e-8
 
     @staticmethod
-    def test_dmsim_requires_exact_local_channels_algorithm():
-        """Stinespring + DMSim is rejected at construction time."""
+    def test_dmsim_stinespring_ancilla_matches_numpy_reference():
+        """Stinespring + DMSim: ancilla-updating circuit matches NumPy.
+
+        The per-step circuit contains N system qutrits **plus one
+        physical ancilla qudit** that is updated (reset to ``|0⟩`` via a
+        KrausChannel with ``K_k = |0><k|``) between Lindblad channels.
+        The result must agree with the in-process NumPy Stinespring path
+        (dilate → partial trace per channel) at round-off level.
+        """
         params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
-        try:
-            QuditGKSLSimulator(
-                params, algorithm="stinespring", execute_on_backend="dmsim"
-            )
-        except ValueError as exc:
-            assert "exact_local_channels" in str(exc)
-        else:
-            msg = "Expected ValueError for stinespring + dmsim combination"
-            raise AssertionError(msg)
+        ref = QuditGKSLSimulator(
+            params, algorithm="stinespring"
+        ).simulate(t_max=10.0, n_steps=20, initial_state="edge_triplet")
+        bk_sim = QuditGKSLSimulator(
+            params, algorithm="stinespring", execute_on_backend="dmsim"
+        )
+        bk = bk_sim.simulate(t_max=10.0, n_steps=20, initial_state="edge_triplet")
+        diff = np.linalg.norm(ref["rho_final"] - bk["rho_final"])
+        assert diff < 1e-12, (
+            f"ancilla-updating DMSim Stinespring disagrees with NumPy "
+            f"reference: ‖Δρ‖_F={diff:.3e}"
+        )
+        assert abs(bk["trace"][-1] - 1.0) < 1e-10
+        assert bk["n_ancilla_qudits_backend_circuit"] == 1
+
+    @staticmethod
+    def test_dmsim_stinespring_circuit_contains_ancilla_and_resets():
+        """The backend circuit really contains the ancilla + reset channels."""
+        from mqt.qudits.quantum_circuit.gates.kraus_channel import KrausChannel
+
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        sim = QuditGKSLSimulator(
+            params, algorithm="stinespring", execute_on_backend="dmsim"
+        )
+        sim._precompute_unitaries(0.1)
+        circuit = sim._stinespring_ancilla_circuit
+        n = params.N_molecules
+        d = params.d
+        # N system qudits + 1 ancilla qudit.
+        assert list(circuit.dimensions) == [d] * (n + 1)
+        n_channels = len(sim.lindblad_ops)
+        resets = [
+            inst
+            for inst in circuit.instructions
+            if isinstance(inst, KrausChannel)
+        ]
+        # One ancilla reset per channel application (palindromic → 2×).
+        assert len(resets) == 2 * n_channels
+        anc = n
+        for inst in resets:
+            target = inst.target_qudits
+            assert (target == anc) or (target == [anc])
+            # Reset Kraus set is exactly {K_k = |0><k|}.
+            for k, K in enumerate(inst.kraus_operators):
+                expected = np.zeros((d, d), dtype=np.complex128)
+                expected[0, k] = 1.0
+                assert np.allclose(K, expected)
 
     @staticmethod
     def test_dmsim_only_dmsim_is_recognised():

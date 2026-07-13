@@ -116,16 +116,21 @@ class QuditGKSLSimulator:
                     "(see STATUS_HONEST_2026-05.md A-1)."
                 )
                 raise ValueError(msg)
-            if algorithm != "exact_local_channels":
-                msg = (
-                    "execute_on_backend='dmsim' requires "
-                    "algorithm='exact_local_channels' so that each Lindblad "
-                    "channel has an exact Kraus representation that can be "
-                    "fed to MQT-Qudits as a KrausChannel instruction.  "
-                    "Stinespring dilation has no Kraus representation on "
-                    "the system alone (it requires ancillas)."
-                )
-                raise ValueError(msg)
+            # Both algorithms are supported on the DMSim backend:
+            #
+            # * ``algorithm='exact_local_channels'``: each Lindblad channel
+            #   is issued as a KrausChannel instruction acting on the
+            #   system qudits only (no ancilla in the circuit).
+            # * ``algorithm='stinespring'``: the per-step circuit contains
+            #   the N system qutrits **plus one physical ancilla qudit**.
+            #   Each Lindblad channel is realised by its Stinespring
+            #   dilation unitary (cu_two / cu_multi involving the ancilla)
+            #   followed by a **mid-circuit ancilla reset**
+            #   (KrausChannel with K_k = |0><k|), so the ancilla is
+            #   genuinely updated between channels during the dynamics —
+            #   the same semantics as tensorcircuit-ng's
+            #   ``Circuit.general_kraus`` / ``DMCircuit`` channel
+            #   application (measure-and-reset of the dilating ancilla).
         self.algorithm = algorithm
         self.execute_on_backend = execute_on_backend
         self.params = params
@@ -150,6 +155,9 @@ class QuditGKSLSimulator:
         # in the same order as exact_local_channels.precompute_exact_channels_half.
         self._dmsim_backend = None
         self._dmsim_kraus_half: list[tuple[tuple[int, ...], list[np.ndarray], str]] | None = None
+        # Pre-built per-step circuit for the ancilla-updating Stinespring
+        # DMSim path (algorithm='stinespring', execute_on_backend='dmsim').
+        self._stinespring_ancilla_circuit = None
 
     # ------------------------------------------------------------------
     # Trotter step primitives
@@ -169,19 +177,37 @@ class QuditGKSLSimulator:
         ``O(dt³)`` Lie-product commutator error among local channels —
         which is the whole point of the palindromic ordering.
 
-        For ``execute_on_backend="dmsim"`` we additionally extract the
-        Kraus operators of every cached half-step local superoperator
-        (Choi-Jamiolkowski decomposition,
-        :func:`dmsim_kraus_helpers.kraus_from_local_superoperator`) so
-        that each Lindblad channel can be issued as a MQT-Qudits
-        :class:`KrausChannel` instruction.
+        For ``execute_on_backend="dmsim"`` we additionally prepare the
+        per-step MQT-Qudits circuit ingredients:
+
+        * ``algorithm="exact_local_channels"``: extract the Kraus
+          operators of every cached half-step local superoperator
+          (Choi-Jamiolkowski decomposition,
+          :func:`dmsim_kraus_helpers.kraus_from_local_superoperator`) so
+          that each Lindblad channel can be issued as a MQT-Qudits
+          :class:`KrausChannel` instruction on the system qudits.
+        * ``algorithm="stinespring"``: build, for every Lindblad channel,
+          the **local** Stinespring dilation unitary (9×9 for single-site
+          channels, 27×27 for TTA-pair channels, ancilla leg first) that
+          will be applied as a ``cu_two`` / ``cu_multi`` gate involving a
+          physical ancilla qudit, plus the ancilla-reset Kraus set
+          ``{K_k = |0><k|}`` used to update the ancilla mid-circuit
+          between channels.  The full per-step circuit
+          (N system qutrits + 1 ancilla qudit) is built once here and
+          re-used at every Trotter step.
         """
         self._U_H_half = expm(-1j * self.H_total * dt / 2)
         if self.algorithm == "stinespring":
-            self._U_stines_half = [
-                stinespring_unitary_from_lindblad(L_op, dt / 2, d_anc=self.d_anc)
-                for L_op, _gamma in self.lindblad_ops
-            ]
+            if self.execute_on_backend is None:
+                self._U_stines_half = [
+                    stinespring_unitary_from_lindblad(L_op, dt / 2, d_anc=self.d_anc)
+                    for L_op, _gamma in self.lindblad_ops
+                ]
+            else:
+                # DMSim ancilla-updating path: local dilation unitaries
+                # are built in _prepare_stinespring_ancilla_circuit; the
+                # global 243×243 dilations are not needed.
+                self._U_stines_half = None
             self._exact_channels_half = None
         else:
             # exact_local_channels
@@ -191,17 +217,124 @@ class QuditGKSLSimulator:
             )
 
         if self.execute_on_backend == "dmsim":
-            # Extract Kraus operators for every half-step local channel.
-            kraus_list: list[tuple[tuple[int, ...], list[np.ndarray], str]] = []
-            for sites, M_half, kind in self._exact_channels_half:
-                d_root = self.params.d if kind == "single" else self.params.d ** 2
-                kraus = kraus_from_local_superoperator(M_half, d_root)
-                kraus_list.append((sites, kraus, kind))
-            self._dmsim_kraus_half = kraus_list
+            if self.algorithm == "exact_local_channels":
+                # Extract Kraus operators for every half-step local channel.
+                kraus_list: list[tuple[tuple[int, ...], list[np.ndarray], str]] = []
+                for sites, M_half, kind in self._exact_channels_half:
+                    d_root = self.params.d if kind == "single" else self.params.d ** 2
+                    kraus = kraus_from_local_superoperator(M_half, d_root)
+                    kraus_list.append((sites, kraus, kind))
+                self._dmsim_kraus_half = kraus_list
+            else:
+                # algorithm == "stinespring": prepare the ancilla-updating
+                # per-step circuit ingredients.
+                self._prepare_stinespring_ancilla_circuit(dt)
 
             # Lazily acquire the DMSim backend.
             from mqt.qudits.simulation import MQTQuditProvider
             self._dmsim_backend = MQTQuditProvider().get_backend("dmsim")
+
+    def _prepare_stinespring_ancilla_circuit(self, dt: float) -> None:
+        """Build the per-step ancilla-updating Stinespring circuit (once).
+
+        The circuit acts on ``N + 1`` qudits: system qutrits at positions
+        ``0..N-1`` and **one physical ancilla qudit** (dimension
+        ``self.d_anc``) at position ``N``.  Structure (palindromic,
+        matching :meth:`_trotter_step` exactly):
+
+        1. ``cu_multi`` on the system: ``expm(-i H_total dt/2)``.
+        2. For each Lindblad channel (forward order, then reverse order):
+           a. the **local Stinespring dilation unitary**
+              ``U_α = expm(-i √(dt/2) G_α)`` applied as ``cu_two``
+              (single-site channel: targets ``[ancilla, site]``) or
+              ``cu_multi`` (TTA-pair channel: targets
+              ``[ancilla, site_i, site_j]``) — ancilla leg first,
+              matching the env⊗sys block structure of ``G_α``;
+           b. a **mid-circuit ancilla reset** issued as a
+              :class:`KrausChannel` with Kraus set ``{K_k = |0><k|}``
+              (``Σ K_k†K_k = I``, exact CPTP).  Tracing out the outcome
+              and re-initialising the ancilla to ``|0⟩`` is exactly the
+              partial trace + fresh-ancilla step of the Stinespring
+              recipe, so the ancilla is genuinely *updated* between
+              channels inside the circuit.  This is the density-matrix
+              equivalent of tensorcircuit-ng's
+              ``Circuit.general_kraus`` mid-circuit
+              measure-and-discard of the dilating ancilla.
+        3. Closing ``cu_multi``: ``expm(-i H_total dt/2)``.
+
+        The local dilation unitaries are built from the **local** Lindblad
+        operators (3×3 / 9×9, from
+        :meth:`qudit_gksl_circuit_simulator.QuditGKSLKrausSimulator`),
+        whose channel ordering is identical to
+        :func:`gksl_math_utils.build_lindblad_operators`; embedding the
+        local ``expm`` on ``(ancilla, sites)`` equals the global
+        Stinespring unitary because the generator is supported on those
+        legs only.
+        """
+        from mqt.qudits.quantum_circuit import QuantumCircuit
+        from mqt.qudits.quantum_circuit.components.quantum_register import (
+            QuantumRegister,
+        )
+        from qudit_gksl_circuit_simulator import QuditGKSLKrausSimulator
+
+        n = self.n_system_qudits
+        d = self.params.d
+        d_anc = self.d_anc
+        anc = n  # ancilla qudit position (last)
+
+        local_info = QuditGKSLKrausSimulator(self.params).lindblad_local_info
+        if len(local_info) != len(self.lindblad_ops):
+            msg = (
+                "local Lindblad channel count "
+                f"({len(local_info)}) does not match global count "
+                f"({len(self.lindblad_ops)})"
+            )
+            raise ValueError(msg)
+
+        def _local_stinespring(L_local: np.ndarray, dtau: float) -> np.ndarray:
+            d_loc = L_local.shape[0]
+            G = np.zeros((d_anc * d_loc, d_anc * d_loc), dtype=np.complex128)
+            G[:d_loc, d_loc : 2 * d_loc] = L_local.conj().T
+            G[d_loc : 2 * d_loc, :d_loc] = L_local
+            U = expm(-1j * np.sqrt(dtau) * G)
+            residual = np.linalg.norm(
+                U.conj().T @ U - np.eye(d_anc * d_loc), ord="fro"
+            )
+            if residual >= 1e-10:
+                msg = (
+                    "Local Stinespring unitarity check failed: "
+                    f"||U†U - I||_F = {residual}"
+                )
+                raise ValueError(msg)
+            return U
+
+        stine_half = [
+            (kind, sites, _local_stinespring(L_local, dt / 2))
+            for kind, sites, L_local, _gamma in local_info
+        ]
+
+        # Ancilla reset channel: K_k = |0><k| (exact CPTP reset to |0>).
+        reset_kraus = []
+        for k in range(d_anc):
+            K = np.zeros((d_anc, d_anc), dtype=np.complex128)
+            K[0, k] = 1.0
+            reset_kraus.append(K)
+
+        qreg = QuantumRegister("q", n + 1, [d] * n + [d_anc])
+        circuit = QuantumCircuit(qreg)
+        circuit.cu_multi(list(range(n)), self._U_H_half.astype(np.complex128))
+        for kind, sites, U_loc in list(stine_half) + list(reversed(stine_half)):
+            if kind == "single":
+                circuit.cu_two([anc, sites[0]], U_loc)
+            else:
+                circuit.cu_multi([anc, sites[0], sites[1]], U_loc)
+            # Mid-circuit ancilla update (reset to |0>) before the next
+            # channel re-uses the same physical ancilla qudit.
+            circuit.kraus_channel(anc, reset_kraus)
+        circuit.cu_multi(list(range(n)), self._U_H_half.astype(np.complex128))
+
+        self._stinespring_ancilla_circuit = circuit
+        self._ancilla_reset_kraus = reset_kraus
 
     def _trotter_step(self, rho: np.ndarray) -> np.ndarray:
         """Symmetric Trotter step with palindromic Lindblad channel ordering.
@@ -256,8 +389,17 @@ class QuditGKSLSimulator:
     def _trotter_step_dmsim(self, rho: np.ndarray) -> np.ndarray:
         """Run one Trotter step as a single MQT-Qudits DMSim backend run.
 
-        Builds an N-qutrit :class:`mqt.qudits.quantum_circuit.QuantumCircuit`
-        containing:
+        Dispatches on ``self.algorithm``:
+
+        * ``"stinespring"`` →
+          :meth:`_trotter_step_dmsim_stinespring_ancilla` (per-step circuit
+          with a physical ancilla qudit that is updated — reset to
+          ``|0⟩`` — between Lindblad channels).
+        * ``"exact_local_channels"`` → KrausChannel circuit on the system
+          qudits only (below).
+
+        For ``"exact_local_channels"`` builds an N-qutrit
+        :class:`mqt.qudits.quantum_circuit.QuantumCircuit` containing:
 
         1. A ``cu_multi`` unitary on all system qudits implementing
            ``expm(-i H_total dt/2)``.
@@ -281,6 +423,9 @@ class QuditGKSLSimulator:
         of the Hamiltonian Trotter step itself, identical for any
         backend choice).
         """
+        if self.algorithm == "stinespring":
+            return self._trotter_step_dmsim_stinespring_ancilla(rho)
+
         from mqt.qudits.quantum_circuit import QuantumCircuit
         from mqt.qudits.quantum_circuit.components.quantum_register import (
             QuantumRegister,
@@ -310,6 +455,49 @@ class QuditGKSLSimulator:
 
         job = self._dmsim_backend.run(circuit, initial_density_matrix=rho)
         return job.result().get_density_matrix()
+
+    def _trotter_step_dmsim_stinespring_ancilla(self, rho: np.ndarray) -> np.ndarray:
+        """One Trotter step with a **physical, mid-circuit-updated ancilla**.
+
+        Executes the pre-built ``(N+1)``-qudit circuit
+        (:meth:`_prepare_stinespring_ancilla_circuit`) on the MQT-Qudits
+        DMSim backend:
+
+        1. The system ρ is extended with the ancilla in ``|0⟩⟨0|``
+           (``ρ_tot = ρ ⊗ |0⟩⟨0|``; the ancilla is the last qudit).
+        2. The backend applies, per Lindblad channel, the Stinespring
+           dilation unitary on ``(ancilla, sites)`` followed by the
+           ancilla-reset KrausChannel — i.e. the ancilla is genuinely
+           **updated inside the circuit** between channels, exactly as
+           required by the Stinespring recipe (and equivalently to
+           tensorcircuit-ng's ``general_kraus`` measure-and-discard).
+        3. After the final reset the ancilla is exactly ``|0⟩``, and the
+           system ρ is recovered by the partial trace over the ancilla.
+
+        Parameters
+        ----------
+        rho:
+            System density matrix ``(d^N, d^N)``.
+
+        Returns
+        -------
+        System density matrix after one full Trotter step.
+        """
+        d_anc = self.d_anc
+        dim = self.dim
+
+        anc0 = np.zeros((d_anc, d_anc), dtype=np.complex128)
+        anc0[0, 0] = 1.0
+        rho_tot = np.kron(rho, anc0)  # qudit order: sys_0..sys_{N-1}, ancilla
+
+        job = self._dmsim_backend.run(
+            self._stinespring_ancilla_circuit, initial_density_matrix=rho_tot
+        )
+        rho_tot = job.result().get_density_matrix()
+
+        # Partial trace over the ancilla (last qudit).
+        rho_t = rho_tot.reshape(dim, d_anc, dim, d_anc)
+        return np.einsum("akbk->ab", rho_t)
 
     # ------------------------------------------------------------------
     # Initial state
@@ -410,6 +598,17 @@ class QuditGKSLSimulator:
             "n_ancilla_qudits": self.n_ancilla_qudits,
             "n_total_qudits": self.n_total_qudits,
             "d_anc": self.d_anc,
+            "execute_on_backend": self.execute_on_backend,
+            # Number of physical ancilla qudits present in the actual
+            # backend-executed circuit (None if no backend execution):
+            #   stinespring + dmsim → 1 re-used ancilla, updated
+            #     (reset to |0>) mid-circuit between channels;
+            #   exact_local_channels + dmsim → 0 (KrausChannel on system).
+            "n_ancilla_qudits_backend_circuit": (
+                None
+                if self.execute_on_backend is None
+                else (1 if self.algorithm == "stinespring" else 0)
+            ),
             "estimated_gates_per_step": gates_per_step,
             "n_high_level_gates_per_step": gates_per_step,
             "total_estimated_gates": gates_per_step * n_steps,

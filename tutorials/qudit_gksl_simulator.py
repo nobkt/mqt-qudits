@@ -285,9 +285,13 @@ class QuditGKSLSimulator:
         local_info = QuditGKSLKrausSimulator(self.params).lindblad_local_info
         if len(local_info) != len(self.lindblad_ops):
             msg = (
-                "local Lindblad channel count "
-                f"({len(local_info)}) does not match global count "
-                f"({len(self.lindblad_ops)})"
+                "local Lindblad channel count from QuditGKSLKrausSimulator "
+                f"({len(local_info)}) does not match the global Lindblad "
+                f"operator count from build_lindblad_operators "
+                f"({len(self.lindblad_ops)}).  This indicates a mismatch "
+                "between the circuit simulator's channel list and the "
+                "global operator list — both must enumerate the same "
+                "channels in the same order."
             )
             raise ValueError(msg)
 
@@ -302,8 +306,8 @@ class QuditGKSLSimulator:
             )
             if residual >= 1e-10:
                 msg = (
-                    "Local Stinespring unitarity check failed: "
-                    f"||U†U - I||_F = {residual}"
+                    "Local Stinespring dilation unitary failed unitarity "
+                    f"check: ||U†U - I||_F = {residual:.3e}"
                 )
                 raise ValueError(msg)
             return U

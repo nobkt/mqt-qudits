@@ -1747,7 +1747,9 @@ class TestDMSimBackendExecution:
         )
         bk = bk_sim.simulate(t_max=10.0, n_steps=20, initial_state="edge_triplet")
         diff = np.linalg.norm(ref["rho_final"] - bk["rho_final"])
-        assert diff < 1e-12, (
+        # Measured agreement is ~1e-16 (round-off); assert 1e-13 to leave
+        # modest headroom while still requiring round-off-level agreement.
+        assert diff < 1e-13, (
             f"ancilla-updating DMSim Stinespring disagrees with NumPy "
             f"reference: ‖Δρ‖_F={diff:.3e}"
         )

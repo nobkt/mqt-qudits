@@ -118,9 +118,9 @@ class TNSim(Backend):
         op_t = op_matrix.reshape(*local_dims, *local_dims)
         out = np.tensordot(op_t, psi_t, axes=(list(range(k, 2 * k)), list(qudits)))
         remaining = [a for a in range(n) if a not in qudits]
-        label_to_pos: dict[int, int] = {}
-        for new_pos, label in enumerate(list(qudits) + remaining):
-            label_to_pos[label] = new_pos
+        label_to_pos: dict[int, int] = {
+            label: new_pos for new_pos, label in enumerate(list(qudits) + remaining)
+        }
         perm = [label_to_pos[i] for i in range(n)]
         return np.transpose(out, perm)
 

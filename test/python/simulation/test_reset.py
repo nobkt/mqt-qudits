@@ -1,5 +1,8 @@
-"""Tests for the Reset instruction and mid-circuit stochastic channel
-execution on the TNSim state-vector backend."""
+"""Tests for the Reset instruction and mid-circuit stochastic channels.
+
+Covers the dedicated Reset instruction and its execution on the DMSim
+(deterministic) and TNSim (stochastic trajectory) backends.
+"""
 
 from __future__ import annotations
 

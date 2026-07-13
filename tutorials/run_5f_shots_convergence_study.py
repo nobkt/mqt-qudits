@@ -200,10 +200,13 @@ def main() -> None:
         )
 
     # Log-log slope: err ~ C n^p  =>  p should be close to -1/2.
-    log_n = np.log(np.asarray(args.n_shots, dtype=float))
-    log_e = np.log(np.asarray(errors))
-    slope = float(np.polyfit(log_n, log_e, 1)[0])
-    print(f"\nlog-log fitted slope p (err ~ n^p): {slope:.3f}  (theory: -0.5)", flush=True)
+    if len(args.n_shots) >= 2:
+        log_n = np.log(np.asarray(args.n_shots, dtype=float))
+        log_e = np.log(np.asarray(errors))
+        slope = float(np.polyfit(log_n, log_e, 1)[0])
+        print(f"\nlog-log fitted slope p (err ~ n^p): {slope:.3f}  (theory: -0.5)", flush=True)
+    else:
+        print("\nlog-log slope fit skipped (needs >= 2 n_shots values)", flush=True)
 
     if args.n_trajectories <= 0:
         print("\ntnsim cross-check skipped (--n-trajectories 0)", flush=True)

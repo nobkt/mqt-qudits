@@ -57,15 +57,24 @@ class ClassicalGKSLBosonSimulator:
         self.dim_ph = (params.n_max + 1) ** params.N_molecules
         self.dim_total = self.dim_el * self.dim_ph
 
-        # Full Hamiltonian (electronic + phonon + coupling)
-        self.H_total = build_H_total_boson(params)
+        # Full Hamiltonian (electronic + phonon + coupling) and Liouvillian.
+        # When g_eph == 0 the dynamics reduce exactly to the non-boson solver
+        # (see ``simulate``), so the extended-space superoperator — whose dense
+        # size is (dim_total^2)^2 and reaches PiB scale already for N=4,
+        # n_max=2 — must not be built at all in that case.
+        if params.g_eph == 0.0:
+            self.H_total = None
+            self.lindblad_ops = None
+            self._L_super = None
+        else:
+            self.H_total = build_H_total_boson(params)
 
-        # Extended Lindblad operators: L_el ⊗ I_phonon
-        lindblad_ops_el = build_lindblad_operators(params)
-        self.lindblad_ops = extend_lindblad_operators(lindblad_ops_el, self.dim_ph)
+            # Extended Lindblad operators: L_el ⊗ I_phonon
+            lindblad_ops_el = build_lindblad_operators(params)
+            self.lindblad_ops = extend_lindblad_operators(lindblad_ops_el, self.dim_ph)
 
-        # Build the full GKSL Liouvillian superoperator (dim_total^2 × dim_total^2)
-        self._L_super = build_gksl_superoperator(self.H_total, self.lindblad_ops)
+            # Build the full GKSL Liouvillian superoperator (dim_total^2 × dim_total^2)
+            self._L_super = build_gksl_superoperator(self.H_total, self.lindblad_ops)
 
     # ------------------------------------------------------------------
     def prepare_initial_state(self, state_type: str = "edge_triplet") -> np.ndarray:

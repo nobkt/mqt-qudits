@@ -1310,8 +1310,8 @@ class TestQuditGKSLCircuitBosonSimulator:
         assert gb["cu_two_el_transfer"] == 2 * n_pairs
         assert gb["cu_one_ph_onsite"] == 2 * N
         assert gb["cu_two_eph_coupling"] == 2 * N  # g_eph > 0
-        assert result["n_el_qutrits"] == N
-        assert result["n_ph_qutrits"] == N
+        assert result["n_system_qudits"] == N
+        assert result["n_phonon_qudits"] == N
 
     def test_method_label(self):
         """Result contains correct method label."""

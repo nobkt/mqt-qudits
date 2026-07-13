@@ -48,33 +48,54 @@ class TNSim(Backend):
         self.file_path = self._options.get("file_path", None)
         self.file_name = self._options.get("file_name", None)
         self._rng = np.random.default_rng(self._options.get("seed", None))
+        initial_state = options.get("initial_state")
 
         if self.noise_model is not None:
             assert self.shots >= 50, "Number of shots should be above 50"
-            job.set_result(JobResult(state_vector=self.execute(circuit), counts=stochastic_simulation(self, circuit)))
+            job.set_result(
+                JobResult(
+                    state_vector=self.execute(circuit, initial_state=initial_state),
+                    counts=stochastic_simulation(self, circuit),
+                )
+            )
         else:
-            job.set_result(JobResult(state_vector=self.execute(circuit), counts=[]))
+            job.set_result(JobResult(state_vector=self.execute(circuit, initial_state=initial_state), counts=[]))
 
         return job
 
-    def execute(self, circuit: QuantumCircuit, noise_model: NoiseModel | None = None) -> NDArray[np.complex128]:  # noqa: ARG002
+    def execute(
+        self,
+        circuit: QuantumCircuit,
+        noise_model: NoiseModel | None = None,  # noqa: ARG002
+        initial_state: NDArray[np.complex128] | None = None,
+    ) -> NDArray[np.complex128]:
         self.system_sizes = circuit.dimensions
         self.circ_operations = circuit.instructions
+        state_size = reduce(operator.mul, self.system_sizes, 1)
+
+        init_t: NDArray[np.complex128] | None = None
+        if initial_state is not None:
+            init_arr = np.asarray(initial_state, dtype=np.complex128).reshape(-1)
+            if init_arr.size != state_size:
+                msg = (
+                    f"initial_state has {init_arr.size} amplitudes; expected "
+                    f"{state_size} for circuit dimensions {self.system_sizes}."
+                )
+                raise ValueError(msg)
+            init_t = init_arr.reshape(tuple(self.system_sizes))
 
         if any(isinstance(op, KrausChannel) for op in self.circ_operations):
             # Mid-circuit non-unitary channels (KrausChannel / Reset):
             # stochastic single-trajectory execution (measure-and-discard
             # semantics).  Each `execute` call yields ONE trajectory; the
             # returned state vector is a sample, not an average.
-            psi_t = self.__evolve_with_channels(self.system_sizes, self.circ_operations)
-            state_size = reduce(operator.mul, self.system_sizes, 1)
+            psi_t = self.__evolve_with_channels(self.system_sizes, self.circ_operations, init_t)
             return psi_t.reshape(1, state_size)
 
-        result = self.__contract_circuit(self.system_sizes, self.circ_operations)
+        result = self.__contract_circuit(self.system_sizes, self.circ_operations, initial_state=init_t)
 
         result = np.transpose(result.tensor, list(range(len(self.system_sizes))))
 
-        state_size = reduce(operator.mul, self.system_sizes, 1)
         return result.reshape(1, state_size)
 
     @staticmethod
@@ -143,7 +164,10 @@ class TNSim(Backend):
         return branches[idx] / np.sqrt(p_sel)
 
     def __evolve_with_channels(
-        self, system_sizes: list[int], operations: Sequence[Gate]
+        self,
+        system_sizes: list[int],
+        operations: Sequence[Gate],
+        initial_state: NDArray[np.complex128] | None = None,
     ) -> NDArray[np.complex128]:
         """Single stochastic trajectory through a circuit containing channels.
 
@@ -152,7 +176,7 @@ class TNSim(Backend):
         each :class:`KrausChannel` (including :class:`Reset`) is applied
         stochastically via Born sampling.
         """
-        psi_t: NDArray[np.complex128] | None = None  # None = |0…0⟩ product state
+        psi_t: NDArray[np.complex128] | None = initial_state  # None = |0…0⟩ product state
         pending: list[Gate] = []
 
         def flush(state: NDArray[np.complex128] | None) -> NDArray[np.complex128] | None:

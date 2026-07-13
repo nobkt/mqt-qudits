@@ -95,6 +95,8 @@ class QuditGKSLSimulator:
         params: GKSLPhysicalParameters,
         algorithm: str = "stinespring",
         execute_on_backend: str | None = None,
+        n_trajectories: int = 100,
+        seed: int | None = None,
     ) -> None:
         if params.with_boson:
             raise ValueError("QuditGKSLSimulator is for non-boson model only")
@@ -106,14 +108,25 @@ class QuditGKSLSimulator:
             )
             raise ValueError(msg)
         if execute_on_backend is not None:
-            if execute_on_backend != "dmsim":
+            if execute_on_backend not in ("dmsim", "tnsim"):
                 msg = (
-                    "execute_on_backend currently only supports 'dmsim' "
-                    "(MQT-Qudits density-matrix backend); got "
-                    f"{execute_on_backend!r}.  state-vector backends "
-                    "(tnsim/misim) cannot run the fresh-ancilla per-step "
-                    "circuit at N>=3 due to state-vector capacity limits "
-                    "(see STATUS_HONEST_2026-05.md A-1)."
+                    "execute_on_backend supports 'dmsim' (MQT-Qudits "
+                    "density-matrix backend) or 'tnsim' (MQT-Qudits "
+                    "state-vector backend, stochastic quantum-trajectory "
+                    "execution with mid-circuit ancilla Reset); got "
+                    f"{execute_on_backend!r}.  'misim' is not supported: "
+                    "the C++ misim kernel has no mid-circuit "
+                    "measurement/reset support."
+                )
+                raise ValueError(msg)
+            if execute_on_backend == "tnsim" and algorithm != "stinespring":
+                msg = (
+                    "execute_on_backend='tnsim' requires "
+                    "algorithm='stinespring': the state-vector backend "
+                    "executes the ancilla-updating Stinespring circuit as "
+                    "stochastic quantum trajectories; the "
+                    "'exact_local_channels' KrausChannel circuit is a "
+                    "density-matrix construction (use 'dmsim')."
                 )
                 raise ValueError(msg)
             # Both algorithms are supported on the DMSim backend:
@@ -133,6 +146,10 @@ class QuditGKSLSimulator:
             #   application (measure-and-reset of the dilating ancilla).
         self.algorithm = algorithm
         self.execute_on_backend = execute_on_backend
+        # Quantum-trajectory settings (used only for
+        # execute_on_backend='tnsim'; ignored otherwise).
+        self.n_trajectories = int(n_trajectories)
+        self.seed = seed
         self.params = params
         self.n_system_qudits = params.N_molecules
         self.d_anc = params.d  # ancilla dimension matches system qudit dimension
@@ -233,6 +250,14 @@ class QuditGKSLSimulator:
             # Lazily acquire the DMSim backend.
             from mqt.qudits.simulation import MQTQuditProvider
             self._dmsim_backend = MQTQuditProvider().get_backend("dmsim")
+        elif self.execute_on_backend == "tnsim":
+            # algorithm == "stinespring" (enforced in __init__): the same
+            # ancilla-updating per-step circuit is executed on the TNSim
+            # state-vector backend, where each Reset instruction is applied
+            # stochastically (quantum-trajectory semantics).
+            self._prepare_stinespring_ancilla_circuit(dt)
+            from mqt.qudits.simulation import MQTQuditProvider
+            self._tnsim_backend = MQTQuditProvider().get_backend("tnsim")
 
     def _prepare_stinespring_ancilla_circuit(self, dt: float) -> None:
         """Build the per-step ancilla-updating Stinespring circuit (once).
@@ -537,6 +562,30 @@ class QuditGKSLSimulator:
 
         return np.outer(psi, psi.conj())
 
+    def prepare_initial_state_vector(self, state_type: str = "edge_triplet") -> np.ndarray:
+        """Prepare the initial **pure state vector** in qutrit space.
+
+        Same basis states as :meth:`prepare_initial_state` (all supported
+        initial states are computational basis states, hence pure).
+        """
+        d = self.params.d
+        N = self.params.N_molecules
+        dim = d ** N
+        psi = np.zeros(dim, dtype=np.complex128)
+
+        if state_type == "edge_triplet":
+            if N < 2:
+                msg = "edge_triplet requires N_molecules >= 2"
+                raise ValueError(msg)
+            psi[1 * (d ** (N - 1)) + 1] = 1.0
+        elif state_type == "all_triplet":
+            psi[sum(1 * (d ** i) for i in range(N))] = 1.0
+        elif state_type == "all_singlet":
+            psi[sum(2 * (d ** i) for i in range(N))] = 1.0
+        else:
+            raise ValueError(f"Unknown state type: {state_type}")
+        return psi
+
     # ------------------------------------------------------------------
     # Main simulation loop
     # ------------------------------------------------------------------
@@ -556,6 +605,10 @@ class QuditGKSLSimulator:
 
         dt = t_max / n_steps
         self._precompute_unitaries(dt)
+
+        if self.execute_on_backend == "tnsim":
+            return self._simulate_tnsim_trajectories(t_max, n_steps, initial_state, start)
+
         rho = self.prepare_initial_state(initial_state)
 
         times: list[float] = [0.0]
@@ -618,6 +671,112 @@ class QuditGKSLSimulator:
                 if self.execute_on_backend is None
                 else (1 if self.algorithm == "stinespring" else 0)
             ),
+            "estimated_gates_per_step": gates_per_step,
+            "n_high_level_gates_per_step": gates_per_step,
+            "total_estimated_gates": gates_per_step * n_steps,
+            "gate_count_method": "high_level_count",
+        }
+
+    def _simulate_tnsim_trajectories(
+        self,
+        t_max: float,
+        n_steps: int,
+        initial_state: str,
+        start: float,
+    ) -> dict:
+        """Quantum-trajectory simulation on the TNSim state-vector backend.
+
+        Each trajectory propagates a pure ``(N+1)``-qudit state vector
+        through the pre-built ancilla-updating Stinespring circuit
+        (:meth:`_prepare_stinespring_ancilla_circuit`), one backend run
+        per Trotter step.  Every mid-circuit :class:`Reset` on the ancilla
+        is executed **stochastically** by TNSim (Born sampling of the
+        ancilla outcome, projection, renormalisation, re-preparation of
+        ``|0⟩``) — the same measure-and-discard semantics as
+        tensorcircuit-ng's ``Circuit.general_kraus``.  The density matrix
+        at each recorded time is the average of ``|ψ⟩⟨ψ|`` over
+        ``self.n_trajectories`` trajectories, so all observables carry a
+        statistical error of order ``O(1/√n_trajectories)`` on top of the
+        Stinespring ``O(dt)`` Trotter error.
+        """
+        dt = t_max / n_steps
+        d_anc = self.d_anc
+        dim = self.dim
+        n_traj = self.n_trajectories
+        master_rng = np.random.default_rng(self.seed)
+
+        psi0_sys = self.prepare_initial_state_vector(initial_state)
+        anc0 = np.zeros(d_anc, dtype=np.complex128)
+        anc0[0] = 1.0
+
+        rho_acc = [np.zeros((dim, dim), dtype=np.complex128) for _ in range(n_steps + 1)]
+
+        for _traj in range(n_traj):
+            psi_tot = np.kron(psi0_sys, anc0)
+            rho_acc[0] += np.outer(psi0_sys, psi0_sys.conj())
+            for step in range(n_steps):
+                step_seed = int(master_rng.integers(0, 2**63 - 1))
+                job = self._tnsim_backend.run(
+                    self._stinespring_ancilla_circuit,
+                    initial_state=psi_tot,
+                    seed=step_seed,
+                )
+                psi_tot = np.asarray(job.result().get_state_vector()).reshape(-1)
+                psi_mat = psi_tot.reshape(dim, d_anc)
+                # The last ancilla operation in the circuit is a Reset, so
+                # the ancilla must be exactly |0>; verify instead of
+                # silently projecting.
+                leak = float(np.linalg.norm(psi_mat[:, 1:]))
+                if leak > 1e-10:
+                    msg = (
+                        "ancilla is not |0> after the per-step circuit "
+                        f"(leak norm {leak:.3e}); the circuit must end every "
+                        "channel with an ancilla Reset."
+                    )
+                    raise RuntimeError(msg)
+                psi_sys = psi_mat[:, 0]
+                rho_acc[step + 1] += np.outer(psi_sys, psi_sys.conj())
+
+        times: list[float] = []
+        populations = []
+        entropies: list[float] = []
+        purities: list[float] = []
+        traces: list[float] = []
+        rho_avg = None
+        for step, acc in enumerate(rho_acc):
+            rho_avg = acc / n_traj
+            times.append(step * dt)
+            traces.append(float(np.real(np.trace(rho_avg))))
+            populations.append(compute_populations_from_density_matrix(rho_avg, self.params))
+            entropies.append(compute_von_neumann_entropy(rho_avg))
+            purities.append(compute_purity(rho_avg))
+
+        elapsed = time_module.time() - start
+
+        n_lindblad = len(self.lindblad_ops)
+        gates_per_step = 2 * (self.n_system_qudits + len(self.params.neighbors)) + n_lindblad * 2
+
+        return {
+            "times": times,
+            "populations": populations,
+            "entropy": entropies,
+            "purity": purities,
+            "trace": traces,
+            "rho_final": rho_avg,
+            "elapsed_time": elapsed,
+            "method": "qudit_gksl",
+            "algorithm": self.algorithm,
+            "params": self.params.to_dict(),
+            "n_system_qudits": self.n_system_qudits,
+            "n_ancilla_qudits": self.n_ancilla_qudits,
+            "n_total_qudits": self.n_total_qudits,
+            "d_anc": self.d_anc,
+            "execute_on_backend": self.execute_on_backend,
+            # One physical, re-used ancilla qudit in the backend circuit,
+            # stochastically updated (measured/reset) mid-circuit.
+            "n_ancilla_qudits_backend_circuit": 1,
+            "n_trajectories": n_traj,
+            "seed": self.seed,
             "estimated_gates_per_step": gates_per_step,
             "n_high_level_gates_per_step": gates_per_step,
             "total_estimated_gates": gates_per_step * n_steps,

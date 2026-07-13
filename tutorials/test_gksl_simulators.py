@@ -1806,6 +1806,101 @@ class TestDMSimBackendExecution:
             raise AssertionError(msg)
 
 
+class TestTNSimTrajectoryBackendExecution:
+    """§5.1-1: quantum-trajectory execution on the TNSim state-vector backend.
+
+    ``QuditGKSLSimulator(algorithm='stinespring', execute_on_backend='tnsim')``
+    runs the same ancilla-updating per-step circuit as the DMSim path, but
+    on the state-vector backend: every mid-circuit ancilla ``Reset`` is
+    executed stochastically (Born sampling → projection → renormalisation →
+    re-preparation of ``|0⟩``).  The trajectory average must agree with the
+    deterministic density-matrix result within the O(1/√n_traj) statistical
+    error.
+    """
+
+    @staticmethod
+    def test_tnsim_requires_stinespring_algorithm():
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        try:
+            QuditGKSLSimulator(
+                params,
+                algorithm="exact_local_channels",
+                execute_on_backend="tnsim",
+            )
+        except ValueError as exc:
+            assert "stinespring" in str(exc)
+        else:
+            msg = "Expected ValueError for tnsim + exact_local_channels"
+            raise AssertionError(msg)
+
+    @staticmethod
+    def test_tnsim_trajectory_average_matches_dmsim():
+        """Trajectory average vs deterministic DMSim, N=2, 10 steps."""
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        n_traj = 100
+        res_tn = QuditGKSLSimulator(
+            params,
+            algorithm="stinespring",
+            execute_on_backend="tnsim",
+            n_trajectories=n_traj,
+            seed=42,
+        ).simulate(t_max=10.0, n_steps=10, initial_state="edge_triplet")
+        res_dm = QuditGKSLSimulator(
+            params, algorithm="stinespring", execute_on_backend="dmsim"
+        ).simulate(t_max=10.0, n_steps=10, initial_state="edge_triplet")
+
+        diff = np.linalg.norm(res_tn["rho_final"] - res_dm["rho_final"])
+        bound = 5.0 / np.sqrt(n_traj)
+        assert diff < bound, (
+            f"trajectory average differs from DMSim beyond statistical "
+            f"error: ‖Δρ‖_F={diff:.3e} (bound {bound:.3e})"
+        )
+        # Each trajectory is normalised, so the averaged trace is exactly 1.
+        assert abs(res_tn["trace"][-1] - 1.0) < 1e-12
+        assert res_tn["execute_on_backend"] == "tnsim"
+        assert res_tn["n_ancilla_qudits_backend_circuit"] == 1
+        assert res_tn["n_trajectories"] == n_traj
+
+    @staticmethod
+    def test_tnsim_seed_reproducibility():
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+
+        def run() -> np.ndarray:
+            return QuditGKSLSimulator(
+                params,
+                algorithm="stinespring",
+                execute_on_backend="tnsim",
+                n_trajectories=5,
+                seed=7,
+            ).simulate(t_max=2.0, n_steps=2, initial_state="edge_triplet")[
+                "rho_final"
+            ]
+
+        assert np.allclose(run(), run())
+
+    @staticmethod
+    def test_tnsim_circuit_uses_reset_instructions():
+        """The backend circuit contains dedicated Reset instructions."""
+        from mqt.qudits.quantum_circuit.gates import Reset
+
+        params = GKSLPhysicalParameters(N_molecules=2, with_boson=False)
+        sim = QuditGKSLSimulator(
+            params,
+            algorithm="stinespring",
+            execute_on_backend="tnsim",
+            n_trajectories=1,
+        )
+        sim._precompute_unitaries(0.1)
+        circuit = sim._stinespring_ancilla_circuit
+        resets = [
+            inst for inst in circuit.instructions if isinstance(inst, Reset)
+        ]
+        assert len(resets) == 2 * len(sim.lindblad_ops)
+        anc = params.N_molecules
+        for inst in resets:
+            assert inst.target_qudits in (anc, [anc])
+
+
 class TestCompilerMeasuredGateCounts:
     """A-3: ``compute_compiler_measured_gate_counts`` returns real numbers
     from the MQT-Qudits compiler, not from a hard-coded formula.

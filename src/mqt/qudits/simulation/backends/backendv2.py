@@ -21,6 +21,7 @@ class Backend(ABC):
         file_path: str | None
         file_name: str | None
         full_state_memory: bool
+        seed: int | None
 
     def __init__(
         self,

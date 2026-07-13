@@ -24,6 +24,7 @@ from .gates import (
     Perm,
     R,
     RandU,
+    Reset,
     Rh,
     Rz,
     S,
@@ -228,6 +229,23 @@ class QuantumCircuit:
             dims = [self.dimensions[i] for i in qudits]
             name = "Kraus" + str(dims)
         return KrausChannel(self, name, qudits, kraus_operators, dims)
+
+    @add_gate_decorator
+    def reset_qudit(self, qudit: int) -> Reset:
+        """Append a reset instruction that re-initialises ``qudit`` to ``|0⟩``.
+
+        Semantics: measure the qudit in the computational basis, discard
+        the outcome, and prepare ``|0⟩``.  On density-matrix backends
+        (``dmsim``) this is executed deterministically as the exact CPTP
+        channel ``{K_k = |0⟩⟨k|}``; on state-vector backends supporting
+        mid-circuit stochastic channels (``tnsim``) it is executed
+        stochastically per run (quantum-trajectory semantics).  See
+        :class:`Reset`.
+
+        Note: this method is named ``reset_qudit`` (not ``reset``) because
+        :meth:`QuantumCircuit.reset` already clears the whole circuit.
+        """
+        return Reset(self, "Reset" + str(self.dimensions[qudit]), qudit, self.dimensions[qudit])
 
     @add_gate_decorator
     def cx(self, qudits: list[int], parameters: list[int | float] | None = None) -> CEx:

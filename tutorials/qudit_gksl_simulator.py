@@ -318,6 +318,9 @@ class QuditGKSLSimulator:
         ]
 
         # Ancilla reset channel: K_k = |0><k| (exact CPTP reset to |0>).
+        # Kept for result-dict introspection; the circuit itself now uses
+        # the dedicated Reset instruction (a KrausChannel subclass with
+        # exactly this Kraus set).
         reset_kraus = []
         for k in range(d_anc):
             K = np.zeros((d_anc, d_anc), dtype=np.complex128)
@@ -333,8 +336,10 @@ class QuditGKSLSimulator:
             else:
                 circuit.cu_multi([anc, sites[0], sites[1]], U_loc)
             # Mid-circuit ancilla update (reset to |0>) before the next
-            # channel re-uses the same physical ancilla qudit.
-            circuit.kraus_channel(anc, reset_kraus)
+            # channel re-uses the same physical ancilla qudit.  Issued as
+            # the dedicated Reset instruction (KrausChannel subclass with
+            # Kraus set {K_k = |0><k|}).
+            circuit.reset_qudit(anc)
         circuit.cu_multi(list(range(n)), self._U_H_half.astype(np.complex128))
 
         self._stinespring_ancilla_circuit = circuit

@@ -19,6 +19,7 @@ from .noise_y import NoiseY
 from .perm import Perm
 from .r import R
 from .randu import RandU
+from .reset import Reset
 from .rh import Rh
 from .rz import Rz
 from .s import S
@@ -44,6 +45,7 @@ __all__ = [
     "Perm",
     "R",
     "RandU",
+    "Reset",
     "Rh",
     "Rz",
     "S",

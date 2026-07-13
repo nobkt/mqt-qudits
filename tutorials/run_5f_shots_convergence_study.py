@@ -33,6 +33,35 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+
+_BLAS_ENV_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
+
+
+def _requested_processes(argv: list[str]) -> int:
+    """Parse only ``--processes`` from ``argv`` (before heavy imports)."""
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--processes", type=int, default=1)
+    known, _ = pre.parse_known_args(argv)
+    return known.processes
+
+
+def _limit_blas_threads_if_parallel() -> None:
+    """Force single-threaded BLAS when running with ``--processes > 1``.
+
+    With ``--processes > 1`` the multi-threaded BLAS of each forked worker
+    competes with the other workers for the same CPU cores, which was
+    measured to slow down each shot by ~15x.  The thread-count environment
+    variables must be set *before* NumPy is imported (fork children inherit
+    the parent's already-initialised BLAS thread pool), hence this runs at
+    module import time, ahead of ``import numpy``.
+    """
+    if _requested_processes(sys.argv[1:]) > 1:
+        for var in _BLAS_ENV_VARS:
+            os.environ.setdefault(var, "1")
+
+
+_limit_blas_threads_if_parallel()
+
 import time
 from concurrent.futures import ProcessPoolExecutor
 

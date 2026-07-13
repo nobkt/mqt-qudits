@@ -679,7 +679,223 @@ class QiskitQubitGKSLBosonSimulator:
         }
 
 
+# ---------------------------------------------------------------------------
+# Qiskit-Aer ancilla-updating Stinespring simulator — §5.1-3
+# ---------------------------------------------------------------------------
+
+
+class QiskitQubitGKSLStinespringSimulator:
+    """Qubit GKSL simulator with a **mid-circuit-updated ancilla qubit**.
+
+    This is the qubit-side counterpart of the qudit ancilla-updating
+    Stinespring path
+    (``QuditGKSLSimulator(algorithm='stinespring', execute_on_backend='dmsim')``):
+    each Trotter step is a real Qiskit circuit on ``2N system qubits + 1
+    ancilla qubit`` in which every Lindblad channel is realised by
+
+    1. its **local Stinespring dilation unitary**
+       ``U_α = expm(-i √(dt/2) G_α)`` with ``G_α = [[0, L†],[L, 0]]``
+       built in the qubit-pair–embedded local space (8×8 for single-site
+       channels, 32×32 for TTA-pair channels, ancilla = most significant
+       qubit), applied as a ``UnitaryGate`` on ``local qubits + [ancilla]``
+       (Qiskit little-endian: first listed qubit is the LSB), followed by
+    2. a **native Qiskit ``reset`` instruction on the ancilla** — Aer's
+       ``density_matrix`` method executes ``reset`` deterministically as
+       the exact CPTP channel ``{K_k = |0⟩⟨k|}`` (trace out + re-prepare
+       ``|0⟩``), so the ancilla is genuinely updated between channels
+       inside the circuit.
+
+    The channel set and palindromic ordering are identical to
+    :class:`QiskitQubitGKSLSimulator`; only the channel realisation
+    differs (1st-order Stinespring dilation + reset instead of the exact
+    2nd-order Kraus channel).  Consequently the result must agree with
+    the NumPy qubit Stinespring simulator
+    (:class:`qubit_gksl_simulator.QubitGKSLSimulator`) at round-off
+    level, and with the exact dynamics up to the usual O(dt) Stinespring
+    error.
+    """
+
+    def __init__(self, params: GKSLPhysicalParameters) -> None:
+        if params.with_boson:
+            msg = "QiskitQubitGKSLStinespringSimulator is for the non-boson model only"
+            raise ValueError(msg)
+        from qiskit_aer import AerSimulator
+
+        self.params = params
+        self.N = params.N_molecules
+        self.n_sys_qubits = 2 * self.N
+        self.n_qubits = self.n_sys_qubits + 1  # + 1 re-used ancilla qubit
+        self.anc = self.n_sys_qubits  # ancilla qubit index (last)
+        self.dim_qubit = 2 ** self.n_sys_qubits
+        self.dim_qutrit = params.d ** params.N_molecules
+
+        self.H_total_qt = (
+            build_onsite_hamiltonian(params) + build_transfer_hamiltonian(params)
+        )
+        self._mapping = build_qubit_qutrit_mapping(self.N, params.d)
+        self.H_total_qb = embed_operator_in_qubit_space(
+            self.H_total_qt, self._mapping, self.dim_qubit
+        )
+        self._local_ops_qt = get_local_lindblad_ops(params)
+        self._aer = AerSimulator(method="density_matrix")
+        self._mol_qubits = [(2 * i, 2 * i + 1) for i in range(self.N)]
+
+    def _precompute(self, dt: float) -> None:
+        """Build U_H_half and the per-channel local dilation unitaries."""
+        self._U_H_half = expm(-1j * self.H_total_qb * dt / 2)
+
+        def _local_stinespring_qb(L_qb: np.ndarray, dtau: float) -> np.ndarray:
+            d_loc = L_qb.shape[0]
+            G = np.zeros((2 * d_loc, 2 * d_loc), dtype=np.complex128)
+            G[:d_loc, d_loc:] = L_qb.conj().T
+            G[d_loc:, :d_loc] = L_qb
+            U = expm(-1j * np.sqrt(dtau) * G)
+            residual = np.linalg.norm(U.conj().T @ U - np.eye(2 * d_loc), ord="fro")
+            if residual >= 1e-10:
+                msg = (
+                    "Local Stinespring dilation unitary failed unitarity "
+                    f"check: ||U†U - I||_F = {residual:.3e}"
+                )
+                raise ValueError(msg)
+            return U
+
+        dilations: list[tuple[tuple[int, ...], np.ndarray, str]] = []
+        for sites, L_local_qt, kind in self._local_ops_qt:
+            if kind == "pair":
+                mapping = _local_pair_mapping(_DIM_QT)
+                d_local_qb = _DIM_QB_PAIR ** 2
+            else:
+                mapping = _local_single_mapping(_DIM_QT)
+                d_local_qb = _DIM_QB_PAIR
+            L_qb = _embed_local_operator(L_local_qt, mapping, d_local_qb)
+            dilations.append((sites, _local_stinespring_qb(L_qb, dt / 2.0), kind))
+        self._dilations = dilations
+
+    def _build_trotter_circuit(self):
+        from qiskit import QuantumCircuit
+        from qiskit.circuit.library import UnitaryGate
+
+        qc = QuantumCircuit(self.n_qubits)
+        sys_qubits = list(range(self.n_sys_qubits))
+
+        qc.append(UnitaryGate(self._U_H_half), sys_qubits)
+
+        for sites, U_loc, kind in list(self._dilations) + list(reversed(self._dilations)):
+            if kind == "single":
+                qbits = list(self._mol_qubits[sites[0]])
+            else:
+                i, j = sites
+                qbits = list(self._mol_qubits[i]) + list(self._mol_qubits[j])
+            # Ancilla is the most significant leg of U_loc (index
+            # ``anc_level · d_local + local_idx``), so it goes LAST in the
+            # little-endian Qiskit qubit list.
+            qc.append(UnitaryGate(U_loc), [*qbits, self.anc])
+            # Mid-circuit ancilla update: native Qiskit reset instruction.
+            qc.reset(self.anc)
+
+        qc.append(UnitaryGate(self._U_H_half), sys_qubits)
+        return qc
+
+    def prepare_initial_state(self, state_type: str = "edge_triplet") -> np.ndarray:
+        """Initial ρ on the 2N system qubits (ancilla is added per step)."""
+        d = self.params.d
+        N = self.N
+        psi = np.zeros(d ** N, dtype=np.complex128)
+        if state_type == "edge_triplet":
+            if N < 2:
+                msg = "edge_triplet requires N_molecules >= 2"
+                raise ValueError(msg)
+            psi[1 * (d ** (N - 1)) + 1] = 1.0
+        elif state_type == "all_triplet":
+            psi[sum(1 * (d ** i) for i in range(N))] = 1.0
+        elif state_type == "all_singlet":
+            psi[sum(2 * (d ** i) for i in range(N))] = 1.0
+        else:
+            raise ValueError(f"Unknown state type: {state_type}")
+        rho_qt = np.outer(psi, psi.conj())
+        return embed_density_matrix_in_qubit_space(rho_qt, self._mapping, self.dim_qubit)
+
+    def simulate(
+        self,
+        t_max: float,
+        n_steps: int,
+        initial_state: str = "edge_triplet",
+    ) -> dict:
+        """Run the ancilla-updating Stinespring dynamics on Qiskit Aer."""
+        from qiskit import QuantumCircuit, transpile
+        from qiskit.quantum_info import DensityMatrix
+
+        start = time_module.time()
+
+        dt = t_max / n_steps
+        self._precompute(dt)
+
+        rho = self.prepare_initial_state(initial_state)
+        rho_qt = extract_density_matrix_from_qubit_space(rho, self._mapping, self.dim_qutrit)
+
+        times: list[float] = [0.0]
+        populations = [compute_populations_from_density_matrix(rho_qt, self.params)]
+        entropies = [compute_von_neumann_entropy(rho_qt)]
+        purities = [compute_purity(rho_qt)]
+        traces = [float(np.real(np.trace(rho_qt)))]
+        forbidden_pops: list[float] = [
+            compute_forbidden_state_population(rho, self._mapping)
+        ]
+
+        step_circ = self._build_trotter_circuit()
+        anc0 = np.array([[1.0, 0.0], [0.0, 0.0]], dtype=np.complex128)
+
+        for step in range(n_steps):
+            # ρ_tot = |0><0|_anc ⊗ ρ_sys (ancilla = most significant qubit).
+            rho_tot = np.kron(anc0, rho)
+            wrapped = QuantumCircuit(self.n_qubits)
+            wrapped.set_density_matrix(DensityMatrix(rho_tot))
+            wrapped.compose(step_circ, inplace=True)
+            wrapped.save_density_matrix()
+            result = self._aer.run(transpile(wrapped, self._aer)).result()
+            rho_tot = np.asarray(result.data(0)["density_matrix"], dtype=np.complex128)
+
+            # Partial trace over the ancilla (most significant qubit).
+            rho_t = rho_tot.reshape(2, self.dim_qubit, 2, self.dim_qubit)
+            rho = np.einsum("kakb->ab", rho_t)
+
+            rho_qt = extract_density_matrix_from_qubit_space(
+                rho, self._mapping, self.dim_qutrit
+            )
+            times.append((step + 1) * dt)
+            traces.append(float(np.real(np.trace(rho_qt))))
+            populations.append(
+                compute_populations_from_density_matrix(rho_qt, self.params)
+            )
+            entropies.append(compute_von_neumann_entropy(rho_qt))
+            purities.append(compute_purity(rho_qt))
+            forbidden_pops.append(
+                compute_forbidden_state_population(rho, self._mapping)
+            )
+
+        elapsed = time_module.time() - start
+
+        return {
+            "times": times,
+            "populations": populations,
+            "entropy": entropies,
+            "purity": purities,
+            "trace": traces,
+            "rho_final": rho_qt,
+            "elapsed_time": elapsed,
+            "method": "qiskit_qubit_gksl_stinespring_ancilla",
+            "backend": "qiskit_aer:density_matrix",
+            "params": self.params.to_dict(),
+            "n_sys_qubits": self.n_sys_qubits,
+            "n_total_qubits": self.n_qubits,
+            "n_ancilla_qubits_backend_circuit": 1,
+            "dim_qubit_space": self.dim_qubit,
+            "forbidden_state_population": forbidden_pops,
+        }
+
+
 __all__ = [
     "QiskitQubitGKSLSimulator",
     "QiskitQubitGKSLBosonSimulator",
+    "QiskitQubitGKSLStinespringSimulator",
 ]

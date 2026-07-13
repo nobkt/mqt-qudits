@@ -2130,6 +2130,61 @@ class TestQiskitQubitGKSL:
         with pytest.raises(ValueError, match="non-boson"):
             QiskitQubitGKSLSimulator(params)
 
+    @staticmethod
+    def test_qiskit_stinespring_ancilla_matches_numpy_qubit_stinespring():
+        """§5.1-3: Aer ancilla+mid-circuit-reset Stinespring vs NumPy.
+
+        The Qiskit circuit (2N system qubits + 1 ancilla qubit, native
+        ``reset`` between channels) must reproduce the NumPy qubit
+        Stinespring simulator at round-off level: same channel set, same
+        palindromic ordering, same 1st-order dilation.
+        """
+        from qiskit_qubit_gksl_simulator import QiskitQubitGKSLStinespringSimulator
+        from qubit_gksl_simulator import QubitGKSLSimulator
+
+        params = GKSLPhysicalParameters(N_molecules=2)
+        res = QiskitQubitGKSLStinespringSimulator(params).simulate(
+            t_max=10.0, n_steps=20, initial_state="edge_triplet"
+        )
+        ref = QubitGKSLSimulator(params).simulate(
+            t_max=10.0, n_steps=20, initial_state="edge_triplet"
+        )
+        diff = np.linalg.norm(res["rho_final"] - ref["rho_final"])
+        # Measured agreement ~4e-15; assert 1e-12 for headroom.
+        assert diff < 1e-12, (
+            f"Aer ancilla+reset Stinespring disagrees with NumPy qubit "
+            f"Stinespring: ‖Δρ‖_F={diff:.3e}"
+        )
+        assert all(abs(t - 1.0) < 1e-8 for t in res["trace"])
+        assert max(res["forbidden_state_population"]) < 1e-8
+        assert res["n_ancilla_qubits_backend_circuit"] == 1
+
+    @staticmethod
+    def test_qiskit_stinespring_circuit_contains_ancilla_resets():
+        """The per-step circuit really contains one reset per channel pass."""
+        from qiskit_qubit_gksl_simulator import QiskitQubitGKSLStinespringSimulator
+
+        params = GKSLPhysicalParameters(N_molecules=2)
+        sim = QiskitQubitGKSLStinespringSimulator(params)
+        sim._precompute(0.1)
+        qc = sim._build_trotter_circuit()
+        assert qc.num_qubits == 2 * params.N_molecules + 1
+        resets = [inst for inst in qc.data if inst.operation.name == "reset"]
+        n_channels = len(sim._local_ops_qt)
+        assert len(resets) == 2 * n_channels
+        anc = sim.anc
+        for inst in resets:
+            assert [qc.find_bit(q).index for q in inst.qubits] == [anc]
+
+    @staticmethod
+    def test_qiskit_stinespring_rejects_boson_params():
+        from qiskit_qubit_gksl_simulator import QiskitQubitGKSLStinespringSimulator
+        params = GKSLPhysicalParameters(
+            N_molecules=2, with_boson=True, n_max=1
+        )
+        with pytest.raises(ValueError, match="non-boson"):
+            QiskitQubitGKSLStinespringSimulator(params)
+
 
 # ---------------------------------------------------------------------------
 # Backend-executed shot simulators (DMSim / Qiskit Aer + Born sampling)

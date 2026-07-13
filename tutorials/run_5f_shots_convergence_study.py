@@ -60,7 +60,10 @@ def _limit_blas_threads_if_parallel() -> None:
             os.environ.setdefault(var, "1")
 
 
-_limit_blas_threads_if_parallel()
+# Only inspect sys.argv when executed as a script; when imported as a module
+# the command line belongs to some other program and must not be parsed.
+if __name__ == "__main__":
+    _limit_blas_threads_if_parallel()
 
 import time
 from concurrent.futures import ProcessPoolExecutor

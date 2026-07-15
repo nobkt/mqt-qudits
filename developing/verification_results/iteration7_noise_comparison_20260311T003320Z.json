@@ -1,0 +1,157 @@
+{
+  "iteration": 7,
+  "timestamp": "20260311T003320Z",
+  "description": "Physically correct noise model comparison (qubit vs qudit)",
+  "summary": {
+    "total_checks": 24,
+    "passed": 24,
+    "failed": 0
+  },
+  "cx_gate_counts": {
+    "cx_transfer": 47,
+    "cx_tta": 86,
+    "cx_avg": 66.5
+  },
+  "effective_rates": {
+    "p_phys": 0.001,
+    "qudit_p_eff": 0.001,
+    "qubit_p_eff_cx1": 0.001,
+    "qubit_p_eff_cx6": 0.0059850199850060015,
+    "qubit_p_eff_cx10": 0.009955119790251765,
+    "qubit_p_eff_cx20": 0.01981113517046529,
+    "qubit_p_eff_actual": 0.06436821517381575,
+    "cx_avg": 66.5
+  },
+  "leakage_analysis": {
+    "qubit_d": 4,
+    "qubit_physical_states_per_pair": 9,
+    "qubit_total_states_per_pair": 16,
+    "qubit_leakage_fraction": 0.4375,
+    "qudit_d": 3,
+    "qudit_physical_states_per_pair": 9,
+    "qudit_total_states_per_pair": 9,
+    "qudit_leakage_fraction": 0.0
+  },
+  "checks": [
+    {
+      "name": "cx_per_pair_gate_in_simulate",
+      "status": "PASS",
+      "detail": "simulate() should accept cx_per_pair_gate parameter"
+    },
+    {
+      "name": "effective_rate_formula",
+      "status": "PASS",
+      "detail": "Should compute p_eff = 1 - (1-depol_2q)^cx_per_pair_gate"
+    },
+    {
+      "name": "depol_2q_eff_in_noise_loop",
+      "status": "PASS",
+      "detail": "Should use depol_2q_eff (effective rate) in noise application"
+    },
+    {
+      "name": "estimate_cx_method",
+      "status": "PASS",
+      "detail": "Should have estimate_cx_per_pair_gate() method"
+    },
+    {
+      "name": "cx_per_pair_gate_default_1",
+      "status": "PASS",
+      "detail": "Default cx_per_pair_gate should be 1 (backward compatible)"
+    },
+    {
+      "name": "cx_per_pair_gate_validation",
+      "status": "PASS",
+      "detail": "Should validate cx_per_pair_gate >= 1"
+    },
+    {
+      "name": "output_contains_cx_info",
+      "status": "PASS",
+      "detail": "Return dict should include cx_per_pair_gate and depol_2q_effective"
+    },
+    {
+      "name": "no_qiskit_aer_import",
+      "status": "PASS",
+      "detail": "qubit_noisy_simulator should NOT import Qiskit Aer for simulation"
+    },
+    {
+      "name": "density_matrix_method",
+      "status": "PASS",
+      "detail": "Should have density matrix depolarizing channel method"
+    },
+    {
+      "name": "pair_unitary_builder",
+      "status": "PASS",
+      "detail": "Should have per-pair unitary builder"
+    },
+    {
+      "name": "d_equals_4",
+      "status": "PASS",
+      "detail": "Local dimension should be d=4 (2 qubits per molecule)"
+    },
+    {
+      "name": "qudit_d_equals_3",
+      "status": "PASS",
+      "detail": "Qudit local dimension should be d=3 (qutrit)"
+    },
+    {
+      "name": "qudit_depolarizing_method",
+      "status": "PASS",
+      "detail": "Should have 2-qudit depolarizing channel method"
+    },
+    {
+      "name": "qudit_I_over_d_squared",
+      "status": "PASS",
+      "detail": "Should use I/d for each qudit (not I/d^2 for the pair)"
+    },
+    {
+      "name": "qudit_no_cx_overhead",
+      "status": "PASS",
+      "detail": "Qudit simulator should NOT have cx_per_pair_gate (native gates)"
+    },
+    {
+      "name": "qubit_depol_channel_formula",
+      "status": "PASS",
+      "detail": "Qubit channel: ε(ρ) = (1-p)ρ + p·Tr_{ij}(ρ)⊗I_{16}/16"
+    },
+    {
+      "name": "qudit_depol_channel_formula",
+      "status": "PASS",
+      "detail": "Qudit channel: ε(ρ) = (1-p)ρ + p·Tr_{ij}(ρ)⊗I_9/9"
+    },
+    {
+      "name": "qubit_forbidden_state_doc",
+      "status": "PASS",
+      "detail": "Qubit simulator should document forbidden state leakage"
+    },
+    {
+      "name": "cx_count_positive",
+      "status": "PASS",
+      "detail": "CX counts should be positive: transfer=47, tta=86"
+    },
+    {
+      "name": "cx_count_reasonable",
+      "status": "PASS",
+      "detail": "Average CX count (66.5) should be between 2 and 100"
+    },
+    {
+      "name": "effective_rate_monotonic",
+      "status": "PASS",
+      "detail": "Effective rate should increase monotonically with CX count"
+    },
+    {
+      "name": "qubit_more_noisy_than_qudit",
+      "status": "PASS",
+      "detail": "Qubit effective rate (6.4368%) > Qudit rate (0.1000%) for CX/pair=66.5"
+    },
+    {
+      "name": "qubit_leakage_theory",
+      "status": "PASS",
+      "detail": "Qubit leakage fraction = 7/16 = 0.4375 (theory: 7/16 = 0.4375)"
+    },
+    {
+      "name": "qudit_no_leakage_theory",
+      "status": "PASS",
+      "detail": "Qudit has zero forbidden states (all d=3 states are physical)"
+    }
+  ]
+}

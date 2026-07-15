@@ -1,0 +1,141 @@
+{
+  "iteration": 35,
+  "timestamp": "20260302T133549Z",
+  "description": "Documentation fixes validation (Cell 25/27/39 updates)",
+  "params": {
+    "t_max": 100.0,
+    "hilbert_dim": 81
+  },
+  "exact_reference": {
+    "elapsed_time": 68.96532988548279,
+    "quality": {
+      "trace": 1.0000000000000029,
+      "trace_error": 2.886579864025407e-15,
+      "hermiticity_error": 5.377642775528102e-17,
+      "min_eigenvalue": -4.628132121404236e-17
+    }
+  },
+  "convergence_data": [
+    {
+      "n_steps": 10,
+      "dt": 10.0,
+      "trace_distance": 0.01294305007783737,
+      "fidelity": 0.9996658530226316,
+      "elapsed_time": 2.948716878890991,
+      "quality": {
+        "trace": 1.0000000000000124,
+        "trace_error": 1.2434497875801753e-14,
+        "hermiticity_error": 1.7775556372830602e-16,
+        "min_eigenvalue": -8.098946275097508e-17
+      }
+    },
+    {
+      "n_steps": 20,
+      "dt": 5.0,
+      "trace_distance": 0.004081287182140293,
+      "fidelity": 0.999969787664417,
+      "elapsed_time": 4.117523670196533,
+      "quality": {
+        "trace": 1.0000000000000102,
+        "trace_error": 1.021405182655144e-14,
+        "hermiticity_error": 6.732959701929316e-17,
+        "min_eigenvalue": -8.10244092796705e-17
+      },
+      "rate_T": 1.6650814984874582
+    },
+    {
+      "n_steps": 50,
+      "dt": 2.0,
+      "trace_distance": 0.0014925134209458858,
+      "fidelity": 0.9999963118064356,
+      "elapsed_time": 6.514110326766968,
+      "quality": {
+        "trace": 0.9999999999999805,
+        "trace_error": 1.9539925233402755e-14,
+        "hermiticity_error": 8.612623999919209e-17,
+        "min_eigenvalue": -1.1772386861949693e-16
+      },
+      "rate_T": 1.0978511852011201
+    },
+    {
+      "n_steps": 100,
+      "dt": 1.0,
+      "trace_distance": 0.0007319237588647367,
+      "fidelity": 0.9999991592436528,
+      "elapsed_time": 8.108649730682373,
+      "quality": {
+        "trace": 1.0000000000000004,
+        "trace_error": 4.440892098500626e-16,
+        "hermiticity_error": 1.7520764555870918e-16,
+        "min_eigenvalue": -9.719476178479752e-17
+      },
+      "rate_T": 1.02797862198442
+    },
+    {
+      "n_steps": 200,
+      "dt": 0.5,
+      "trace_distance": 0.00036269132500763235,
+      "fidelity": 0.9999998169904408,
+      "elapsed_time": 12.603710651397705,
+      "quality": {
+        "trace": 1.0000000000000084,
+        "trace_error": 8.43769498715119e-15,
+        "hermiticity_error": 1.4175344158393622e-16,
+        "min_eigenvalue": -1.449249137838197e-16
+      },
+      "rate_T": 1.0129511386425187
+    }
+  ],
+  "checks": {
+    "check1_trace_distance_monotonic": true,
+    "check2_convergence_rate": true,
+    "check2_average_rate": 1.2009656110788793,
+    "check3_fidelity_monotonic": true,
+    "check4_density_matrix_quality": true,
+    "check5_n100_accuracy": true,
+    "check5_n100_trace_distance": 0.0007319237588647367,
+    "check6_cell27_validation": {
+      "all_present": true,
+      "all_match": true,
+      "no_incorrect_2e5": true,
+      "has_tmax": true,
+      "comparison": {
+        "n_steps_10": {
+          "notebook_value": 0.013,
+          "actual_value": 0.01294305007783737,
+          "ratio": 0.9956192367567208,
+          "within_tolerance": true
+        },
+        "n_steps_20": {
+          "notebook_value": 0.004,
+          "actual_value": 0.004081287182140293,
+          "ratio": 1.0203217955350732,
+          "within_tolerance": true
+        },
+        "n_steps_50": {
+          "notebook_value": 0.0015,
+          "actual_value": 0.0014925134209458858,
+          "ratio": 0.9950089472972572,
+          "within_tolerance": true
+        },
+        "n_steps_100": {
+          "notebook_value": 0.0007,
+          "actual_value": 0.0007319237588647367,
+          "ratio": 1.0456053698067667,
+          "within_tolerance": true
+        },
+        "n_steps_200": {
+          "notebook_value": 0.00036,
+          "actual_value": 0.00036269132500763235,
+          "ratio": 1.0074759027989786,
+          "within_tolerance": true
+        }
+      },
+      "overall": true
+    },
+    "check7_cell25_iteration_count": true,
+    "check8_cell39_iteration_count": true,
+    "check9_cell27_n200_value": true
+  },
+  "all_checks_passed": true
+}

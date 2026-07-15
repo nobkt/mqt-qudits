@@ -1,0 +1,105 @@
+{
+  "iteration": 14,
+  "timestamp": "20260311T130354Z",
+  "total_checks": 19,
+  "passed": 19,
+  "failed": 0,
+  "all_passed": true,
+  "checks": [
+    {
+      "name": "qudit_docstring_total_66",
+      "passed": true,
+      "detail": "Found '66' in docstring: True"
+    },
+    {
+      "name": "qudit_docstring_no_40_total",
+      "passed": true,
+      "detail": "Should not contain 'Total: 40'"
+    },
+    {
+      "name": "qubit_docstring_total_66",
+      "passed": true,
+      "detail": "Found '66' in docstring: True"
+    },
+    {
+      "name": "qubit_docstring_no_40_total",
+      "passed": true,
+      "detail": "Should not contain 'Total: 40'"
+    },
+    {
+      "name": "boson_docstring_palindromic",
+      "passed": true,
+      "detail": "Should mention palindromic/fwd+rev/x2"
+    },
+    {
+      "name": "boson_docstring_stinespring_40",
+      "passed": true,
+      "detail": "Should show 40 single-site Stinespring (20 x 2)"
+    },
+    {
+      "name": "boson_docstring_stinespring_12",
+      "passed": true,
+      "detail": "Should show 12 pair Stinespring (6 x 2)"
+    },
+    {
+      "name": "compile_native_2x_single",
+      "passed": true,
+      "detail": "per_step_summary should use 2 * single_native_total"
+    },
+    {
+      "name": "compile_native_2x_pair",
+      "passed": true,
+      "detail": "per_step_summary should use 2 * pair_uncompiled_total"
+    },
+    {
+      "name": "transpile_2x_single",
+      "passed": true,
+      "detail": "total_single should be multiplied by 2"
+    },
+    {
+      "name": "transpile_2x_pair",
+      "passed": true,
+      "detail": "total_pair should be multiplied by 2"
+    },
+    {
+      "name": "qudit_simulate_gates_per_step",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "qudit_simulate_stinespring_single_2x",
+      "passed": true,
+      "detail": "Expected 40, got 40"
+    },
+    {
+      "name": "qudit_simulate_stinespring_pair_2x",
+      "passed": true,
+      "detail": "Expected 12, got 12"
+    },
+    {
+      "name": "qubit_simulate_gates_per_step",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "qudit_build_full_total_66",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "qudit_build_full_stinespring_52",
+      "passed": true,
+      "detail": "Expected 52, got 52"
+    },
+    {
+      "name": "qubit_build_full_total_66",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "qubit_build_full_stinespring_52",
+      "passed": true,
+      "detail": "Expected 52, got 52"
+    }
+  ]
+}

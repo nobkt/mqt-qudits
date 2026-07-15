@@ -1,0 +1,100 @@
+{
+  "iteration": 16,
+  "timestamp": "20260311T222112Z",
+  "total_checks": 18,
+  "passed": 18,
+  "failed": 0,
+  "all_passed": true,
+  "checks": [
+    {
+      "name": "qudit_shot_gps_value",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "qudit_shot_not_old_59",
+      "passed": true,
+      "detail": "Should not be old value 59"
+    },
+    {
+      "name": "qubit_shot_gps_value",
+      "passed": true,
+      "detail": "Expected 388, got 388"
+    },
+    {
+      "name": "qubit_shot_not_old_350",
+      "passed": true,
+      "detail": "Should not be old value 350"
+    },
+    {
+      "name": "qudit_shot_matches_dm",
+      "passed": true,
+      "detail": "Shot 66 vs DM 66"
+    },
+    {
+      "name": "qubit_shot_matches_dm",
+      "passed": true,
+      "detail": "Shot 388 vs DM 388"
+    },
+    {
+      "name": "qudit_noisy_shot_gps",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "qubit_noisy_shot_gps",
+      "passed": true,
+      "detail": "Expected 388, got 388"
+    },
+    {
+      "name": "qudit_boson_formula_has_2x",
+      "passed": true,
+      "detail": "Source should contain '2 * (' and 'n_ancilla_qudits * 2' for palindromic Trotter"
+    },
+    {
+      "name": "qubit_boson_formula_has_2x",
+      "passed": true,
+      "detail": "Source should contain '2 * (' and 'n_ancilla * 6 * 2' for palindromic Trotter"
+    },
+    {
+      "name": "qudit_shot_total_gates",
+      "passed": true,
+      "detail": "Expected 132, got 132"
+    },
+    {
+      "name": "qubit_shot_total_gates",
+      "passed": true,
+      "detail": "Expected 776, got 776"
+    },
+    {
+      "name": "regression_qudit_dm_gps_66",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "regression_qubit_dm_gps_388",
+      "passed": true,
+      "detail": "Expected 388, got 388"
+    },
+    {
+      "name": "regression_qudit_circuit_gps_66",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "regression_qubit_circuit_gps_66",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "regression_qudit_shot_trace",
+      "passed": true,
+      "detail": "Final trace = 0.9999999999999998"
+    },
+    {
+      "name": "regression_qubit_shot_trace",
+      "passed": true,
+      "detail": "Final trace = 1.0000000000000002"
+    }
+  ]
+}

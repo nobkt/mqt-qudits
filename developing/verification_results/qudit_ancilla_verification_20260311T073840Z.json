@@ -1,0 +1,16 @@
+{
+  "timestamp": "20260311T073840Z",
+  "checks": [
+    {
+      "name": "Stinespring d_anc=2 dimension",
+      "passed": true,
+      "details": "shape=(6, 6), expected=(6, 6)"
+    },
+    {
+      "name": "Stinespring d_anc=3 dimension",
+      "passed": true,
+      "details": "shape=(9, 9), expected=(9, 9)"
+    },
+    {
+      "name": "K0 identical (d_anc=2 vs 3)",
+      "passed": 

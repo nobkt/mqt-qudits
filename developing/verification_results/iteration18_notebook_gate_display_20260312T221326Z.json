@@ -1,0 +1,165 @@
+{
+  "iteration": 18,
+  "timestamp": "20260312T221326Z",
+  "total_checks": 31,
+  "passed": 31,
+  "failed": 0,
+  "all_passed": true,
+  "checks": [
+    {
+      "name": "cell6_has_gates_per_step",
+      "passed": true,
+      "detail": "Cell 6 (QuditGKSL) should display estimated_gates_per_step"
+    },
+    {
+      "name": "cell8_has_gates_per_step",
+      "passed": true,
+      "detail": "Cell 8 (QubitGKSL) should display estimated_gates_per_step"
+    },
+    {
+      "name": "cell8_has_total_gates",
+      "passed": true,
+      "detail": "Cell 8 (QubitGKSL) should display total_estimated_gates"
+    },
+    {
+      "name": "cell12_has_gates_per_step",
+      "passed": true,
+      "detail": "Cell 12 (QuditGKSLBoson) should display estimated_gates_per_step"
+    },
+    {
+      "name": "cell12_has_system_qudits",
+      "passed": true,
+      "detail": "Cell 12 (QuditGKSLBoson) should display system qudit count"
+    },
+    {
+      "name": "cell12_has_phonon_qudits",
+      "passed": true,
+      "detail": "Cell 12 (QuditGKSLBoson) should display phonon qudit count"
+    },
+    {
+      "name": "cell12_has_ancilla",
+      "passed": true,
+      "detail": "Cell 12 (QuditGKSLBoson) should display ancilla qudit count"
+    },
+    {
+      "name": "cell14_has_gates_per_step",
+      "passed": true,
+      "detail": "Cell 14 (QubitGKSLBoson) should display estimated_gates_per_step"
+    },
+    {
+      "name": "cell14_has_el_qubits",
+      "passed": true,
+      "detail": "Cell 14 (QubitGKSLBoson) should display electronic qubit count"
+    },
+    {
+      "name": "cell14_has_ph_qubits",
+      "passed": true,
+      "detail": "Cell 14 (QubitGKSLBoson) should display phonon qubit count"
+    },
+    {
+      "name": "cell14_has_total_qubits",
+      "passed": true,
+      "detail": "Cell 14 (QubitGKSLBoson) should display total qubit count"
+    },
+    {
+      "name": "cell32_has_gates_per_step",
+      "passed": true,
+      "detail": "Cell 32 (QuditGKSLShot) should display estimated_gates_per_step"
+    },
+    {
+      "name": "cell36_has_gates_per_step",
+      "passed": true,
+      "detail": "Cell 36 (QubitGKSLShot) should display estimated_gates_per_step"
+    },
+    {
+      "name": "qudit_dm_gps_66",
+      "passed": true,
+      "detail": "QuditGKSL N=4: expected 66, got 66"
+    },
+    {
+      "name": "qubit_dm_gps_388",
+      "passed": true,
+      "detail": "QubitGKSL N=4: expected 388, got 388"
+    },
+    {
+      "name": "qudit_boson_gps_38",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=2: expected 38, got 38"
+    },
+    {
+      "name": "qubit_boson_gps_220",
+      "passed": true,
+      "detail": "QubitGKSLBoson N=2: expected 220, got 220"
+    },
+    {
+      "name": "qudit_shot_gps_66",
+      "passed": true,
+      "detail": "QuditGKSLShot N=4: expected 66, got 66"
+    },
+    {
+      "name": "qubit_shot_gps_388",
+      "passed": true,
+      "detail": "QubitGKSLShot N=4: expected 388, got 388"
+    },
+    {
+      "name": "qudit_dm_shot_match",
+      "passed": true,
+      "detail": "QuditGKSL DM (66) == Shot (66)"
+    },
+    {
+      "name": "qubit_dm_shot_match",
+      "passed": true,
+      "detail": "QubitGKSL DM (388) == Shot (388)"
+    },
+    {
+      "name": "boson_ratio_n2",
+      "passed": true,
+      "detail": "Boson N=2: qubit/qudit = 5.79× (220/38)"
+    },
+    {
+      "name": "nonboson_ratio_n4",
+      "passed": true,
+      "detail": "Non-boson N=4: qubit/qudit = 5.88× (388/66)"
+    },
+    {
+      "name": "qudit_boson_sys_qudits",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=2: n_system_qudits = 2 (expected 2)"
+    },
+    {
+      "name": "qudit_boson_ph_qudits",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=2: n_phonon_qudits = 2 (expected 2)"
+    },
+    {
+      "name": "qudit_boson_ancilla",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=2: n_ancilla_qudits = 12 (expected 12)"
+    },
+    {
+      "name": "qubit_boson_el_qubits",
+      "passed": true,
+      "detail": "QubitGKSLBoson N=2: n_el_qubits = 4 (expected 4)"
+    },
+    {
+      "name": "qubit_boson_ph_qubits",
+      "passed": true,
+      "detail": "QubitGKSLBoson N=2: n_ph_qubits = 4 (expected 4)"
+    },
+    {
+      "name": "qubit_boson_n_total",
+      "passed": true,
+      "detail": "QubitGKSLBoson N=2: n_total_qubits = 20 (expected 20)"
+    },
+    {
+      "name": "regression_qudit_boson_n4_82",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=4: expected 82, computed 82"
+    },
+    {
+      "name": "regression_qubit_boson_n4_484",
+      "passed": true,
+      "detail": "QubitGKSLBoson N=4: expected 484, computed 484"
+    }
+  ]
+}

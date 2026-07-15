@@ -18,6 +18,16 @@
 
 # MQT Qudits - A Framework For Mixed-Dimensional Qudit Quantum Computing
 
+> **Notice (2026-05) — Repository status / fork-specific cleanup**
+> This fork (`nobkt/mqt-qudits`) accumulated a large number of "completion-report" `.md`
+> files and per-iteration verification scripts whose claims partly contradicted each
+> other (issues E-1 / E-2). They have been moved to [`docs_archive/`](docs_archive/INDEX.md)
+> rather than deleted, in order to preserve their historical record. For an honest,
+> non-marketing summary of which of the issues A-1, A-2, A-3, A-4, B-1, D-1, E-1, E-2
+> are actually solved in the current state of the repository (and which are explicitly
+> not solved), see [`STATUS_HONEST_2026-05.md`](STATUS_HONEST_2026-05.md).
+> The framework documentation below is the upstream MQT-Qudits documentation.
+
 A framework for research and education for mixed-dimensional qudit quantum computing developed as part of the [_Munich Quantum Toolkit_ (_MQT_)](https://mqt.readthedocs.io) by the [Chair for Design Automation](https://www.cda.cit.tum.de/) at the [Technical University of Munich](https://www.tum.de/).
 
 <p align="center">

@@ -1,0 +1,227 @@
+{
+  "iteration": 13,
+  "timestamp": "20260311T104534Z",
+  "description": "Palindromic Trotter step fix for circuit simulators + gate count corrections",
+  "summary": {
+    "total_checks": 33,
+    "passed": 33,
+    "failed": 0
+  },
+  "bugs_fixed": [
+    {
+      "id": "A",
+      "file": "qudit_gksl_circuit_simulator.py",
+      "method": "_trotter_step_circuit",
+      "old": "Non-palindromic: H(dt/2) → D_1...D_n(dt) → H(dt/2)",
+      "new": "Palindromic: H(dt/2) → D_1...D_n(dt/2) → D_n...D_1(dt/2) → H(dt/2)",
+      "impact": "1st-order Lindblad accuracy → 2nd-order, matches matrix simulator"
+    },
+    {
+      "id": "B",
+      "file": "qubit_gksl_circuit_simulator.py",
+      "method": "_trotter_step_circuit",
+      "old": "Same non-palindromic issue as Bug A",
+      "new": "Same palindromic fix as Bug A",
+      "impact": "Same as Bug A for qubit encoding"
+    },
+    {
+      "id": "C",
+      "file": "qudit_gksl_circuit_boson_simulator.py",
+      "method": "simulate (gate count)",
+      "old": "Lindblad gates counted once despite palindromic Trotter",
+      "new": "Lindblad gates counted twice (2× for forward + reverse)",
+      "impact": "Gate count underreported by factor of 2"
+    },
+    {
+      "id": "D",
+      "file": "qudit_gksl_circuit_simulator.py",
+      "method": "simulate (gate count)",
+      "old": "Same gate count issue as Bug C (after Bug A fix)",
+      "new": "Same fix as Bug C",
+      "impact": "Same as Bug C"
+    },
+    {
+      "id": "E",
+      "file": "qubit_gksl_circuit_simulator.py",
+      "method": "simulate (gate count)",
+      "old": "Same gate count issue as Bug C",
+      "new": "Same fix as Bug C",
+      "impact": "Same as Bug C"
+    },
+    {
+      "id": "F",
+      "file": "qudit_gksl_circuit_simulator.py, qubit_gksl_circuit_simulator.py",
+      "method": "build_full_trotter_step_circuit",
+      "old": "Non-palindromic structure with full dt",
+      "new": "Palindromic structure with dt/2, forward + reverse circuits",
+      "impact": "Circuit visualization now matches actual simulation"
+    }
+  ],
+  "checks": [
+    {
+      "name": "qudit_circuit_dt_half",
+      "status": "PASS",
+      "detail": "Uses dt/2 for Stinespring unitary (not full dt)"
+    },
+    {
+      "name": "qudit_circuit_palindromic",
+      "status": "PASS",
+      "detail": "Has reversed() loop for palindromic Lindblad ordering"
+    },
+    {
+      "name": "qudit_circuit_docstring",
+      "status": "PASS",
+      "detail": "Docstring mentions palindromic"
+    },
+    {
+      "name": "qudit_circuit_precompute",
+      "status": "PASS",
+      "detail": "Precomputes Kraus operators before forward/reverse passes"
+    },
+    {
+      "name": "qubit_circuit_dt_half",
+      "status": "PASS",
+      "detail": "Uses dt/2 for Stinespring unitary"
+    },
+    {
+      "name": "qubit_circuit_palindromic",
+      "status": "PASS",
+      "detail": "Has reversed() loop for palindromic Lindblad ordering"
+    },
+    {
+      "name": "qubit_circuit_docstring",
+      "status": "PASS",
+      "detail": "Docstring mentions palindromic"
+    },
+    {
+      "name": "qubit_circuit_precompute",
+      "status": "PASS",
+      "detail": "Precomputes Kraus operators before forward/reverse passes"
+    },
+    {
+      "name": "qudit_circuit_gate_single_2x",
+      "status": "PASS",
+      "detail": "Qudit circuit: Stinespring single gate count ×2"
+    },
+    {
+      "name": "qudit_circuit_gate_pair_2x",
+      "status": "PASS",
+      "detail": "Qudit circuit: Stinespring pair gate count ×2"
+    },
+    {
+      "name": "qubit_circuit_gate_single_2x",
+      "status": "PASS",
+      "detail": "Qubit circuit: Stinespring single gate count ×2"
+    },
+    {
+      "name": "qubit_circuit_gate_pair_2x",
+      "status": "PASS",
+      "detail": "Qubit circuit: Stinespring pair gate count ×2"
+    },
+    {
+      "name": "qudit_circuit_gates_per_step",
+      "status": "PASS",
+      "detail": "Qudit circuit: gates_per_step uses 2× Lindblad counts"
+    },
+    {
+      "name": "qubit_circuit_gates_per_step",
+      "status": "PASS",
+      "detail": "Qubit circuit: gates_per_step uses 2× Lindblad counts"
+    },
+    {
+      "name": "qudit_build_full_palindromic",
+      "status": "PASS",
+      "detail": "Qudit: build_full uses dt/2 and 2× stinespring count"
+    },
+    {
+      "name": "qudit_build_full_reverse",
+      "status": "PASS",
+      "detail": "Qudit: build_full has reverse pass circuits"
+    },
+    {
+      "name": "qubit_build_full_palindromic",
+      "status": "PASS",
+      "detail": "Qubit: build_full uses dt/2 and 2× stinespring count"
+    },
+    {
+      "name": "qubit_build_full_reverse",
+      "status": "PASS",
+      "detail": "Qubit: build_full has reverse pass circuits"
+    },
+    {
+      "name": "boson_gate_single_2x",
+      "status": "PASS",
+      "detail": "Boson circuit: Stinespring single gate count ×2"
+    },
+    {
+      "name": "boson_gate_pair_2x",
+      "status": "PASS",
+      "detail": "Boson circuit: Stinespring pair gate count ×2"
+    },
+    {
+      "name": "boson_gates_per_step_formula",
+      "status": "PASS",
+      "detail": "Boson circuit: gates_per_step uses 2× Lindblad counts"
+    },
+    {
+      "name": "boson_trotter_palindromic",
+      "status": "PASS",
+      "detail": "Boson circuit: _trotter_step still palindromic"
+    },
+    {
+      "name": "boson_d_anc_single",
+      "status": "PASS",
+      "detail": "Boson build_stinespring_circuit_single uses [d, d_anc]"
+    },
+    {
+      "name": "boson_d_anc_pair",
+      "status": "PASS",
+      "detail": "Boson build_stinespring_circuit_pair uses [d, d, d_anc]"
+    },
+    {
+      "name": "boson_d_anc_from_params",
+      "status": "PASS",
+      "detail": "Boson: d_anc set from params.d"
+    },
+    {
+      "name": "qudit_N2_exact_match",
+      "status": "PASS",
+      "detail": "Qudit circuit N=2 matches matrix: max_diff=2.50e-16"
+    },
+    {
+      "name": "qudit_N4_trotter_error",
+      "status": "PASS",
+      "detail": "Qudit circuit N=4 Hamiltonian Trotter error: max_diff=3.55e-05"
+    },
+    {
+      "name": "qubit_N2_exact_match",
+      "status": "PASS",
+      "detail": "Qubit circuit N=2 matches matrix: max_diff=2.50e-16"
+    },
+    {
+      "name": "boson_circuit_matrix_match",
+      "status": "PASS",
+      "detail": "Boson circuit matches matrix: max_diff=2.78e-17"
+    },
+    {
+      "name": "qudit_N4_gate_count",
+      "status": "PASS",
+      "detail": "Qudit N=4 gates_per_step=66 (expected 66)"
+    },
+    {
+      "name": "qubit_N2_gate_count",
+      "status": "PASS",
+      "detail": "Qubit N=2 gates_per_step=30 (expected 30 = 2*(2+1)+2*(10+2))"
+    },
+    {
+      "name": "boson_stinespring_single_count",
+      "status": "PASS",
+      "detail": "Boson Stinespring single=20 (expected 20 = 2×10)"
+    },
+    {
+      "name": "boson_stinespring_pair_count",
+      "status": "PASS",
+      "detail": "Boson Stinespring pair=4 (expected 4 = 2×2)"
+    }
+  ]
+}

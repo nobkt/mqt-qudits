@@ -11,6 +11,7 @@ from .custom_two import CustomTwo
 from .cx import CEx
 from .gellmann import GellMann
 from .h import H
+from .kraus_channel import KrausChannel
 from .ls import LS
 from .ms import MS
 from .noise_x import NoiseX
@@ -18,6 +19,7 @@ from .noise_y import NoiseY
 from .perm import Perm
 from .r import R
 from .randu import RandU
+from .reset import Reset
 from .rh import Rh
 from .rz import Rz
 from .s import S
@@ -37,11 +39,13 @@ __all__ = [
     "GateTypes",
     "GellMann",
     "H",
+    "KrausChannel",
     "NoiseX",
     "NoiseY",
     "Perm",
     "R",
     "RandU",
+    "Reset",
     "Rh",
     "Rz",
     "S",

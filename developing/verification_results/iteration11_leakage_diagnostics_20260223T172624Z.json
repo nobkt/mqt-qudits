@@ -1,0 +1,115 @@
+{
+  "timestamp": "20260223T172624Z",
+  "iteration": 11,
+  "purpose": "Forbidden-state leakage diagnostics",
+  "config": {
+    "t_max": 5.0,
+    "n_steps": 5,
+    "n_shots": 1000,
+    "seed": 42,
+    "p_depol": 0.01,
+    "p_dephasing": 0.005
+  },
+  "trace_deficit_series": [
+    {
+      "time": 0.0,
+      "trace_qubit_noisy": 1.0,
+      "trace_deficit": 0.0,
+      "trace_qubit_ideal": 1.0,
+      "trace_qudit_noisy": 1.0
+    },
+    {
+      "time": 1.0,
+      "trace_qubit_noisy": 0.9080436234792206,
+      "trace_deficit": 0.09195637652077937,
+      "trace_qubit_ideal": 1.0000000000000184,
+      "trace_qudit_noisy": 1.0000000000000087
+    },
+    {
+      "time": 2.0,
+      "trace_qubit_noisy": 0.8306933816573993,
+      "trace_deficit": 0.16930661834260075,
+      "trace_qubit_ideal": 0.9999999999999793,
+      "trace_qudit_noisy": 0.9999999999999931
+    },
+    {
+      "time": 3.0,
+      "trace_qubit_noisy": 0.7593383971889364,
+      "trace_deficit": 0.24066160281106364,
+      "trace_qubit_ideal": 1.0000000000000009,
+      "trace_qudit_noisy": 0.9999999999999976
+    },
+    {
+      "time": 4.0,
+      "trace_qubit_noisy": 0.7066867125771368,
+      "trace_deficit": 0.2933132874228632,
+      "trace_qubit_ideal": 1.0000000000000133,
+      "trace_qudit_noisy": 1.0
+    },
+    {
+      "time": 5.0,
+      "trace_qubit_noisy": 0.6559428557697461,
+      "trace_deficit": 0.3440571442302539,
+      "trace_qubit_ideal": 1.0000000000000058,
+      "trace_qudit_noisy": 1.0
+    }
+  ],
+  "forbidden_counts": {
+    "qubit_noisy": 347,
+    "qubit_ideal": 0,
+    "total_shots": 1000
+  },
+  "fidelity_comparison": [
+    {
+      "pair": "classical vs qubit_noisy",
+      "trace_a": 1.0000000000000009,
+      "trace_b": 0.6559428557697461,
+      "fidelity_raw": 0.2580775634266747,
+      "fidelity_normalized": 0.3934451928180419,
+      "delta": 0.1353676293913672
+    },
+    {
+      "pair": "classical vs qudit_noisy",
+      "trace_a": 1.0000000000000009,
+      "trace_b": 1.0,
+      "fidelity_raw": 0.2957123489372955,
+      "fidelity_normalized": 0.2957123443907122,
+      "delta": -4.5465832765323455e-09
+    },
+    {
+      "pair": "qubit_DM vs qubit_noisy",
+      "trace_a": 0.9999999999999984,
+      "trace_b": 0.6559428557697461,
+      "fidelity_raw": 0.2581464090580297,
+      "fidelity_normalized": 0.39355014727971,
+      "delta": 0.13540373822168028
+    },
+    {
+      "pair": "qudit_DM vs qudit_noisy",
+      "trace_a": 0.9999999999999988,
+      "trace_b": 1.0,
+      "fidelity_raw": 0.2958359109335908,
+      "fidelity_normalized": 0.29583590883340516,
+      "delta": -2.1001856365110427e-09
+    },
+    {
+      "pair": "qubit_noisy vs qudit_noisy",
+      "trace_a": 0.6559428557697461,
+      "trace_b": 1.0,
+      "fidelity_raw": 0.6155232334428495,
+      "fidelity_normalized": 0.9383793543997764,
+      "delta": 0.32285612095692684
+    }
+  ],
+  "leakage_analysis": {
+    "per_step_rates": [
+      0.09195637652077937,
+      0.08518339848635194,
+      0.08589810156678442,
+      0.06933889397232595,
+      0.07180530764805042
+    ],
+    "average_rate": 0.08083641563885842,
+    "total_leakage": 0.3440571442302539
+  }
+}

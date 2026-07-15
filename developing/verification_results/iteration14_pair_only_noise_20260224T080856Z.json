@@ -1,0 +1,343 @@
+{
+  "timestamp": "20260224T080856Z",
+  "iteration": 14,
+  "purpose": "Pair-only depolarization: qubit vs qudit accuracy comparison",
+  "tests": [
+    {
+      "test": "dm_pair_only_comparison",
+      "p_depol": 0.01,
+      "qudit": {
+        "F_all_gates": 0.7890599789307157,
+        "F_pair_only": 0.8995556123458197,
+        "frob_all_gates": 0.21968461936392225,
+        "frob_pair_only": 0.1038325893028241
+      },
+      "qubit": {
+        "F_all_gates": 0.7706526405261586,
+        "F_pair_only": 0.8939063222074516,
+        "frob_all_gates": 0.23364655587695668,
+        "frob_pair_only": 0.10744868429048823,
+        "trace_all_gates": 0.9053322538706662,
+        "trace_pair_only": 0.9494917955363542
+      },
+      "cross_pair_only": {
+        "F_raw": 0.9436551794629795,
+        "F_norm": 0.9938529051881629
+      }
+    },
+    {
+      "test": "shot_pair_only_fidelity",
+      "config": {
+        "t_max": 10.0,
+        "n_steps": 10,
+        "n_shots": 1000,
+        "seed": 42,
+        "p_depol": 0.01
+      },
+      "step_data": [
+        {
+          "step": 0,
+          "time": 0.0,
+          "delta_N_qudit_pair": 0.0,
+          "delta_N_qudit_all": 0.0,
+          "delta_N_qubit_pair": 0.0,
+          "delta_N_qubit_all": 0.0,
+          "trace_qubit_pair": 1.0,
+          "trace_qubit_all": 1.0,
+          "populations_qudit_pair": {
+            "N_S0": 2.0,
+            "N_T1": 2.0,
+            "N_S1": 0.0
+          },
+          "populations_qubit_pair": {
+            "N_S0": 2.0,
+            "N_T1": 2.0,
+            "N_S1": 0.0
+          },
+          "populations_ref": {
+            "N_S0": 2.0,
+            "N_T1": 2.0,
+            "N_S1": 0.0
+          }
+        },
+        {
+          "step": 1,
+          "time": 1.0,
+          "delta_N_qudit_pair": 0.18604845032280978,
+          "delta_N_qudit_all": 0.29005941454791756,
+          "delta_N_qubit_pair": 0.3299609239360264,
+          "delta_N_qubit_all": 0.562060985226734,
+          "trace_qubit_pair": 0.9419952347948515,
+          "trace_qubit_all": 0.8979748091443894,
+          "populations_qudit_pair": {
+            "N_S0": 1.9093628429963978,
+            "N_T1": 1.9976124818862702,
+            "N_S1": 0.09302467511738778
+          },
+          "populations_qubit_pair": {
+            "N_S0": 1.8421793960194526,
+            "N_T1": 1.8768301616462824,
+            "N_S1": 0.048971381513671364
+          },
+          "populations_ref": {
+            "N_S0": 2.0000224648715728,
+            "N_T1": 1.999977085172472,
+            "N_S1": 4.499559548682428e-07
+          }
+        },
+        {
+          "step": 2,
+          "time": 2.0,
+          "delta_N_qudit_pair": 0.337341256747112,
+          "delta_N_qudit_all": 0.5188657924010911,
+          "delta_N_qubit_pair": 0.6037484522838612,
+          "delta_N_qubit_all": 0.9832719743412814,
+          "trace_qubit_pair": 0.894063183963518,
+          "trace_qubit_all": 0.8294635835012125,
+          "populations_qudit_pair": {
+            "N_S0": 1.8500392786509012,
+            "N_T1": 1.981254004325507,
+            "N_S1": 0.1687067170235325
+          },
+          "populations_qubit_pair": {
+            "N_S0": 1.7090494207687987,
+            "N_T1": 1.7771666323663002,
+            "N_S1": 0.09003668271897253
+          },
+          "populations_ref": {
+            "N_S0": 2.000081306545603,
+            "N_T1": 1.9998826048043914,
+            "N_S1": 3.608865000663402e-05
+          }
+        },
+        {
+          "step": 3,
+          "time": 3.0,
+          "delta_N_qudit_pair": 0.47420234560224506,
+          "delta_N_qudit_all": 0.7404734111941041,
+          "delta_N_qubit_pair": 0.8558177604388608,
+          "delta_N_qubit_all": 1.3899759014154889,
+          "trace_qubit_pair": 0.852469559077053,
+          "trace_qubit_all": 0.7519147028471853,
+          "populations_qudit_pair": {
+            "N_S0": 1.7983789270662351,
+            "N_T1": 1.9642222521148471,
+            "N_S1": 0.23739882081889338
+          },
+          "populations_qubit_pair": {
+            "N_S0": 1.592764548784374,
+            "N_T1": 1.6839680411325184,
+            "N_S1": 0.13314564639131926
+          },
+          "populations_ref": {
+            "N_S0": 2.000374789852835,
+            "N_T1": 1.999327562129383,
+            "N_S1": 0.00029764801778395597
+          }
+        },
+        {
+          "step": 4,
+          "time": 4.0,
+          "delta_N_qudit_pair": 0.5808049640558456,
+          "delta_N_qudit_all": 0.9696955336843607,
+          "delta_N_qubit_pair": 1.0140368545441192,
+          "delta_N_qubit_all": 1.6753035571842443,
+          "trace_qubit_pair": 0.8216574643750547,
+          "trace_qubit_all": 0.7034430408543536,
+          "populations_qudit_pair": {
+            "N_S0": 1.7687151764915594,
+            "N_T1": 1.9396470830972428,
+            "N_S1": 0.29163774041121937
+          },
+          "populations_qubit_pair": {
+            "N_S0": 1.5197818097915121,
+            "N_T1": 1.6152794333032523,
+            "N_S1": 0.1515686144054551
+          },
+          "populations_ref": {
+            "N_S0": 2.0013755866949765,
+            "N_T1": 1.99738915492174,
+            "N_S1": 0.0012352583832880664
+          }
+        },
+        {
+          "step": 5,
+          "time": 5.0,
+          "delta_N_qudit_pair": 0.6787795479333751,
+          "delta_N_qudit_all": 1.1247752787097212,
+          "delta_N_qubit_pair": 1.2011404220872686,
+          "delta_N_qubit_all": 1.8907438939432155,
+          "trace_qubit_pair": 0.785988073500125,
+          "trace_qubit_all": 0.6665143343060504,
+          "populations_qudit_pair": {
+            "N_S0": 1.749953591842453,
+            "N_T1": 1.907073520996342,
+            "N_S1": 0.3429728871612089
+          },
+          "populations_qubit_pair": {
+            "N_S0": 1.4444049735552609,
+            "N_T1": 1.5234178492068344,
+            "N_S1": 0.17612947123840275
+          },
+          "populations_ref": {
+            "N_S0": 2.003864912176181,
+            "N_T1": 1.992551974629302,
+            "N_S1": 0.003583113194521596
+          }
+        },
+        {
+          "step": 6,
+          "time": 6.0,
+          "delta_N_qudit_pair": 0.8150528128698173,
+          "delta_N_qudit_all": 1.285235153791545,
+          "delta_N_qubit_pair": 1.4055405551103208,
+          "delta_N_qubit_all": 2.0758214895847518,
+          "trace_qubit_pair": 0.7483358503715127,
+          "trace_qubit_all": 0.6340638118121359,
+          "populations_qudit_pair": {
+            "N_S0": 1.7188268954430195,
+            "N_T1": 1.8653489903018485,
+            "N_S1": 0.4158241142551436
+          },
+          "populations_qubit_pair": {
+            "N_S0": 1.3564815400271442,
+            "N_T1": 1.429122175340492,
+            "N_S1": 0.20773968611841506
+          },
+          "populations_ref": {
+            "N_S0": 2.0088781753780647,
+            "N_T1": 1.9828241168017096,
+            "N_S1": 0.008297707820232448
+          }
+        },
+        {
+          "step": 7,
+          "time": 7.0,
+          "delta_N_qudit_pair": 0.9131018081115015,
+          "delta_N_qudit_all": 1.4031635346102451,
+          "delta_N_qubit_pair": 1.6111122589933502,
+          "delta_N_qubit_all": 2.295287172733184,
+          "trace_qubit_pair": 0.7093335137448379,
+          "trace_qubit_all": 0.5866012724534567,
+          "populations_qudit_pair": {
+            "N_S0": 1.7047698624612062,
+            "N_T1": 1.8222582020821125,
+            "N_S1": 0.4729719354566813
+          },
+          "populations_qubit_pair": {
+            "N_S0": 1.2640223554108212,
+            "N_T1": 1.3326675111812492,
+            "N_S1": 0.24064418838728163
+          },
+          "populations_ref": {
+            "N_S0": 2.0175710214920373,
+            "N_T1": 1.9660079471070357,
+            "N_S1": 0.016421031400934025
+          }
+        },
+        {
+          "step": 8,
+          "time": 8.0,
+          "delta_N_qudit_pair": 1.014808168875106,
+          "delta_N_qudit_all": 1.5114117951063475,
+          "delta_N_qubit_pair": 1.757957875514116,
+          "delta_N_qubit_all": 2.4191147824015813,
+          "trace_qubit_pair": 0.6788934010892644,
+          "trace_qubit_all": 0.5546997820527129,
+          "populations_qudit_pair": {
+            "N_S0": 1.6948191079525303,
+            "N_T1": 1.7688807886529128,
+            "N_S1": 0.5363001033945523
+          },
+          "populations_qubit_pair": {
+            "N_S0": 1.2060918076849818,
+            "N_T1": 1.2438200377794877,
+            "N_S1": 0.26566175889258875
+          },
+          "populations_ref": {
+            "N_S0": 2.0310314807683114,
+            "N_T1": 1.9400725002746915,
+            "N_S1": 0.028896018957006036
+          }
+        },
+        {
+          "step": 9,
+          "time": 9.0,
+          "delta_N_qudit_pair": 1.076529699333795,
+          "delta_N_qudit_all": 1.5932724834912717,
+          "delta_N_qubit_pair": 1.8402962864766652,
+          "delta_N_qubit_all": 2.498961096583224,
+          "trace_qubit_pair": 0.6605846155505217,
+          "trace_qubit_all": 0.5320845892833446,
+          "populations_qudit_pair": {
+            "N_S0": 1.7097375908477852,
+            "N_T1": 1.7056258031400242,
+            "N_S1": 0.5846366060121925
+          },
+          "populations_qubit_pair": {
+            "N_S0": 1.18128546457469,
+            "N_T1": 1.1733638669427267,
+            "N_S1": 0.28768913068467084
+          },
+          "populations_ref": {
+            "N_S0": 2.0500753752682717,
+            "N_T1": 1.90355286838644,
+            "N_S1": 0.04637175634529976
+          }
+        },
+        {
+          "step": 10,
+          "time": 10.0,
+          "delta_N_qudit_pair": 1.1038685943268034,
+          "delta_N_qudit_all": 1.6687774904580093,
+          "delta_N_qubit_pair": 1.9504845188589799,
+          "delta_N_qubit_all": 2.560161010802641,
+          "trace_qubit_pair": 0.6328581723549829,
+          "trace_qubit_all": 0.5109784341585143,
+          "populations_qudit_pair": {
+            "N_S0": 1.7229087911541967,
+            "N_T1": 1.6561184228892745,
+            "N_S1": 0.6209727859565279
+          },
+          "populations_qubit_pair": {
+            "N_S0": 1.1306173401577517,
+            "N_T1": 1.090818256329597,
+            "N_S1": 0.3099970929325818
+          },
+          "populations_ref": {
+            "N_S0": 2.0750660279659034,
+            "N_T1": 1.8558954832409764,
+            "N_S1": 0.0690384887931332
+          }
+        }
+      ],
+      "fidelity_results": {
+        "qudit_pair_only": 0.37709063586158775,
+        "qudit_all_gates": 0.1298532824201965,
+        "qubit_pair_only_raw": 0.3314819351834938,
+        "qubit_pair_only_norm": 0.5237855099173446,
+        "qubit_all_gates_raw": 0.09432061295536529,
+        "qubit_all_gates_norm": 0.18458824816366834,
+        "cross_pair_raw": 0.59227952484947,
+        "cross_pair_norm": 0.9358803452683417
+      }
+    },
+    {
+      "test": "error_budget_comparison",
+      "all_gates": {
+        "pair_depol": 12,
+        "single_depol": 20,
+        "total": 32,
+        "expected_errors_per_step": 0.2962962962962963
+      },
+      "pair_only": {
+        "pair_depol": 12,
+        "single_depol": 0,
+        "total": 12,
+        "expected_errors_per_step": 0.11851851851851852
+      },
+      "noise_reduction_fraction": 0.625,
+      "error_reduction_fraction": 0.6
+    }
+  ]
+}

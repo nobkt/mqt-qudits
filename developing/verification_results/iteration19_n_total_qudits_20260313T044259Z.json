@@ -1,0 +1,160 @@
+{
+  "iteration": 19,
+  "timestamp": "20260313T044259Z",
+  "total_checks": 30,
+  "passed": 30,
+  "failed": 0,
+  "all_passed": true,
+  "checks": [
+    {
+      "name": "qudit_dm_has_n_total",
+      "passed": true,
+      "detail": "QuditGKSLSimulator should define n_total_qudits"
+    },
+    {
+      "name": "qudit_dm_n_total_includes_ancilla",
+      "passed": true,
+      "detail": "n_total_qudits=30 should be sys(4)+anc(26)=30"
+    },
+    {
+      "name": "qudit_dm_n_total_value",
+      "passed": true,
+      "detail": "QuditGKSL N=4: n_total_qudits=30, expected 30 (4+26)"
+    },
+    {
+      "name": "qubit_dm_n_total_value",
+      "passed": true,
+      "detail": "QubitGKSL N=4: n_total_qubits=34, expected 34 (8+26)"
+    },
+    {
+      "name": "qudit_boson_n_total_includes_ancilla",
+      "passed": true,
+      "detail": "n_total_qudits=16 should be sys(2)+ph(2)+anc(12)=16"
+    },
+    {
+      "name": "qudit_boson_n_total_value",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=2: n_total_qudits=16, expected 16 (2+2+12)"
+    },
+    {
+      "name": "qubit_boson_n_total_includes_ancilla",
+      "passed": true,
+      "detail": "n_total_qubits=20 should be el(4)+ph(4)+anc(12)=20"
+    },
+    {
+      "name": "qubit_boson_n_total_value",
+      "passed": true,
+      "detail": "QubitGKSLBoson N=2: n_total_qubits=20, expected 20 (4+4+12)"
+    },
+    {
+      "name": "qudit_shot_has_n_total",
+      "passed": true,
+      "detail": "QuditGKSLShotSimulator should define n_total_qudits"
+    },
+    {
+      "name": "qudit_shot_n_total_includes_ancilla",
+      "passed": true,
+      "detail": "n_total_qudits=30 should be sys(4)+anc(26)=30"
+    },
+    {
+      "name": "qudit_shot_n_total_value",
+      "passed": true,
+      "detail": "QuditGKSLShot N=4: n_total_qudits=30, expected 30 (4+26)"
+    },
+    {
+      "name": "qudit_dm_result_has_n_total",
+      "passed": true,
+      "detail": "QuditGKSL result dict should contain n_total_qudits"
+    },
+    {
+      "name": "qudit_dm_result_n_total_correct",
+      "passed": true,
+      "detail": "QuditGKSL result n_total_qudits=30, expected 30"
+    },
+    {
+      "name": "qudit_boson_result_has_n_total",
+      "passed": true,
+      "detail": "QuditGKSLBoson result dict should contain n_total_qudits"
+    },
+    {
+      "name": "qudit_boson_result_n_total_correct",
+      "passed": true,
+      "detail": "QuditGKSLBoson result n_total_qudits=16, expected 16"
+    },
+    {
+      "name": "qudit_shot_result_has_n_total",
+      "passed": true,
+      "detail": "QuditGKSLShot result dict should contain n_total_qudits"
+    },
+    {
+      "name": "qudit_shot_result_n_total_correct",
+      "passed": true,
+      "detail": "QuditGKSLShot result n_total_qudits=30, expected 30"
+    },
+    {
+      "name": "nonboson_same_ancilla",
+      "passed": true,
+      "detail": "Non-boson ancilla: qudit=26, qubit=26 (should match)"
+    },
+    {
+      "name": "boson_same_ancilla",
+      "passed": true,
+      "detail": "Boson ancilla: qudit=12, qubit=12 (should match)"
+    },
+    {
+      "name": "qudit_dm_shot_total_match",
+      "passed": true,
+      "detail": "Qudit DM (30) == Shot (30)"
+    },
+    {
+      "name": "cell6_has_total_qudits",
+      "passed": true,
+      "detail": "Cell 6 (QuditGKSL) should display n_total_qudits"
+    },
+    {
+      "name": "cell8_has_total_qubits",
+      "passed": true,
+      "detail": "Cell 8 (QubitGKSL) should display n_total_qubits"
+    },
+    {
+      "name": "cell12_has_total_qudits",
+      "passed": true,
+      "detail": "Cell 12 (QuditGKSLBoson) should display n_total_qudits"
+    },
+    {
+      "name": "cell14_has_total_qubits",
+      "passed": true,
+      "detail": "Cell 14 (QubitGKSLBoson) should display n_total_qubits"
+    },
+    {
+      "name": "regression_qudit_dm_gps_66",
+      "passed": true,
+      "detail": "QuditGKSL N=4: GPS=66, expected 66"
+    },
+    {
+      "name": "regression_qubit_dm_gps_388",
+      "passed": true,
+      "detail": "QubitGKSL N=4: GPS=388, expected 388"
+    },
+    {
+      "name": "regression_qudit_boson_gps_38",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=2: GPS=38, expected 38"
+    },
+    {
+      "name": "regression_qubit_boson_gps_220",
+      "passed": true,
+      "detail": "QubitGKSLBoson N=2: GPS=220, expected 220"
+    },
+    {
+      "name": "regression_qudit_shot_gps_66",
+      "passed": true,
+      "detail": "QuditGKSLShot N=4: GPS=66, expected 66"
+    },
+    {
+      "name": "regression_qudit_boson_n4_gps_82",
+      "passed": true,
+      "detail": "QuditGKSLBoson N=4: n_total_qudits=34, expected 34 (4+4+26)"
+    }
+  ]
+}

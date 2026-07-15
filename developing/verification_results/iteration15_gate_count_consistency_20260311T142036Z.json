@@ -1,0 +1,85 @@
+{
+  "iteration": 15,
+  "timestamp": "20260311T142036Z",
+  "total_checks": 15,
+  "passed": 15,
+  "failed": 0,
+  "all_passed": true,
+  "checks": [
+    {
+      "name": "qudit_noncircuit_gps_value",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "qudit_noncircuit_not_old_59",
+      "passed": true,
+      "detail": "Should not be old value 59"
+    },
+    {
+      "name": "qubit_noncircuit_gps_value",
+      "passed": true,
+      "detail": "Expected 388, got 388"
+    },
+    {
+      "name": "qubit_noncircuit_not_old_350",
+      "passed": true,
+      "detail": "Should not be old value 350"
+    },
+    {
+      "name": "qudit_noncircuit_matches_circuit",
+      "passed": true,
+      "detail": "Non-circuit 66 vs circuit 66"
+    },
+    {
+      "name": "qubit_circuit_gps_66",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "qudit_circuit_gps_66",
+      "passed": true,
+      "detail": "Expected 66, got 66"
+    },
+    {
+      "name": "qudit_total_estimated_gates",
+      "passed": true,
+      "detail": "Expected 132, got 132"
+    },
+    {
+      "name": "qubit_total_estimated_gates",
+      "passed": true,
+      "detail": "Expected 776, got 776"
+    },
+    {
+      "name": "qudit_noncircuit_trace_preserved",
+      "passed": true,
+      "detail": "Final trace = 1.0000000000000002"
+    },
+    {
+      "name": "qubit_noncircuit_trace_preserved",
+      "passed": true,
+      "detail": "Final trace = 1.0000000000000002"
+    },
+    {
+      "name": "regression_qudit_docstring_66",
+      "passed": true,
+      "detail": "Circuit qudit docstring should contain '66'"
+    },
+    {
+      "name": "regression_qubit_docstring_66",
+      "passed": true,
+      "detail": "Circuit qubit docstring should contain '66'"
+    },
+    {
+      "name": "regression_qudit_circuit_breakdown_single",
+      "passed": true,
+      "detail": "Expected 40, got 40"
+    },
+    {
+      "name": "regression_qudit_circuit_breakdown_pair",
+      "passed": true,
+      "detail": "Expected 12, got 12"
+    }
+  ]
+}

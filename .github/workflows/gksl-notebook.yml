@@ -1,0 +1,44 @@
+# GKSL 比較ノートブックの定期実行ワークフロー
+# （developing/GKSL比較ノートブック完成報告_2026-07-13.md §3.1-2 対応）
+#
+# nbconvert 実行は依存導入込みで約30分（単体で10〜20分）かかるため、
+# PR/CI ごとの実行は行わず、手動トリガー（workflow_dispatch）と
+# 週次スケジュールでのみ実行する。
+name: GKSL Notebook
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 毎週月曜 03:17 UTC（混雑時間帯を避けたオフセット）
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  execute-notebook:
+    name: Execute quantum_dynamics_gksl_comparison.ipynb
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install qiskit qiskit-aer pylatexenc jupyter qutip
+      - name: Execute notebook
+        working-directory: tutorials
+        run: |
+          jupyter nbconvert --to notebook --execute \
+            --output executed_quantum_dynamics_gksl_comparison.ipynb \
+            quantum_dynamics_gksl_comparison.ipynb
+      - name: Upload executed notebook
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: executed-gksl-comparison-notebook
+          path: tutorials/executed_quantum_dynamics_gksl_comparison.ipynb
+          if-no-files-found: ignore

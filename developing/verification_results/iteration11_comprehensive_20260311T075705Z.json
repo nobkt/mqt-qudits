@@ -1,0 +1,200 @@
+{
+  "iteration": 11,
+  "timestamp": "20260311T075705Z",
+  "description": "Comprehensive post-iteration-10 analysis: noise model, code, notebook consistency",
+  "summary": {
+    "total_checks": 35,
+    "passed": 35,
+    "failed": 0
+  },
+  "analysis": {
+    "code_bugs_found": false,
+    "all_results_physically_consistent": true,
+    "known_approximations": [
+      "Lindblad pair channel noise uses H_transfer CX count (approximation)",
+      "Qudit Lindblad channels treated as 1 native gate (approximation)",
+      "Complete comparison uses cx_avg for all pair gates (correct on average)"
+    ],
+    "gksl_noise_events_per_step": 18,
+    "complete_noise_events_per_step": 12,
+    "gksl_p_eff": 0.04498,
+    "complete_p_eff": 0.06437
+  },
+  "checks": [
+    {
+      "name": "gksl_uses_cx_transfer",
+      "status": "PASS",
+      "detail": "GKSL Cell 38 uses cx_info['cx_transfer']"
+    },
+    {
+      "name": "gksl_no_cx_avg",
+      "status": "PASS",
+      "detail": "GKSL Cell 38 does NOT use cx_avg"
+    },
+    {
+      "name": "complete_uses_cx_avg",
+      "status": "PASS",
+      "detail": "Complete Cell 15 uses cx_info['cx_avg']"
+    },
+    {
+      "name": "gksl_hamiltonian_doc",
+      "status": "PASS",
+      "detail": "GKSL Cell 37 documents Hamiltonian structure"
+    },
+    {
+      "name": "gksl_lindblad_doc",
+      "status": "PASS",
+      "detail": "GKSL Cell 37 documents Lindblad/Stinespring approximation"
+    },
+    {
+      "name": "gksl_qubit_pair_noise_count",
+      "status": "PASS",
+      "detail": "Qubit GKSL noisy has 4 pair depol calls in Trotter step"
+    },
+    {
+      "name": "gksl_qudit_pair_noise_count",
+      "status": "PASS",
+      "detail": "Qudit GKSL noisy has 4 pair depol calls in Trotter step"
+    },
+    {
+      "name": "gksl_symmetric_noise",
+      "status": "PASS",
+      "detail": "Qubit (4) and qudit (4) have matching pair noise call count"
+    },
+    {
+      "name": "lindblad_sites_qubit",
+      "status": "PASS",
+      "detail": "QubitGKSLNoisyShotSimulator has _compute_lindblad_sites"
+    },
+    {
+      "name": "lindblad_sites_qudit",
+      "status": "PASS",
+      "detail": "QuditGKSLNoisyShotSimulator has _compute_lindblad_sites"
+    },
+    {
+      "name": "qudit_pair_p_identity",
+      "status": "PASS",
+      "detail": "Qudit pair p_identity = 0.99901235 (d^4=81)"
+    },
+    {
+      "name": "qudit_pair_fidelity_loss",
+      "status": "PASS",
+      "detail": "Qudit pair fidelity loss per event = 0.000889"
+    },
+    {
+      "name": "qubit_pair_p_identity",
+      "status": "PASS",
+      "detail": "Qubit pair p_identity = 0.99900391 (d_pair^2=256)"
+    },
+    {
+      "name": "qubit_pair_fidelity_loss",
+      "status": "PASS",
+      "detail": "Qubit pair fidelity loss per event = 0.000937"
+    },
+    {
+      "name": "p_eff_transfer_correct",
+      "status": "PASS",
+      "detail": "p_eff(cx=46) = 0.04498 ≈ 4.50%"
+    },
+    {
+      "name": "p_eff_avg_correct",
+      "status": "PASS",
+      "detail": "p_eff(cx=66.5) = 0.06437 ≈ 6.44%"
+    },
+    {
+      "name": "different_cx_values",
+      "status": "PASS",
+      "detail": "GKSL uses cx_transfer, Complete uses cx_avg (correct for each model)"
+    },
+    {
+      "name": "gksl_depol_001",
+      "status": "PASS",
+      "detail": "GKSL uses p_depol=0.001"
+    },
+    {
+      "name": "complete_depol_001",
+      "status": "PASS",
+      "detail": "Complete uses depol_2q=0.001"
+    },
+    {
+      "name": "gksl_pair_only",
+      "status": "PASS",
+      "detail": "GKSL uses depol_pair_only=True"
+    },
+    {
+      "name": "complete_pair_gates",
+      "status": "PASS",
+      "detail": "Complete estimates CX gates for pair interactions"
+    },
+    {
+      "name": "gksl_h_total",
+      "status": "PASS",
+      "detail": "QubitGKSLShotSimulator: H_total = H_0 + H_transfer"
+    },
+    {
+      "name": "gksl_no_h_tta",
+      "status": "PASS",
+      "detail": "QubitGKSLShotSimulator: no H_TTA in Hamiltonian"
+    },
+    {
+      "name": "lindblad_order_tta_first",
+      "status": "PASS",
+      "detail": "build_lindblad_operators: TTA operators come first"
+    },
+    {
+      "name": "lindblad_5_single_channels",
+      "status": "PASS",
+      "detail": "build_lindblad_operators: 5 single-site channel types"
+    },
+    {
+      "name": "qubit_encoding",
+      "status": "PASS",
+      "detail": "Qubit encoding: S0=|00>, T1=|01>, S1=|10>, forbidden=|11>"
+    },
+    {
+      "name": "cx_float_type",
+      "status": "PASS",
+      "detail": "QubitGKSLNoisyShotSimulator: cx_per_pair_gate typed as float"
+    },
+    {
+      "name": "p_eff_formula",
+      "status": "PASS",
+      "detail": "p_eff formula correctly implemented in constructor"
+    },
+    {
+      "name": "noisy_sim_cx_float",
+      "status": "PASS",
+      "detail": "qubit_noisy_simulator.py: cx_per_pair_gate documented as float"
+    },
+    {
+      "name": "fidelity_note",
+      "status": "PASS",
+      "detail": "Cell 40: F_raw note says 'correctly includes' leakage penalty"
+    },
+    {
+      "name": "no_misleading",
+      "status": "PASS",
+      "detail": "Cell 40: no 'misleadingly' text"
+    },
+    {
+      "name": "backward_compat",
+      "status": "PASS",
+      "detail": "p_eff(cx=1) = 0.0010000000000000009 = p_phys (backward compatible)"
+    },
+    {
+      "name": "p_eff_monotonic",
+      "status": "PASS",
+      "detail": "p_eff is monotonically increasing with cx"
+    },
+    {
+      "name": "total_noise_similar",
+      "status": "PASS",
+      "detail": "GKSL (0.810) and Complete (0.772) total noise/step within 10%"
+    },
+    {
+      "name": "max_mixed_forbidden",
+      "status": "PASS",
+      "detail": "Maximally mixed forbidden fraction = 0.6836 = 175/256"
+    }
+  ]
+}

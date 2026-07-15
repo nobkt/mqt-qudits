@@ -381,16 +381,25 @@ class QuditGKSLKrausSimulator:
 
         return circuit, U_local
 
-    def build_full_trotter_step_circuit(self, dt: float):
+    def build_full_trotter_step_circuit(
+        self, dt: float, skip_zero_rate_channels: bool = False
+    ):
         """Build MQT-Qudits circuit for one full 2nd-order Trotter step.
 
         Structure: H(dt/2) → D_1...D_n(dt/2) → D_n...D_1(dt/2) → H(dt/2)
 
         Palindromic Lindblad ordering matches QuditGKSLSimulator._trotter_step.
         Returns a dict with circuit info and gate counts.
+
+        Parameters:
+            dt: Trotter step size
+            skip_zero_rate_channels: if True, Lindblad channels with gamma == 0
+                (whose Stinespring unitary is the identity) are omitted from
+                the returned circuits and gate counts.
         """
         circuits = []
         total_gates = 0
+        n_st_gates = 0
 
         # Half Hamiltonian step
         h_circ, h_gates = self.build_hamiltonian_circuit(dt / 2)
@@ -402,18 +411,22 @@ class QuditGKSLKrausSimulator:
         for idx, (op_type, sites, L_local, _gamma) in enumerate(
             self.lindblad_local_info
         ):
+            if skip_zero_rate_channels and _gamma == 0.0:
+                continue
             if op_type == "single":
                 circ, _ = self.build_stinespring_circuit_single(
                     L_local, dt / 2, sites[0]
                 )
                 lindblad_circuits_forward.append((f"stinespring_fwd_single_{idx}", circ))
                 total_gates += 1
+                n_st_gates += 1
             elif op_type == "pair":
                 circ, _ = self.build_stinespring_circuit_pair(
                     L_local, dt / 2, sites[0], sites[1]
                 )
                 lindblad_circuits_forward.append((f"stinespring_fwd_pair_{idx}", circ))
                 total_gates += 1
+                n_st_gates += 1
         circuits.extend(lindblad_circuits_forward)
 
         # Reverse Lindblad half-step channels (palindromic)
@@ -421,18 +434,22 @@ class QuditGKSLKrausSimulator:
         for idx, (op_type, sites, L_local, _gamma) in reversed(
             list(enumerate(self.lindblad_local_info))
         ):
+            if skip_zero_rate_channels and _gamma == 0.0:
+                continue
             if op_type == "single":
                 circ, _ = self.build_stinespring_circuit_single(
                     L_local, dt / 2, sites[0]
                 )
                 lindblad_circuits_reverse.append((f"stinespring_rev_single_{idx}", circ))
                 total_gates += 1
+                n_st_gates += 1
             elif op_type == "pair":
                 circ, _ = self.build_stinespring_circuit_pair(
                     L_local, dt / 2, sites[0], sites[1]
                 )
                 lindblad_circuits_reverse.append((f"stinespring_rev_pair_{idx}", circ))
                 total_gates += 1
+                n_st_gates += 1
         circuits.extend(lindblad_circuits_reverse)
 
         # Second half Hamiltonian step
@@ -444,10 +461,12 @@ class QuditGKSLKrausSimulator:
             "circuits": circuits,
             "total_gates": total_gates,
             "n_hamiltonian_gates": h_gates + h_gates2,
-            "n_stinespring_gates": 2 * len(self.lindblad_local_info),
+            "n_stinespring_gates": n_st_gates,
         }
 
-    def build_combined_trotter_step_circuit(self, dt: float):
+    def build_combined_trotter_step_circuit(
+        self, dt: float, skip_zero_rate_channels: bool = False
+    ):
         """Build a single MQT-Qudits circuit for one full 2nd-order Trotter step.
 
         All Hamiltonian and Stinespring gates are placed on a single circuit
@@ -503,6 +522,8 @@ class QuditGKSLKrausSimulator:
         for _idx, (op_type, sites, L_local, _gamma) in enumerate(
             self.lindblad_local_info
         ):
+            if skip_zero_rate_channels and _gamma == 0.0:
+                continue
             U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
             if op_type == "single":
                 circuit.cu_two([sites[0], ancilla_idx], U_local)
@@ -515,6 +536,8 @@ class QuditGKSLKrausSimulator:
         for _idx, (op_type, sites, L_local, _gamma) in reversed(
             list(enumerate(self.lindblad_local_info))
         ):
+            if skip_zero_rate_channels and _gamma == 0.0:
+                continue
             U_local = self._build_local_stinespring_unitary(L_local, dt / 2)
             if op_type == "single":
                 circuit.cu_two([sites[0], ancilla_idx], U_local)

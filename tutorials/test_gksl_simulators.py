@@ -2317,3 +2317,102 @@ class TestDMSimShotSimulators:
             empirical[idx] = c / 20000
         # 3σ binomial bound for n=20000 is ~3·sqrt(p(1-p)/n) ≤ 0.011
         assert np.max(np.abs(empirical - diag)) < 0.02
+
+
+# ---------------------------------------------------------------------------
+# TestStatevectorEnsembleSimulators
+# ---------------------------------------------------------------------------
+class TestStatevectorEnsembleSimulators:
+    """Deterministic statevector-ensemble simulators with ancilla branching.
+
+    These verify that ``QuditGKSLStatevectorSimulator`` /
+    ``QubitGKSLStatevectorSimulator`` — which propagate a weighted
+    pure-state ensemble with per-channel ancilla attach/branch/discard
+    instead of a density matrix — reproduce the density-matrix
+    Stinespring simulators to round-off, preserve trace, and work with
+    zero-rate (reduced) channel sets.
+    """
+
+    @staticmethod
+    def test_qudit_ensemble_matches_density_matrix():
+        from gksl_statevector_ensemble_simulator import QuditGKSLStatevectorSimulator
+        params = GKSLPhysicalParameters(N_molecules=2)
+        res_sv = QuditGKSLStatevectorSimulator(params).simulate(
+            t_max=5.0, n_steps=5, initial_state="edge_triplet"
+        )
+        res_dm = QuditGKSLSimulator(params).simulate(
+            t_max=5.0, n_steps=5, initial_state="edge_triplet"
+        )
+        assert np.linalg.norm(res_sv["rho_final"] - res_dm["rho_final"]) < 1e-10
+        assert max(abs(t - 1.0) for t in res_sv["trace"]) < 1e-10
+        # Ensemble never exceeds Hilbert dimension after compression
+        assert res_sv["final_ensemble_size"] <= 9
+        assert res_sv["discarded_weight"] < 1e-12
+
+    @staticmethod
+    def test_qubit_ensemble_matches_density_matrix():
+        from gksl_statevector_ensemble_simulator import QubitGKSLStatevectorSimulator
+        params = GKSLPhysicalParameters(N_molecules=2)
+        res_sv = QubitGKSLStatevectorSimulator(params).simulate(
+            t_max=5.0, n_steps=5, initial_state="edge_triplet"
+        )
+        res_dm = QubitGKSLSimulator(params).simulate(
+            t_max=5.0, n_steps=5, initial_state="edge_triplet"
+        )
+        # rho_final of both is in the 9-dim qutrit space
+        assert np.linalg.norm(res_sv["rho_final"] - res_dm["rho_final"]) < 1e-10
+        assert max(abs(t - 1.0) for t in res_sv["trace"]) < 1e-10
+        # Qubit-pair encoding must not leak into the forbidden subspace
+        assert max(res_sv["forbidden_populations"]) < 1e-12
+
+    @staticmethod
+    def test_entropy_and_purity_match_density_matrix():
+        from gksl_statevector_ensemble_simulator import QuditGKSLStatevectorSimulator
+        params = GKSLPhysicalParameters(N_molecules=2)
+        res_sv = QuditGKSLStatevectorSimulator(params).simulate(
+            t_max=5.0, n_steps=5, initial_state="edge_triplet"
+        )
+        res_dm = QuditGKSLSimulator(params).simulate(
+            t_max=5.0, n_steps=5, initial_state="edge_triplet"
+        )
+        # Gram-matrix entropy/purity must equal density-matrix values
+        assert abs(res_sv["entropy"][-1] - res_dm["entropy"][-1]) < 1e-8
+        assert abs(res_sv["purity"][-1] - res_dm["purity"][-1]) < 1e-8
+
+    @staticmethod
+    def test_reduced_channels_zero_rates():
+        """Gamma_ph = k_IC = k_ISC = 0 (identity channels) must still be exact."""
+        from gksl_statevector_ensemble_simulator import QuditGKSLStatevectorSimulator
+        params = GKSLPhysicalParameters(
+            N_molecules=2, Gamma_ph=0.0, k_IC=0.0, k_ISC_ST=0.0, k_ISC_TS=0.0
+        )
+        assert params.validate() == []
+        res_sv = QuditGKSLStatevectorSimulator(params).simulate(
+            t_max=5.0, n_steps=5, initial_state="edge_triplet"
+        )
+        res_dm = QuditGKSLSimulator(params).simulate(
+            t_max=5.0, n_steps=5, initial_state="edge_triplet"
+        )
+        assert np.linalg.norm(res_sv["rho_final"] - res_dm["rho_final"]) < 1e-10
+
+    @staticmethod
+    def test_circuit_builders_skip_zero_rate_channels():
+        """skip_zero_rate_channels removes only the gamma == 0 channels."""
+        from qudit_gksl_circuit_simulator import QuditGKSLCircuitSimulator
+        from qubit_gksl_circuit_simulator import QubitGKSLCircuitSimulator
+        params = GKSLPhysicalParameters(
+            Gamma_ph=0.0, k_IC=0.0, k_ISC_ST=0.0, k_ISC_TS=0.0
+        )
+        n_active = 2 * len(params.neighbors) + params.N_molecules  # 6 TTA + 4 Fl
+        for cls in (QuditGKSLCircuitSimulator, QubitGKSLCircuitSimulator):
+            sim = cls(params)
+            full = sim.build_full_trotter_step_circuit(1.0)
+            reduced = sim.build_full_trotter_step_circuit(
+                1.0, skip_zero_rate_channels=True
+            )
+            assert full["n_stinespring_gates"] == 52
+            assert reduced["n_stinespring_gates"] == 2 * n_active
+            comb = sim.build_combined_trotter_step_circuit(
+                1.0, skip_zero_rate_channels=True
+            )
+            assert comb["n_stinespring_gates"] == 2 * n_active

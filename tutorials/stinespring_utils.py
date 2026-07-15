@@ -124,3 +124,65 @@ def build_gksl_superoperator(
     return L_H + L_D
 
 
+def build_gksl_superoperator_sparse(
+    H_total: np.ndarray,
+    lindblad_ops: list,
+    hbar: float = 1.0,
+    memory_budget_bytes: int | None = 4 * 1024**3,
+):
+    """Sparse (CSR) version of :func:`build_gksl_superoperator`.
+
+    Builds the identical GKSL Liouvillian (same vectorization convention,
+    same operator ordering) as ``scipy.sparse.csr_matrix`` instead of a
+    dense array, so that the memory scales with the number of non-zeros
+    instead of (dim^2)^2.  Compatible with ``scipy.sparse.linalg
+    .expm_multiply``.
+
+    Before allocating the Kronecker products, the number of non-zeros of
+    the result is estimated from the inputs; if the estimated CSR memory
+    exceeds ``memory_budget_bytes`` a :class:`MemoryError` with the
+    estimated size is raised instead of attempting the allocation
+    (pass ``memory_budget_bytes=None`` to disable the guard).
+    """
+    from scipy import sparse
+
+    H = sparse.csr_matrix(np.asarray(H_total, dtype=np.complex128))
+    dim = H.shape[0]
+    eye = sparse.identity(dim, dtype=np.complex128, format="csr")
+
+    ops = []
+    for item in lindblad_ops:
+        L_arr = item[0] if isinstance(item, tuple) else item
+        L_op = sparse.csr_matrix(np.asarray(L_arr, dtype=np.complex128))
+        LdL = (L_op.conj().T @ L_op).tocsr()
+        ops.append((L_op, LdL))
+
+    if memory_budget_bytes is not None:
+        # Upper bound on nnz of the sum: nnz(kron(A,B)) = nnz(A)*nnz(B).
+        est_nnz = 2 * dim * H.nnz
+        for L_op, LdL in ops:
+            est_nnz += L_op.nnz**2 + 2 * dim * LdL.nnz
+        # CSR complex128: 16 B data + 4-8 B indices (+ indptr) per non-zero.
+        est_bytes = est_nnz * 24
+        if est_bytes > memory_budget_bytes:
+            msg = (
+                f"estimated sparse Liouvillian size ~{est_bytes / 1024**3:.1f} GiB "
+                f"(nnz~{est_nnz:.3e}) exceeds the memory budget of "
+                f"{memory_budget_bytes / 1024**3:.1f} GiB (dim={dim}); reduce the "
+                "problem dimension or raise memory_budget_bytes"
+            )
+            raise MemoryError(msg)
+
+    L_total = (-1j / hbar) * (
+        sparse.kron(eye, H, format="csr") - sparse.kron(H.T, eye, format="csr")
+    )
+    for L_op, LdL in ops:
+        L_total = (
+            L_total
+            + sparse.kron(L_op.conj(), L_op, format="csr")
+            - 0.5 * sparse.kron(eye, LdL, format="csr")
+            - 0.5 * sparse.kron(LdL.T, eye, format="csr")
+        )
+    return L_total.tocsr()
+
+

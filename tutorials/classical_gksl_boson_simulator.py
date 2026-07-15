@@ -31,7 +31,7 @@ from gksl_math_utils import (
     unvectorize_density_matrix,
 )
 from gksl_physical_parameters import GKSLPhysicalParameters
-from stinespring_utils import build_gksl_superoperator
+from stinespring_utils import build_gksl_superoperator_sparse
 
 
 class ClassicalGKSLBosonSimulator:
@@ -46,12 +46,16 @@ class ClassicalGKSLBosonSimulator:
     over phonon degrees of freedom.
     """
 
+    # A single dense (dim_total × dim_total) complex128 operator larger than
+    # this is refused up-front with a clear MemoryError instead of an opaque
+    # allocation failure inside the Hamiltonian builders.
+    _MAX_DENSE_OPERATOR_BYTES = 2 * 1024**3
+
     def __init__(self, params: GKSLPhysicalParameters) -> None:
         if not params.with_boson:
             msg = "ClassicalGKSLBosonSimulator requires with_boson=True"
             raise ValueError(msg)
         self.params = params
-
         # Dimensions
         self.dim_el = params.d ** params.N_molecules
         self.dim_ph = (params.n_max + 1) ** params.N_molecules
@@ -67,14 +71,31 @@ class ClassicalGKSLBosonSimulator:
             self.lindblad_ops = None
             self._L_super = None
         else:
+            # Dimension guard: H_total and the extended Lindblad operators are
+            # built as dense (dim_total × dim_total) arrays; refuse before
+            # allocation if a single such array would exceed the budget.
+            dense_op_bytes = 16 * self.dim_total**2
+            if dense_op_bytes > self._MAX_DENSE_OPERATOR_BYTES:
+                msg = (
+                    f"dense operator size {dense_op_bytes / 1024**3:.1f} GiB "
+                    f"(dim_total={self.dim_total}) exceeds the "
+                    f"{self._MAX_DENSE_OPERATOR_BYTES / 1024**3:.1f} GiB limit; "
+                    "reduce N_molecules or n_max"
+                )
+                raise MemoryError(msg)
+
             self.H_total = build_H_total_boson(params)
 
             # Extended Lindblad operators: L_el ⊗ I_phonon
             lindblad_ops_el = build_lindblad_operators(params)
             self.lindblad_ops = extend_lindblad_operators(lindblad_ops_el, self.dim_ph)
 
-            # Build the full GKSL Liouvillian superoperator (dim_total^2 × dim_total^2)
-            self._L_super = build_gksl_superoperator(self.H_total, self.lindblad_ops)
+            # Build the full GKSL Liouvillian superoperator
+            # (dim_total^2 × dim_total^2) in sparse CSR form; its own memory
+            # guard raises MemoryError with the estimated size if exceeded.
+            self._L_super = build_gksl_superoperator_sparse(
+                self.H_total, self.lindblad_ops
+            )
 
     # ------------------------------------------------------------------
     def prepare_initial_state(self, state_type: str = "edge_triplet") -> np.ndarray:
